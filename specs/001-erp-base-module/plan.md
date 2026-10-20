@@ -65,6 +65,59 @@ tests/
 
 **Decisión de Estructura**: Una aplicación Vite simple con un único punto de entrada HTML, un pequeño conjunto de módulos JavaScript y CSS en un archivo separado. Se usará localStorage para la persistencia de modo que la aplicación permanezca ligera y autónoma. Los componentes se dividen en pares de entidad (datos maestros) y documento (transaccional) que reflejan los dos conceptos centrales del módulo base, de modo que un módulo personalizado pueda renombrar o extender cada par de forma independiente. `shell.js` posee el marco del espacio de trabajo ERP — un logotipo monograma SVG en línea derivado del nombre del módulo, la barra superior y la barra lateral de módulos — envolviendo todas las vistas para que la marca y la navegación permanezcan consistentes sin duplicar marcado. `dashboard.js` renderiza los botones de acción rápida y las tarjetas de estadísticas de la pantalla de entrada, leyendo los recuentos del almacenamiento cada vez que se vuelve visible. `module-config.js` centraliza todos los puntos de adaptación — nombre del módulo, etiquetas de términos, definiciones de campos personalizados, ciclo de vida de estados y color de acento — manteniendo la personalización del dominio fuera del código central; el estilo se controla mediante propiedades personalizadas de CSS (tokens de diseño) en `styles.css` para que el color de acento configurado se aplique globalmente.
 
+## Configuración de Referencia: Módulo Adquisiciones y Compras 
+
+ 
+
+El área de negocio concreta sobre la que se valida la base es **Adquisiciones y Compras**. El perfil se declara íntegramente en `src/module-config.js` sin tocar el código central, y sirve como ejemplo de referencia de adaptación: 
+
+ 
+
+- **Identidad**: `moduleName: "Adquisiciones y Compras"`, con color de acento propio (`theme.accentColor`). 
+
+- **Terminología**: Entidad → **Proveedor**; Documento → **Orden de Compra** (cubre solicitudes de cotización, órdenes de compra, recepciones y facturas de proveedor). 
+
+- **Campos personalizados en proveedores**: 
+
+  - `categoriaProveedor` (select: Materias primas / Servicios / Equipos / General, obligatorio) — clasifica el tipo de suministro que aporta el proveedor. 
+
+  - `vendedorContacto` (texto, opcional) — representante o vendedor asignado por el proveedor. 
+
+  - Los campos base `taxId` (RFC/NIT/CUIT), `creditLimit` y `paymentTerms` aportan la identidad fiscal y las condiciones de compra acordadas. 
+
+- **Campos personalizados en documentos**: 
+
+  - `tipoDocumento` (select: Solicitud de Cotización / Orden de Compra / Recepción / Factura de Proveedor, obligatorio) — identifica la etapa del flujo de compras que representa el documento. 
+
+  - `prioridad` (select: Normal / Urgente, opcional). 
+
+  - Los campos base `series`/`folio` generan la numeración oficial (p. ej., `SC-1001`, `OC-2045`), e `subtotal`, `discount`, `taxAmount`, `totalAmount` y `currency` registran el desglose económico de la compra. 
+
+- **Ciclo de vida de estados** (flujo de adquisiciones y compras): 
+
+ 
+
+  | Estado actual | Transiciones permitidas | 
+
+  |---|---| 
+
+  | borrador | cotización, cancelado | 
+
+  | cotización | aprobado, cancelado | 
+
+  | aprobado | recibido, cancelado | 
+
+  | recibido | facturado | 
+
+  | facturado | *(fin)* | 
+
+  | cancelado | *(fin)* | 
+
+ 
+
+  El flujo avanza solicitud de cotización (cotización) → orden de compra aprobada (aprobado) → recepción de mercancía (recibido) → factura de proveedor registrada (facturado); la cancelación queda permitida hasta que la recepción no se haya confirmado. 
+
+ 
 ## Seguimiento de Complejidad
 
 Este plan no introdujo violaciones de la constitución.
