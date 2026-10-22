@@ -35,12 +35,14 @@ describe('User Story 1 - create and organize entities', () => {
     expect(qs('view-entities').hidden).toBe(false);
     qs('name').value = 'Acme';
     qs('code').value = 'AC-001';
+    qs('cf-categoriaProveedor').value = 'Servicios';
     qs('entity-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
     const all = loadEntities();
     expect(all.length).toBe(1);
     expect(all[0].name).toBe('Acme');
     expect(all[0].code).toBe('AC-001');
     expect(all[0].entity_id).toBeDefined();
+    expect(all[0].categoriaProveedor).toBe('Servicios');
     const select = qs('edit-entity');
     expect([...select.options].map(o => o.textContent)).toContain('Acme — AC-001');
   });
@@ -55,6 +57,8 @@ describe('User Story 1 - create and organize entities', () => {
     qs('address').value = 'Av. Reforma 100';
     qs('creditLimit').value = '50000';
     qs('paymentTerms').value = 'neto 30';
+    qs('cf-categoriaProveedor').value = 'Materias primas';
+    qs('cf-vendedorContacto').value = 'Laura Pérez';
     qs('entity-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
     const saved = loadEntities()[0];
     expect(saved.taxId).toBe('RFC800101AB1');
@@ -63,6 +67,8 @@ describe('User Story 1 - create and organize entities', () => {
     expect(saved.address).toBe('Av. Reforma 100');
     expect(saved.creditLimit).toBe(50000);
     expect(saved.paymentTerms).toBe('neto 30');
+    expect(saved.categoriaProveedor).toBe('Materias primas');
+    expect(saved.vendedorContacto).toBe('Laura Pérez');
   });
 
   it('rejects a malformed email with an explanation', () => {

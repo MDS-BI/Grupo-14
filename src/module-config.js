@@ -1,20 +1,33 @@
 // ============================================================================
 // Configuración del Módulo — edita `userConfig` abajo para adaptar este módulo
-// base a un módulo ERP específico (p. ej., Ventas). Ningún otro archivo necesita cambios.
+// base a un módulo ERP específico. Ningún otro archivo necesita cambios.
 // ============================================================================
 
-// Establece en null para ejecutar con los valores predeterminados integrados,
-// o proporciona un objeto como:
+// Perfil activo: Módulo de Adquisiciones y Compras
+// (referencia: specs/001-erp-base-module/plan.md).
+// Establece `userConfig = null` para volver a los valores predeterminados
+// integrados (Entidad/Documento, sin campos personalizados).
+//
+// Estructura admitida por `userConfig`:
 // {
-//   moduleName: 'Ventas',
-//   labels: { entity: 'Cliente', entities: 'Clientes', document: 'Pedido de Venta', documents: 'Pedidos de Venta' },
+//   moduleName: 'Adquisiciones y Compras',
+//   labels: { entity: 'Proveedor', entities: 'Proveedores', document: 'Orden de Compra', documents: 'Órdenes de Compra' },
 //   customFields: [
-//     { target: 'entity', key: 'zona', label: 'Zona', type: 'select', options: ['Norte', 'Sur'] },
-//     { target: 'document', key: 'metodoEnvio', label: 'Método de envío', type: 'select', options: ['estándar', 'exprés'] }
+//     { target: 'entity', key: 'categoriaProveedor', label: 'Categoría del proveedor', type: 'select', options: ['Materias primas', 'Servicios', 'Equipos', 'General'], required: true },
+//     { target: 'entity', key: 'vendedorContacto', label: 'Vendedor de contacto', type: 'text' },
+//     { target: 'document', key: 'tipoDocumento', label: 'Tipo de documento', type: 'select', options: ['Solicitud de Cotización', 'Orden de Compra', 'Recepción', 'Factura de Proveedor'], required: true },
+//     { target: 'document', key: 'prioridad', label: 'Prioridad', type: 'select', options: ['Normal', 'Urgente'] },
+//     // Divisas y tipos de cambio (Punto 6 del diseño arquitectónico):
+//     // `tipoCambio` es el valor de la divisa del documento (campo base `currency`)
+//     // frente a la moneda local; queda congelado en el documento para no alterar
+//     // el costo histórico de la compra. `fechaEmision` es el día exacto en que
+//     // se fijó ese tipo de cambio y se creó el documento (trazabilidad).
+//     { target: 'document', key: 'tipoCambio', label: 'Tipo de cambio', type: 'number' },
+//     { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
 //   ],
 //   statusLifecycle: {
-//     statuses: ['cotización', 'pedido', 'facturado'],
-//     transitions: { cotización: ['pedido'], pedido: ['facturado'], facturado: [] }
+//     statuses: ['borrador', 'cotización', 'aprobado', 'recibido', 'facturado', 'cancelado'],
+//     transitions: { borrador: ['cotización', 'cancelado'], cotización: ['aprobado', 'cancelado'], aprobado: ['recibido', 'cancelado'], recibido: ['facturado'], facturado: [], cancelado: [] }
 //   },
 //   lineasDetalle: {
 //     // Etiqueta de la sección en la UI (opcional; por defecto "Líneas de detalle").
@@ -28,9 +41,40 @@
 //       { key: 'centroCosto', label: 'Centro de costo', type: 'text' }
 //     ]
 //   },
-//   theme: { accentColor: '#0f62fe' }
+//   theme: { accentColor: '#0f766e' }
 // }
-export const userConfig = null;
+export const userConfig = {
+  moduleName: 'Adquisiciones y Compras',
+  labels: {
+    entity: 'Proveedor',
+    entities: 'Proveedores',
+    document: 'Orden de Compra',
+    documents: 'Órdenes de Compra'
+  },
+  customFields: [
+    // Proveedores
+    { target: 'entity', key: 'categoriaProveedor', label: 'Categoría del proveedor', type: 'select', options: ['Materias primas', 'Servicios', 'Equipos', 'General'], required: true },
+    { target: 'entity', key: 'vendedorContacto', label: 'Vendedor de contacto', type: 'text' },
+    // Documentos de compra
+    { target: 'document', key: 'tipoDocumento', label: 'Tipo de documento', type: 'select', options: ['Solicitud de Cotización', 'Orden de Compra', 'Recepción', 'Factura de Proveedor'], required: true },
+    { target: 'document', key: 'prioridad', label: 'Prioridad', type: 'select', options: ['Normal', 'Urgente'] },
+    // Divisas y tipos de cambio: congelan el costo de la compra y su trazabilidad
+    { target: 'document', key: 'tipoCambio', label: 'Tipo de cambio', type: 'number' },
+    { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
+  ],
+  statusLifecycle: {
+    statuses: ['borrador', 'cotización', 'aprobado', 'recibido', 'facturado', 'cancelado'],
+    transitions: {
+      borrador: ['cotización', 'cancelado'],
+      cotización: ['aprobado', 'cancelado'],
+      aprobado: ['recibido', 'cancelado'],
+      recibido: ['facturado'],
+      facturado: [],
+      cancelado: []
+    }
+  },
+  theme: { accentColor: '#0f766e' }
+};
 
 // ---------------------------------------------------------------------------
 // Cargador central — no deberías necesitar modificar nada debajo de esta línea.

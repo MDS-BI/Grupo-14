@@ -98,10 +98,10 @@ describe('module-config', () => {
     expect(config.statusLifecycle).toBeNull();
   });
 
-  it('loadModuleConfig reflects the userConfig slot (null by default)', async () => {
+  it('loadModuleConfig reflects the active userConfig slot', async () => {
     const { config, errors } = await loadModuleConfig();
     expect(errors).toEqual([]);
-    expect(config.moduleName).toBe(DEFAULT_CONFIG.moduleName);
+    expect(config.moduleName).toBe('Adquisiciones y Compras');
   });
 
   it('exposes active config and label helpers after setActiveConfig', () => {
@@ -119,6 +119,38 @@ describe('module-config', () => {
     expect(FIELD_TYPES).toContain('number');
     expect(FIELD_TYPES).toContain('date');
     expect(FIELD_TYPES).toContain('select');
+  });
+
+  describe('perfil de Adquisiciones y Compras', () => {
+    it('declara el tipo de cambio y la fecha de emisión en los documentos', async () => {
+      const { config, errors } = await loadModuleConfig();
+      expect(errors).toEqual([]);
+
+      const tipoCambio = config.customFields.find(f => f.target === 'document' && f.key === 'tipoCambio');
+      expect(tipoCambio).toBeDefined();
+      expect(tipoCambio.type).toBe('number');
+      expect(tipoCambio.required).toBe(false);
+
+      const fechaEmision = config.customFields.find(f => f.target === 'document' && f.key === 'fechaEmision');
+      expect(fechaEmision).toBeDefined();
+      expect(fechaEmision.type).toBe('date');
+      expect(fechaEmision.required).toBe(true);
+    });
+
+    it('renombra entidad y documento según el área de compras', async () => {
+      const { config, errors } = await loadModuleConfig();
+      expect(errors).toEqual([]);
+      expect(config.labels.entity).toBe('Proveedor');
+      expect(config.labels.documents).toBe('Órdenes de Compra');
+    });
+
+    it('expone el ciclo de vida de estados del flujo de compras', async () => {
+      const { config, errors } = await loadModuleConfig();
+      expect(errors).toEqual([]);
+      expect(config.statusLifecycle.statuses).toEqual(['borrador', 'cotización', 'aprobado', 'recibido', 'facturado', 'cancelado']);
+      expect(config.statusLifecycle.transitions.borrador).toEqual(['cotización', 'cancelado']);
+      expect(config.statusLifecycle.transitions.recibido).toEqual(['facturado']);
+    });
   });
 
   describe('theme', () => {

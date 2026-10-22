@@ -47,7 +47,9 @@ describe('User Story 10 - add a document to an entity', () => {
     qs('currency').value = 'MXN';
     qs('docPaymentTerms').value = 'neto 30';
     qs('notes').value = 'Entrega parcial';
-    qs('status').value = 'pendiente';
+    qs('status').value = 'borrador';
+    qs('cf-tipoDocumento').value = 'Orden de Compra';
+    qs('cf-fechaEmision').value = '2026-08-01';
     qs('document-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
     const all = loadDocuments();
     expect(all.length).toBe(1);
@@ -61,6 +63,8 @@ describe('User Story 10 - add a document to an entity', () => {
     expect(all[0].totalAmount).toBe(1102);
     expect(all[0].paymentTerms).toBe('neto 30');
     expect(all[0].notes).toBe('Entrega parcial');
+    expect(all[0].tipoDocumento).toBe('Orden de Compra');
+    expect(all[0].fechaEmision).toBe('2026-08-01');
   });
 
   it('prevents saving when required document information is blank', () => {

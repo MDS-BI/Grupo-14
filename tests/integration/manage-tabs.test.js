@@ -63,6 +63,7 @@ describe('User Story 4 - manage entities and documents via the workspace sidebar
     qs('nav-entities').click();
     qs('name').value = 'Acme';
     qs('code').value = 'AC-001';
+    qs('cf-categoriaProveedor').value = 'Servicios';
     qs('entity-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
     expect(loadEntities().length).toBe(1);
 
@@ -86,6 +87,8 @@ describe('User Story 4 - manage entities and documents via the workspace sidebar
     qs('folio').value = '1001';
     qs('startDate').value = '2026-08-01';
     qs('endDate').value = '2026-08-05';
+    qs('cf-tipoDocumento').value = 'Orden de Compra';
+    qs('cf-fechaEmision').value = '2026-08-01';
     qs('document-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
     expect(loadDocuments().length).toBe(1);
 

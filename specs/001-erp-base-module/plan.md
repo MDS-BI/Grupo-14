@@ -73,7 +73,9 @@ El área de negocio concreta sobre la que se valida la base es **Adquisiciones y
 
  
 
-- **Identidad**: `moduleName: "Adquisiciones y Compras"`, con color de acento propio (`theme.accentColor`). 
+- **Identidad**: `moduleName: "Adquisiciones y Compras"`, con color de acento propio (`theme.accentColor: "#0f766e"`). 
+
+- **Estado de la implementación**: el perfil está **activo** — `userConfig` en `src/module-config.js` declara esta configuración completa (antes `userConfig = null`), de modo que la aplicación arranca directamente como módulo de Adquisiciones y Compras sin tocar el código central. Al quedar activo, los campos obligatorios del perfil (`categoriaProveedor`, `tipoDocumento`, `fechaEmision`) y el ciclo de vida de estados se aplican en los formularios de entidad y documento, y las pruebas de integración de la base se completan con esos campos. 
 
 - **Terminología**: Entidad → **Proveedor**; Documento → **Orden de Compra** (cubre solicitudes de cotización, órdenes de compra, recepciones y facturas de proveedor). 
 
@@ -91,7 +93,27 @@ El área de negocio concreta sobre la que se valida la base es **Adquisiciones y
 
   - `prioridad` (select: Normal / Urgente, opcional). 
 
+  - `tipoCambio` (número, opcional) — valor de la divisa del documento (campo base `currency`) frente a la moneda local; queda congelado en el documento para que el costo histórico de la compra no cambie aunque el tipo de cambio se actualice. 
+
+  - `fechaEmision` (fecha, obligatorio) — día exacto en que se fijó ese tipo de cambio y se creó el documento, para dar trazabilidad del costo congelado. 
+
   - Los campos base `series`/`folio` generan la numeración oficial (p. ej., `SC-1001`, `OC-2045`), e `subtotal`, `discount`, `taxAmount`, `totalAmount` y `currency` registran el desglose económico de la compra. 
+
+- **Divisas y tipos de cambio**: 
+
+  El manejo de múltiples divisas se apoya en tres datos que viajan juntos en cada documento de compra: la moneda en que están expresados los importes, el tipo de cambio aplicado y el día en que se fijó. 
+
+  | Dato | Tipo | Obligatorio | Semántica | 
+
+  |---|---|---|---| 
+
+  | `currency` | text (campo base) | no | Código de moneda de los importes del documento (p. ej., MXN, USD, EUR). | 
+
+  | `tipoCambio` | number | no | Valor de una unidad de la divisa del documento frente a la moneda local; queda congelado al guardar. | 
+
+  | `fechaEmision` | date | sí | Fecha (YYYY-MM-DD) en que se fijó ese tipo de cambio y se creó el documento. | 
+
+  Reglas del punto: el `tipoCambio` se almacena como **instantánea dentro del documento** y no se recalcula a partir de un catálogo de tipos de cambio, de modo que el costo histórico de la compra permanece estable aunque la moneda o el tipo de cambio cambien después; el storage valida que sea un número y que `fechaEmision` sea una fecha de calendario válida y no vacía (campo obligatorio), de modo que todo documento con divisas queda trazado al día exacto de su emisión. La moneda local de referencia es un punto de extensión natural (`monedaLocal` en el perfil) para convertir los importes a la moneda funcional del módulo. 
 
 - **Ciclo de vida de estados** (flujo de adquisiciones y compras): 
 

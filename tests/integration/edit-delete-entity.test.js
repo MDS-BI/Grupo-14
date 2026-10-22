@@ -43,8 +43,10 @@ describe('User Story 2 - edit and remove entities', () => {
     expect(qs('name').value).toBe('Acme');
 
     qs('name').value = 'Acme Updated';
+    qs('cf-categoriaProveedor').value = 'Servicios';
     qs('entity-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
     expect(loadEntities()[0].name).toBe('Acme Updated');
+    expect(loadEntities()[0].categoriaProveedor).toBe('Servicios');
   });
 
   it('deletes a selected entity so it disappears from storage', () => {
@@ -69,6 +71,7 @@ describe('User Story 2 - edit and remove entities', () => {
     select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
     expect(qs('name').value).toBe('Bulk 150');
     qs('name').value = 'Bulk 150 Renamed';
+    qs('cf-categoriaProveedor').value = 'Equipos';
     qs('entity-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
     expect(loadEntities().find(e => e.code === 'B-0150').name).toBe('Bulk 150 Renamed');
   });
