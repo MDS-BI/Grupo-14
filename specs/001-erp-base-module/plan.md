@@ -50,12 +50,12 @@ src/
 ├── styles.css
 ├── storage.js
 ├── app.js
-├── module-config.js
+├── module-config.js  (puntos de adaptación + sub-esquema de Líneas de Detalle y cálculo de totales)
 └── components/
     ├── shell.js        (marco del espacio de trabajo: barra superior, logotipo SVG, barra lateral, estado de módulo activo)
     ├── dashboard.js    (vista de inicio: cuadrícula de acciones rápidas + tarjetas de estadísticas en vivo)
     ├── entity-form.js  (formulario de creación/edición de entidades con campos personalizados)
-    └── document-form.js (formulario de creación/edición de documentos con campos personalizados y ciclo de vida de estados)
+    └── document-form.js (formulario de creación/edición de documentos con campos personalizados, ciclo de vida de estados y líneas de detalle)
 
 tests/
 ├── unit/
@@ -117,7 +117,27 @@ El área de negocio concreta sobre la que se valida la base es **Adquisiciones y
 
   El flujo avanza solicitud de cotización (cotización) → orden de compra aprobada (aprobado) → recepción de mercancía (recibido) → factura de proveedor registrada (facturado); la cancelación queda permitida hasta que la recepción no se haya confirmado. 
 
- 
+- **Líneas de Detalle (Items)** — relación 1 a N con el Documento: 
+
+  Cada Orden de Compra, Recepción o Factura de Proveedor puede tener cero o muchas líneas de detalle; cada línea pertenece a un único documento mediante la clave foránea `documento_id` (→ `document.id`). El sub-esquema se declara con `LINEA_DETALLE_FIELDS` en `src/module-config.js` y se adapta desde la clave `lineasDetalle` de `userConfig`: 
+
+  | Campo | Tipo | Obligatorio | Notas | 
+  |---|---|---|---| 
+  | `documento_id` | text | no | FK → `document.id`; la asigna el storage (relación 1 a N), no el usuario. | 
+  | `producto_id` | text | sí | Referencia al catálogo de bienes/servicios (id o SKU). | 
+  | `descripcion` | text | sí | Descripción libre del ítem. | 
+  | `cantidad` | number | sí | Numero estrictamente positivo. | 
+  | `unidadMedida` | select | sí | Opciones desde `lineasDetalle.unidadesMedida` (ej. unidades, cajas, litros). | 
+  | `precioUnitario` | number | sí | Numero no negativo. | 
+  | `porcentajeDescuentoLinea` | number | no | Porcentaje 0..`maxPorcentajeDescuento` (def. 100), por defecto 0. | 
+  | `subtotalLinea` | number | calculado | Nunca lo escribe el usuario. | 
+
+  Configuración opcional de la sección: `label` (etiqueta en la UI), `unidadesMedida` (unidades ofrecidas en el select), `maxPorcentajeDescuento` (tope de descuento por línea) y `camposExtra` (campos personalizados adicionales por línea, validados contra colisiones con los campos base). 
+
+- **Integración con la cabecera (cálculo de totales)**: 
+
+  El usuario nunca escribe a mano los totales de la cabecera; se derivan de las líneas. Por cada línea: `subtotalLinea = cantidad × precioUnitario × (1 − porcentajeDescuentoLinea / 100)`. La **sumatoria de los `subtotalLinea` alimenta automáticamente el `subtotal` general de la cabecera** (`documento.subtotal = Σ subtotalLinea`). Luego la cascada hacia la cabecera es: impuesto sobre la base ya descontada (`taxAmount = (subtotal − discount) × tasaImpuesto`) y `totalAmount = subtotal − discount + taxAmount`. Cualquier cambio en las líneas recalcula en cascada estos totales. Estos cálculos se exponen mediante los helpers `computeSubtotalLinea`, `subtotalFromLineas` y `applyTotalesToCabecera` en `src/module-config.js`, que el storage y el formulario de documento consumen al guardar. 
+
 ## Seguimiento de Complejidad
 
 Este plan no introdujo violaciones de la constitución.
