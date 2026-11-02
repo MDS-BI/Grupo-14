@@ -11,6 +11,23 @@ Este proyecto sirve como módulo base reutilizable para construir módulos ERP p
 
 ## Escenarios de Usuario y Pruebas *(obligatorio)*
 
+### Historia de Usuario 1 - Administrar usuarios y permisos del módulo (Prioridad: P1)
+Como administrador del sistema, quiero gestionar los usuarios, roles y permisos del módulo de Adquisiciones y Compras para controlar el acceso a las funcionalidades y garantizar que cada usuario realice únicamente las acciones autorizadas.
+
+**Por qué esta prioridad**: Es una funcionalidad crítica de seguridad e infraestructura; sin la gestión de usuarios y permisos, no es posible operativizar el módulo garantizando la trazabilidad, el control de acceso ni la asignación de responsabilidades.
+
+**Prueba Independiente**: Un administrador puede ingresar al módulo, crear un usuario, asignarle un rol específico (ej. Solicitante) y verificar que dicho usuario solo tiene acceso a las vistas y acciones permitidas para su rol.
+
+**Escenarios de Aceptación**:
+
+1. **Dado** que el administrador está en el panel de gestión de usuarios, **cuando** crea o modifica un usuario asignándole un rol (solicitante, encargado de compras, aprobador o encargado de recepción), **entonces** el sistema guarda la información y restringe o habilita el acceso a las funcionalidades según los permisos asociados a dicho rol.
+
+2. **Dado** que un usuario registrado intenta ingresar al módulo, **cuando** accede con su cuenta, **entonces** el sistema le permite realizar únicamente las acciones explícitamente autorizadas para su rol.
+
+3. **Dado** que el administrador consulta el listado de usuarios, **cuando** visualiza la información de la plataforma, **entonces** el sistema despliega la lista completa de usuarios registrados junto con sus roles asignados.
+
+4. **Dado** que el administrador intenta desactivar a un usuario que tiene solicitudes u órdenes de compra pendientes en su flujo, **cuando** confirma la acción de desactivación, **entonces** el sistema muestra una advertencia y prohibe la desactivación hasta que dichos trámites sean reasignados o concluidos.
+   
 ### Historia de Usuario 1 - Crear y organizar entidades (Prioridad: P1)
 Como usuario de negocio, quiero crear entradas de entidad con detalles claros para poder construir y mantener los datos maestros del módulo.
 
