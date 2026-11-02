@@ -42,20 +42,18 @@ Como usuario de negocio, quiero crear entradas de entidad con detalles claros pa
 
 ---
 
-### Historia de Usuario 2 - Editar y eliminar entidades (Prioridad: P1)
-Como usuario de negocio, quiero actualizar o eliminar entidades cuando cambien los datos maestros para que los registros se mantengan precisos.
+### Historia de Usuario 2 - Encargado de Compras (Prioridad: P1)
+Como Encargado de Compras, quiero generar un documento de Orden de Compra vinculado a un proveedor específico, calculando los subtotales, impuestos y el total, para formalizar la transacción de los insumos solicitados. 
 
-**Por qué esta prioridad**: Mantener los registros actualizados es esencial para la confianza en la herramienta y para soportar las operaciones comerciales diarias.
+**Por qué esta prioridad**: Esta función es el núcleo del módulo, ya que formaliza legal y financieramente la adquisición de insumos con los proveedores externos, resolviendo problemas críticos como las compras duplicadas por falta de comunicación y el nulo control sobre los gastos. Además, garantiza que el sistema registre los campos obligatorios de una transacción ERP (serie, folio, subtotal, descuento, impuesto y total) para saber exactamente cuánto se gasta y a quién se le debe.
 
-**Prueba Independiente**: Un usuario puede seleccionar una entidad existente, cambiar su información o eliminarla, y la lista refleja el cambio.
-
+**Prueba Independiente**: Se realiza simulando la creación de una Orden de Compra asociada a un id_proveedor ficticio. En esta simulación, se ingresan los productos junto con sus cantidades y precios unitarios dentro de la tabla intermedia llamada Detalle_Orden. El objetivo de esta prueba es comprobar que la suma de los valores detallados genere los totales correctos en el documento principal. Además, se debe verificar que el ciclo de vida de la orden se active de forma adecuada desde los parámetros de configuración.
 **Escenarios de Aceptación**:
 
-1. **Dada** una entidad que ya existe en la lista, **cuando** el usuario edita sus detalles, **entonces** la información actualizada se guarda y se muestra en la lista.
-2. **Dada** una entidad que ya no es relevante, **cuando** el usuario la elimina, **entonces** desaparece de la lista y deja de aparecer en los resultados de búsqueda.
-3. **Dadas** cientos de entidades almacenadas, **cuando** el usuario edita o elimina una, **entonces** la lista se actualiza correctamente y sigue siendo ágil.
+1. **Dada** una Orden de Compra creada con un id_proveedor ficticio, cuando se agregan productos con cantidades y precios unitarios en la tabla Detalle_Orden, el sistema debe calcular matemáticamente los subtotales, descuentos, impuestos y el total final.
+2. **Dada** la generación de un nuevo documento transaccional, cuando se asignan los datos, el sistema debe guardar correctamente la persistencia del ID del proveedor asignado y de los artículos comprados.
+3. **Dada** una orden formalizada y vinculada a la configuración del módulo, cuando el proceso operativo avanza, el documento debe transicionar correctamente por los estados de su ciclo de vida (Emitida, Recibida, Pagada).
 
----
 
 ### Historia de Usuario 3 - Panel de inicio con acciones rápidas y estadísticas de registros (Prioridad: P1)
 
