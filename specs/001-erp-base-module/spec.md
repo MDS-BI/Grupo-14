@@ -74,25 +74,25 @@ Como usuario de negocio, quiero aterrizar en un panel estilo ERP con botones de 
 
 ---
 
-### Historia de Usuario 4 - Gestionar entidades y documentos en una pantalla dedicada (Prioridad: P1)
+### Historia de Usuario 4 - Revisar y autorizar solicitudes de compra del departamento (Prioridad: P1)
 
-Como usuario de negocio, quiero una pantalla dedicada donde pueda añadir, editar y eliminar entidades y sus documentos, para poder gestionar los datos del módulo en un lugar enfocado.
+Como aprobador o jefe de área, quiero revisar, autorizar o rechazar las solicitudes de compra generadas por los miembros de mi departamento, para asegurar el cumplimiento de las políticas de la empresa y controlar el uso del presupuesto asignado.
 
-**Por qué esta prioridad**: Esto preserva el valor central de las capacidades de gestión del módulo, presentado como una única pantalla de gestión accesible desde la barra lateral y las acciones rápidas del panel.
+**Por qué esta prioridad**: Es el punto de control financiero y operativo del módulo; sin la validación del jefe de área, las adquisiciones avanzarían sin control de gasto ni justificación formal hacia las etapas comerciales de cotización y compras.
 
-**Prueba Independiente**: Un usuario puede navegar a la pantalla de gestión mediante la barra lateral o una acción rápida, alternar entre la gestión de entidades y documentos, y volver al panel, añadiendo, editando y eliminando con éxito una entidad y un documento.
+**Prueba Independiente**: Un jefe de área puede ingresar a la vista de pendientes, abrir una solicitud enviada por un solicitante de su área, examinar su justificación y líneas de detalle, y registrar exitosamente una autorización (avanzando el flujo a adquisiciones) o un rechazo con justificación obligatoria.
 
 **Escenarios de Aceptación**:
 
-1. **Dado** que el usuario está en la pantalla de gestión, **cuando** mira la navegación, **entonces** la barra lateral del espacio de trabajo ofrece botones de módulo para Entidades, Documentos y Panel con el módulo activo resaltado.
-2. **Dada** la barra lateral visible, **cuando** el usuario activa el botón Entidades, **entonces** se muestra el contenido de gestión de entidades.
-3. **Dada** la barra lateral visible, **cuando** el usuario activa el botón Documentos, **entonces** se muestra el contenido de gestión de documentos.
-4. **Dado** que el usuario está en la pantalla de gestión, **cuando** mira la pantalla, **entonces** la lista de entidades no se muestra.
-5. **Dado** que el usuario está en la pantalla de gestión, **cuando** crea una nueva entidad, **entonces** la entidad se guarda.
-6. **Dada** una entidad existente, **cuando** el usuario edita sus detalles, **entonces** la información actualizada se guarda.
-7. **Dada** una entidad que ya no es relevante, **cuando** el usuario la elimina, **entonces** se elimina junto con sus documentos.
-8. **Dada** una entidad existente, **cuando** el usuario añade, edita o elimina un documento, **entonces** los cambios del documento se guardan y quedan asociados a esa entidad.
-9. **Dado** que el usuario está en la pantalla de gestión, **cuando** activa el botón Panel en la barra lateral, **entonces** vuelve al panel de inicio.
+1. **Dado** que el jefe de área ingresa a la bandeja de solicitudes pendientes de su departamento, **cuando** consulta el listado, **entonces** el sistema despliega las solicitudes de compra generadas por su equipo junto con el nombre del solicitante, fecha y motivo de compra.
+
+2. **Dado** que el jefe de área selecciona una solicitud pendiente específica, **cuando** abre su detalle, **entonces** el sistema muestra los productos o servicios solicitados con sus respectivas cantidades y el saldo presupuestario disponible de la partida del área.
+
+3. **Dado** que una solicitud cumple con las normativas internas y cuenta con fondos disponibles, **cuando** el jefe de área confirma la acción de autorizar, **entonces** el sistema actualiza el estado de la solicitud a aprobada y la habilita en la cola de trabajo del encargado de adquisiciones.
+
+4. **Dado** que una solicitud no está debidamente justificada o excede el presupuesto, **cuando** el jefe de área presiona rechazar e ingresa el motivo de la decisión, **entonces** el sistema actualiza el estado a rechazada, bloquea su avance y registra las observaciones para consulta del solicitante.
+
+5. **Dado** que el jefe de área intenta rechazar una solicitud sin completar la retroalimentación, **cuando** confirma la acción, **entonces** el sistema muestra una advertencia, mantiene el estado pendiente y exige ingresar un motivo obligatorio antes de proceder.
 
 ---
 
