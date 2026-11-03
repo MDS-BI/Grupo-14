@@ -113,19 +113,29 @@ Como desarrollador de módulos, quiero declarar un único archivo de configuraci
 
 ---
 
-### Historia de Usuario 6 - Reetiquetar pantallas desde la configuración (Prioridad: P1)
+### Historia de Usuario 6 - Verificar y registrar la recepción de productos (Prioridad: P1)
 
-Como desarrollador de módulos, quiero que todas las etiquetas visibles para el usuario deriven de la configuración, para que un módulo adaptado hable su idioma de dominio de forma consistente en todo momento.
+Como encargado de bodega o recepción, quiero verificar los productos que llegan del proveedor contra la Orden de Compra emitida y registrar las cantidades efectivamente entregadas, para dejar constancia de lo recibido, detectar faltantes o productos dañados y permitir que la orden avance en su ciclo de vida solo con información confirmada.
 
-**Por qué esta prioridad**: Los usuarios confían en un módulo que dice consistentemente "Cliente" y "Pedido de Venta" en lugar de dejar filtrarse una "Entidad" genérica por media interfaz; la terminología inconsistente hace que los módulos adaptados parezcan rotos. Esta historia depende del perfil de configuración (Historia de Usuario 5).
+**Por qué esta prioridad**: La recepción cierra el ciclo operativo de la compra; sin ella no es posible saber si el proveedor cumplió con lo pactado, el inventario quedaría sin respaldo y la orden podría pasar a pago sin que los insumos hayan llegado realmente. Depende de la Orden de Compra (Historia de Usuario 2) y del rol de encargado de recepción definido por el administrador (Historia de Usuario 1).
 
-**Prueba Independiente**: Un desarrollador mapea Entidad→Cliente y Documento→Pedido de Venta en la configuración, y cada pestaña, botón, etiqueta de formulario, encabezado y mensaje en las tres pantallas usa los términos mapeados.
+**Prueba Independiente**: Un encargado de recepción abre una Orden de Compra en estado Emitida, ve sus líneas de detalle con las cantidades solicitadas, ingresa las cantidades recibidas (una completa, una parcial y una con observación de producto dañado), confirma la recepción y comprueba que el sistema guarda el registro con fecha y responsable, muestra las diferencias y actualiza el estado de la orden según corresponda.
 
 **Escenarios de Aceptación**:
 
-1. **Dados** mapeos de términos definidos en la configuración, **cuando** cualquier pantalla carga, **entonces** pestañas, botones, etiquetas de formulario, encabezados y mensajes de estado vacío muestran los términos configurados.
-2. **Dado** que las etiquetas han sido remapeadas, **cuando** el usuario navega entre pantallas, **entonces** el comportamiento de navegación no cambia.
-3. **Dado** que no se proporcionan mapeos, **cuando** cualquier pantalla carga, **entonces** se muestran los términos predeterminados Entidad/Documento.
+1. **Dado** que el encargado de recepción ingresa a la bandeja de órdenes por recibir, **cuando** consulta el listado, **entonces** el sistema despliega solo las Órdenes de Compra en estado Emitida o Recibida parcialmente, con su folio, proveedor y fecha de emisión.
+
+2. **Dado** que el encargado selecciona una Orden de Compra pendiente de recepción, **cuando** abre su detalle, **entonces** el sistema muestra cada producto con la cantidad solicitada, la cantidad ya recibida en entregas anteriores y la cantidad pendiente.
+
+3. **Dado** que todos los productos llegan completos y en buen estado, **cuando** el encargado registra las cantidades recibidas iguales a las pendientes y confirma la recepción, **entonces** el sistema guarda el registro de recepción con fecha, hora y responsable, y cambia el estado de la orden a Recibida.
+
+4. **Dado** que el proveedor entrega menos unidades de las solicitadas en una o más líneas, **cuando** el encargado registra las cantidades efectivamente recibidas y confirma, **entonces** el sistema guarda la recepción, deja la orden en estado Recibida parcialmente y muestra las cantidades que siguen pendientes.
+
+5. **Dado** que uno o más productos llegan dañados o no corresponden a lo solicitado, **cuando** el encargado marca la línea como rechazada e ingresa el motivo, **entonces** el sistema no contabiliza esas unidades como recibidas y conserva la observación asociada a la recepción.
+
+6. **Dado** que el encargado ingresa una cantidad recibida mayor a la pendiente, una cantidad negativa o un valor no numérico, **cuando** intenta confirmar la recepción, **entonces** el sistema impide guardar y explica qué línea debe corregirse.
+
+7. **Dado** que un usuario sin rol de encargado de recepción intenta registrar una recepción, **cuando** accede a la acción, **entonces** el sistema la bloquea según los permisos de su rol.
 
 ---
 
@@ -263,6 +273,10 @@ Como usuario de negocio, quiero un espacio de trabajo estilo ERP consistente, co
 - ¿Qué ocurre cuando el panel se abre con cero entidades o cero documentos (valores estadísticos)?
 - ¿Qué ocurre cuando el color de acento configurado no es un valor de color válido?
 - ¿Cómo mantiene la barra lateral contraída las etiquetas de módulo accesibles en ventanas gráficas estrechas?
+- ¿Qué ocurre cuando el proveedor entrega más unidades de las solicitadas en la Orden de Compra?
+- ¿Qué ocurre si se intenta registrar una recepción sobre una Orden de Compra que ya está Recibida por completo, anulada o aún no emitida?
+- ¿Qué ocurre cuando una entrega llega en varias partes en días distintos?
+- ¿Qué ocurre si dos encargados intentan registrar la recepción de la misma orden al mismo tiempo?
 
 ## Requisitos *(obligatorio)*
 
@@ -307,6 +321,14 @@ Como usuario de negocio, quiero un espacio de trabajo estilo ERP consistente, co
 - **FR-037**: La barra lateral DEBE resaltar visualmente el módulo activo en cada pantalla.
 - **FR-038**: La configuración PUEDE definir un color de acento; el sistema DEBE aplicarlo consistentemente en todo el marco y retroceder de forma segura a los valores integrados cuando esté ausente o sea inválido.
 - **FR-039**: En ventanas gráficas estrechas, la barra lateral DEBE contraerse a una columna de iconos manteniéndose operable.
+- **FR-040**: El sistema DEBE ofrecer al encargado de recepción una bandeja con las Órdenes de Compra en estado Emitida o Recibida parcialmente.
+- **FR-041**: El sistema DEBE mostrar, por cada línea de la Orden de Compra, la cantidad solicitada, la cantidad recibida acumulada y la cantidad pendiente.
+- **FR-042**: El sistema DEBE permitir registrar, por cada línea, la cantidad recibida y, opcionalmente, una cantidad rechazada con su motivo obligatorio.
+- **FR-043**: El sistema DEBE impedir guardar una recepción con cantidades negativas, no numéricas o mayores a la cantidad pendiente, indicando la línea a corregir.
+- **FR-044**: El sistema DEBE guardar cada recepción como un registro propio asociado a la Orden de Compra, con fecha, hora, responsable y observaciones, sin sobrescribir recepciones anteriores.
+- **FR-045**: El sistema DEBE cambiar el estado de la Orden de Compra a Recibida cuando todas sus líneas estén completas, y a Recibida parcialmente cuando quede alguna cantidad pendiente.
+- **FR-046**: El sistema DEBE permitir registrar recepciones únicamente a usuarios con el rol de encargado de recepción.
+- **FR-047**: El sistema NO DEBE permitir registrar recepciones sobre órdenes Recibidas por completo, anuladas o no emitidas.
 
 ### Requisitos de Extensibilidad *(obligaciones del módulo base)*
 
@@ -323,6 +345,8 @@ Los módulos personalizados construidos sobre esta base DEBEN poder:
 - **Entidad**: Un registro de datos maestros gestionado por el módulo, que incluye su nombre, código de negocio, detalles descriptivos, categoría de clasificación, una fecha objetivo opcional y un entity_id autogenerado. Los módulos personalizados definen qué representa una Entidad en el mundo real (p. ej., cliente, producto, activo).
 - **Documento**: Detalles transaccionales adjuntos a una entidad, vinculados a ella por el entity_id de la entidad. Los módulos personalizados definen qué representa un Documento (p. ej., pedido, factura, contrato).
 - **ModuleConfig**: El objeto de adaptación cargado al arrancar que define el nombre del módulo, las etiquetas de terminología, las definiciones de campos personalizados y el ciclo de vida de estados de documentos. Consulte data-model.md para su forma completa.
+- **Recepción**: Registro de una entrega física asociada a una Orden de Compra; incluye fecha y hora, encargado responsable, observaciones generales y sus líneas de recepción.
+- **Línea de Recepción**: Detalle de un producto dentro de una recepción; indica la línea de la Orden de Compra a la que corresponde, la cantidad recibida conforme, la cantidad rechazada y el motivo del rechazo.
 
 ## Criterios de Éxito *(obligatorio)*
 
@@ -338,6 +362,9 @@ Los módulos personalizados construidos sobre esta base DEBEN poder:
 - **SC-008**: Un desarrollador puede producir un módulo adaptado usando solo el archivo de configuración, con cero modificaciones en archivos fuente centrales.
 - **SC-009**: Cada pantalla presenta el mismo marco con marca, y los usuarios pueden identificar en qué módulo están de un vistazo.
 - **SC-010**: Las estadísticas de registros mostradas en el panel siempre coinciden con el número de entidades y documentos almacenados.
+- **SC-011**: Un encargado de recepción puede registrar la recepción de una Orden de Compra de hasta 10 líneas en menos de 3 minutos.
+- **SC-012**: El 100% de las recepciones registradas quedan asociadas a su Orden de Compra con fecha, responsable y cantidades, y la cantidad pendiente de cada línea siempre coincide con lo solicitado menos lo recibido.
+- **SC-013**: Ninguna Orden de Compra puede quedar en estado Recibida mientras alguna de sus líneas tenga cantidades pendientes.
 
 ## Suposiciones
 
@@ -354,5 +381,8 @@ Los módulos personalizados construidos sobre esta base DEBEN poder:
 - La navegación entre pantallas se maneja dentro de la aplicación (p. ej., cambio de vistas), y el botón atrás del navegador debe comportarse de forma predecible.
 - Los datos siguen persistiéndose en el localStorage del navegador y no se ven afectados por la navegación entre pantallas.
 - La pantalla de búsqueda se centra en encontrar y ver entidades; la edición permanece en la pantalla de gestión.
+- La recepción se registra contra una Orden de Compra existente; no se reciben productos sin orden previa. Las entregas en exceso no se aceptan como recibidas y se gestionan fuera del sistema con el proveedor.
+- El ciclo de vida de la Orden de Compra (Historia de Usuario 2) incorpora el estado intermedio Recibida parcialmente entre Emitida y Recibida.
+- La actualización de existencias de inventario a partir de la recepción queda fuera del alcance de esta historia.
 - El contenido del usuario introducido por el usuario (nombres, descripciones, notas de documentos) DEBE sanitizarse antes de renderizarse en el DOM para prevenir ataques de inyección de scripts (XSS). El módulo base DEBE escapar HTML y atributos de eventos al mostrar datos de localStorage.
 
