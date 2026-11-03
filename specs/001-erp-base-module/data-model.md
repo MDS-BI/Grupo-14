@@ -4,14 +4,6 @@
 
 Fuentes: `specs/001-erp-base-module/plan.md`, `specs/001-erp-base-module/spec.md`, `src/module-config.js`. Ante contradicciones prevalece `plan.md` (ver [Notas de reconciliación](#notas-de-reconciliación)).
 
-## Diagramas
-
-| MER conceptual | MER lógico |
-|---|---|
-| [![MER conceptual](mer-conceptual.svg)](mer-conceptual.svg) | [![MER lógico](mer-logico.svg)](mer-logico.svg) |
-
-- **Conceptual**: Proveedor, Orden de Compra, Recepción y Producto; la relación Orden–Producto N:M se dibuja punteada.
-- **Lógico**: la N:M se resuelve con la entidad intermedia **Línea de Detalle** (dos relaciones 1:N).
 
 ### Vista rápida (Mermaid, modelo lógico)
 
