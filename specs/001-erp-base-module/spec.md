@@ -139,23 +139,29 @@ Como encargado de bodega o recepción, quiero verificar los productos que llegan
 
 ---
 
-### Historia de Usuario 7 - Declarar campos personalizados para los registros (Prioridad: P1)
+# Historia de Usuario 7: Solicitar productos y servicios con justificación
 
-Como desarrollador de módulos, quiero declarar campos adicionales para entidades y documentos en la configuración, para que aparezcan automáticamente en formularios, listas, validación y búsqueda sin escribir código de interfaz.
+**Prioridad:** P1
+**Etiquetas:** `user-story`, `modulo-compras`, `frontend`, `backend`
 
-**Por qué esta prioridad**: Los módulos personalizados existen porque sus registros contienen datos específicos del dominio (el límite de crédito de un cliente, la fecha de vencimiento de una factura). Si añadir campos requiere editar formularios y validación a mano, la adaptación es propensa a errores y no escala. Esta historia depende del perfil de configuración (Historia de Usuario 5).
+## Descripción
 
-**Prueba Independiente**: Un desarrollador declara un campo numérico obligatorio personalizado en las entidades; se muestra como entrada numérica en el formulario, bloquea el guardado cuando está en blanco, muestra los valores guardados en las listas y coincide en las búsquedas.
+> **Como** solicitante,
+> **quiero** registrar una solicitud de productos o servicios incluyendo la justificación de la necesidad de compra,
+> **para que** los responsables de aprobación cuenten con el contexto necesario para autorizarla.
 
-**Escenarios de Aceptación**:
+## Por qué esta prioridad
+El proceso de compras depende de que las solicitudes estén correctamente fundamentadas. Si el solicitante no puede detallar el motivo técnico o comercial de la necesidad en el mismo módulo, el proceso de evaluación se retrasa o requiere comunicación externa, rompiendo el flujo del sistema. Esta historia es el punto de partida del módulo de adquisiciones.
 
-1. **Dado** un campo personalizado de entidad de tipo número declarado como obligatorio, **cuando** el usuario crea o edita una entidad, **entonces** el campo se muestra como entrada numérica y un valor en blanco impide guardar con una explicación clara.
-2. **Dado** un campo personalizado con un valor guardado, **cuando** el usuario ve la lista o la vista de detalle, **entonces** el valor se muestra.
-3. **Dados** campos personalizados declarados, **cuando** el usuario busca usando un término que coincide con un valor de campo personalizado, **entonces** se devuelven los registros coincidentes.
-4. **Dado** que no hay campos personalizados declarados, **cuando** la aplicación se ejecuta, **entonces** el comportamiento es idéntico al del módulo base sin modificar.
+## Prueba Independiente
+Un solicitante accede al formulario, agrega los productos requeridos, redacta un texto en el campo obligatorio de justificación y envía el formulario; el sistema guarda el registro en estado "Pendiente de aprobación". Si el usuario intenta guardar dejando la justificación en blanco, el sistema bloquea el envío.
 
----
+## Escenarios de Aceptación
 
+- [ ] **1.** **Dado** un formulario de nueva solicitud de compra, **cuando** el usuario intenta enviarlo con el campo de justificación vacío, **entonces** el sistema bloquea la acción y muestra un mensaje de error indicando que la justificación es obligatoria.
+- [ ] **2.** **Dado** un formulario con los productos/servicios seleccionados y una justificación redactada, **cuando** el usuario confirma el envío, **entonces** la solicitud se guarda exitosamente y su estado inicial se establece como "Pendiente de aprobación".
+- [ ] **3.** **Dada** una solicitud enviada previamente, **cuando** el solicitante visualiza el detalle o el historial de su registro, **entonces** el texto de la justificación se muestra completo en la interfaz.
+- [ ] **4.** **Dada** una solicitud pendiente, **cuando** el aprobador correspondiente abre el documento para su revisión, **entonces** la justificación de compra es visible inmediatamente antes de los botones de aprobar o rechazar.
 ### Historia de Usuario 8 - Buscar y encontrar entidades rápidamente (Prioridad: P2)
 Como usuario de negocio, quiero buscar mis entidades por detalles clave para encontrar rápidamente el registro que necesito.
 
