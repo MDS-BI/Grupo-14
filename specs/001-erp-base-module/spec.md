@@ -43,6 +43,17 @@ Como Encargado de Compras, quiero generar un documento de Orden de Compra vincul
 2. **Dada** la generación de un nuevo documento transaccional, cuando se asignan los datos, el sistema debe guardar correctamente la persistencia del ID del proveedor asignado y de los artículos comprados.
 3. **Dada** una orden formalizada y vinculada a la configuración del módulo, cuando el proceso operativo avanza, el documento debe transicionar correctamente por los estados de su ciclo de vida (Emitida, Recibida, Pagada).
 
+### Historia de Usuario 3 - Aprobación y Gestión del Ciclo de Vida de Órdenes de Compra (Prioridad: P1)
+Como Encargado de Adquisiciones, quiero revisar y cambiar el estado de las solicitudes de cotización a "Aprobado" o "Cancelado" para poder autorizar formalmente las compras a proveedores validando sus condiciones comerciales y límites de crédito.
+
+**Por qué esta prioridad**: Este es el valor central del módulo de Adquisiciones y Compras porque, sin aprobar las órdenes, el flujo transaccional se paraliza y no es posible avanzar a las etapas de recepción en bodega ni facturación.
+
+**Prueba Independiente**: Un usuario puede seleccionar una Solicitud de Cotización pendiente, autorizarla para cambiar su estado a "Aprobado" y verificar que la orden oficial (OC-XXXX) quede registrada correctamente.
+
+**Escenarios de Aceptación**:
+1. **Dado** que un Encargado de Adquisiciones está viendo un documento en estado cotización, cuando selecciona la opción de aprobar validando que el proveedor cumple con sus datos comerciales (taxId, categoriaProveedor, paymentTerms y creditLimit), entonces el documento cambia su estado a aprobado, se le asigna su serie/folio oficial (OC-XXXX) y se guardan los cambios en el almacenamiento.
+2.	**Dado** que un Encargado de Adquisiciones intenta aprobar un documento, cuando el monto total excede el límite de crédito del proveedor o faltan campos obligatorios de la entidad, entonces el sistema impide guardar la aprobación y despliega un mensaje de error explicando qué información se requiere.
+3.	**Dado** que un Encargado de Adquisiciones aprueba o cancela una orden, cuando guarda la actualización, entonces el panel de inicio (dashboard) refleja los contadores y métricas de documentos en vivo sin necesidad de recargar la página.
 
 ---
 
