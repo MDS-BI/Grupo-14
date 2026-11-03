@@ -1,0 +1,973 @@
+{
+  "$comment": "Fuente única del modelo de datos del módulo Adquisiciones y Compras. data-model.md, mer-conceptual.svg y mer-logico.svg se generan con `npm run mer` (scripts/generate-mer.js). No edites los archivos generados a mano.",
+  "modulo": "Adquisiciones y Compras",
+  "fuentes": [
+    "specs/001-erp-base-module/plan.md",
+    "specs/001-erp-base-module/spec.md",
+    "src/module-config.js"
+  ],
+  "vistas": {
+    "conceptual": {
+      "archivo": "mer-conceptual.svg",
+      "titulo": "Modelo Entidad-Relación – Compras y Recepción",
+      "ancho": 1280,
+      "altoMinimo": 960
+    },
+    "logico": {
+      "archivo": "mer-logico.svg",
+      "titulo": "Modelo Entidad-Relación – Compras y Recepción (lógico)",
+      "ancho": 1280,
+      "altoMinimo": 1200
+    }
+  },
+  "entidades": [
+    {
+      "id": "proveedor",
+      "titulo": "Proveedor",
+      "implementacion": "Entidad base (`entity`), renombrada con labels.entity = \"Proveedor\"",
+      "descripcion": "Dato maestro: empresa o persona que suministra bienes o servicios, con su identidad fiscal, contacto y condiciones comerciales.",
+      "vistas": [
+        "conceptual",
+        "logico"
+      ],
+      "layout": {
+        "conceptual": {
+          "x": 30,
+          "y": 110,
+          "ancho": 300
+        },
+        "logico": {
+          "x": 30,
+          "y": 110,
+          "ancho": 300
+        }
+      },
+      "atributos": [
+        {
+          "nombre": "ID_Proveedor",
+          "campoCodigo": "entity_id",
+          "tipo": "string",
+          "obligatorio": true,
+          "clave": "PK",
+          "mer": "",
+          "descripcion": "Identificador público del proveedor; es el que referencian sus órdenes de compra.",
+          "validacion": "Generado automáticamente; único entre todos los proveedores."
+        },
+        {
+          "nombre": "id",
+          "campoCodigo": "id",
+          "tipo": "string",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Identificador interno del registro en el storage.",
+          "validacion": "Generado automáticamente."
+        },
+        {
+          "nombre": "name",
+          "campoCodigo": "name",
+          "tipo": "string",
+          "obligatorio": true,
+          "mer": "Nombre o razón social",
+          "descripcion": "Nombre o razón social del proveedor.",
+          "validacion": "No vacío; se almacena recortado."
+        },
+        {
+          "nombre": "code",
+          "campoCodigo": "code",
+          "tipo": "string",
+          "obligatorio": true,
+          "mer": "Código de negocio",
+          "descripcion": "Código o clave de negocio del proveedor.",
+          "validacion": "No vacío; se almacena recortado."
+        },
+        {
+          "nombre": "taxId",
+          "campoCodigo": "taxId",
+          "tipo": "string",
+          "obligatorio": false,
+          "mer": "RFC / NIT / CUIT / RUT",
+          "descripcion": "Identificación fiscal (RFC, NIT, CUIT o RUT según el país).",
+          "validacion": "Opcional; se almacena recortado."
+        },
+        {
+          "nombre": "categoriaProveedor",
+          "campoCodigo": "categoriaProveedor",
+          "tipo": "select",
+          "obligatorio": true,
+          "mer": "Materias primas / Servicios / Equipos / General",
+          "descripcion": "Clasifica el tipo de suministro que aporta el proveedor (campo personalizado).",
+          "validacion": "Obligatorio; uno de: Materias primas, Servicios, Equipos, General."
+        },
+        {
+          "nombre": "vendedorContacto",
+          "campoCodigo": "vendedorContacto",
+          "tipo": "string",
+          "obligatorio": false,
+          "mer": "Vendedor asignado (opcional)",
+          "descripcion": "Representante o vendedor asignado por el proveedor (campo personalizado).",
+          "validacion": "Opcional; texto libre."
+        },
+        {
+          "nombre": "telefono",
+          "campoCodigo": "phone",
+          "tipo": "string",
+          "obligatorio": false,
+          "mer": "Teléfono de contacto",
+          "descripcion": "Número telefónico de contacto.",
+          "validacion": "Opcional; se almacena recortado."
+        },
+        {
+          "nombre": "email",
+          "campoCodigo": "email",
+          "tipo": "string",
+          "obligatorio": false,
+          "mer": "Correo electrónico",
+          "descripcion": "Correo electrónico principal de contacto.",
+          "validacion": "Opcional; si se informa, formato de correo válido."
+        },
+        {
+          "nombre": "creditLimit",
+          "campoCodigo": "creditLimit",
+          "tipo": "number",
+          "obligatorio": false,
+          "mer": "Límite de crédito",
+          "descripcion": "Límite de crédito otorgado por el proveedor, en la moneda configurada.",
+          "validacion": "Opcional; número no negativo."
+        },
+        {
+          "nombre": "paymentTerms",
+          "campoCodigo": "paymentTerms",
+          "tipo": "string",
+          "obligatorio": false,
+          "mer": "Condiciones de pago (ej. neto 30)",
+          "descripcion": "Condiciones de pago acordadas (p. ej., contado, neto 30).",
+          "validacion": "Opcional; se almacena recortado."
+        },
+        {
+          "nombre": "address",
+          "campoCodigo": "address",
+          "tipo": "string",
+          "obligatorio": false,
+          "enMer": false,
+          "descripcion": "Dirección fiscal o comercial.",
+          "validacion": "Opcional; se almacena recortada."
+        },
+        {
+          "nombre": "category",
+          "campoCodigo": "category",
+          "tipo": "string",
+          "obligatorio": false,
+          "enMer": false,
+          "descripcion": "Clasificación libre heredada de la base (la categoría de negocio es categoriaProveedor).",
+          "validacion": "Opcional."
+        },
+        {
+          "nombre": "description",
+          "campoCodigo": "description",
+          "tipo": "string",
+          "obligatorio": false,
+          "enMer": false,
+          "descripcion": "Descripción corta o notas.",
+          "validacion": "Opcional."
+        },
+        {
+          "nombre": "targetDate",
+          "campoCodigo": "targetDate",
+          "tipo": "date",
+          "obligatorio": false,
+          "enMer": false,
+          "descripcion": "Fecha objetivo genérica de la base (p. ej., revisión del proveedor).",
+          "validacion": "Opcional; fecha válida YYYY-MM-DD."
+        },
+        {
+          "nombre": "createdAt",
+          "campoCodigo": "createdAt",
+          "tipo": "datetime",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Marca de tiempo de creación.",
+          "validacion": "Asignada por el storage."
+        },
+        {
+          "nombre": "updatedAt",
+          "campoCodigo": "updatedAt",
+          "tipo": "datetime",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Marca de tiempo de la última actualización.",
+          "validacion": "Asignada por el storage."
+        }
+      ]
+    },
+    {
+      "id": "ordenCompra",
+      "titulo": "Orden de Compra",
+      "implementacion": "Documento base (`document`), renombrado con labels.document = \"Orden de Compra\"",
+      "descripcion": "Documento transaccional del flujo de compras (solicitud de cotización, orden de compra, recepción o factura de proveedor) emitido a un proveedor.",
+      "vistas": [
+        "conceptual",
+        "logico"
+      ],
+      "layout": {
+        "conceptual": {
+          "x": 490,
+          "y": 110,
+          "ancho": 340
+        },
+        "logico": {
+          "x": 490,
+          "y": 110,
+          "ancho": 340
+        }
+      },
+      "atributos": [
+        {
+          "nombre": "ID_OrdenCompra",
+          "campoCodigo": "id",
+          "tipo": "string",
+          "obligatorio": true,
+          "clave": "PK",
+          "mer": "",
+          "descripcion": "Identificador único del documento.",
+          "validacion": "Generado automáticamente."
+        },
+        {
+          "nombre": "series / folio",
+          "campoCodigo": "series + folio",
+          "tipo": "string + integer",
+          "obligatorio": true,
+          "mer": "Ej. OC-2045, SC-1001",
+          "descripcion": "Numeración oficial: la serie agrupa folios consecutivos y se combina con el folio.",
+          "validacion": "series opcional; folio obligatorio, entero positivo."
+        },
+        {
+          "nombre": "tipoDocumento",
+          "campoCodigo": "tipoDocumento",
+          "tipo": "select",
+          "obligatorio": true,
+          "mer": "Solicitud de Cotización / Orden de Compra / Recepción / Factura de Proveedor",
+          "descripcion": "Etapa del flujo de compras que representa el documento (campo personalizado).",
+          "validacion": "Obligatorio; uno de: Solicitud de Cotización, Orden de Compra, Recepción, Factura de Proveedor."
+        },
+        {
+          "nombre": "estado",
+          "campoCodigo": "status",
+          "tipo": "select",
+          "obligatorio": false,
+          "mer": "borrador, cotización, aprobado, recibido, facturado, cancelado",
+          "descripcion": "Estado del documento dentro del ciclo de vida configurado.",
+          "validacion": "Uno de los estados de statusLifecycle; solo transiciones permitidas."
+        },
+        {
+          "nombre": "prioridad",
+          "campoCodigo": "prioridad",
+          "tipo": "select",
+          "obligatorio": false,
+          "mer": "Normal / Urgente",
+          "descripcion": "Prioridad de la compra (campo personalizado).",
+          "validacion": "Opcional; Normal o Urgente."
+        },
+        {
+          "nombre": "fechaEmision",
+          "campoCodigo": "fechaEmision",
+          "tipo": "date",
+          "obligatorio": true,
+          "mer": "YYYY-MM-DD (obligatoria)",
+          "descripcion": "Día en que se creó el documento y se fijó el tipo de cambio.",
+          "validacion": "Obligatoria; fecha de calendario válida YYYY-MM-DD."
+        },
+        {
+          "nombre": "currency",
+          "campoCodigo": "currency",
+          "tipo": "string",
+          "obligatorio": false,
+          "mer": "Moneda (MXN, USD, EUR…)",
+          "descripcion": "Código de moneda de los importes del documento.",
+          "validacion": "Opcional."
+        },
+        {
+          "nombre": "tipoCambio",
+          "campoCodigo": "tipoCambio",
+          "tipo": "number",
+          "obligatorio": false,
+          "mer": "Instantánea congelada al guardar",
+          "descripcion": "Valor de una unidad de la divisa del documento frente a la moneda local; no se recalcula después.",
+          "validacion": "Opcional; debe ser un número."
+        },
+        {
+          "nombre": "subtotal",
+          "campoCodigo": "subtotal",
+          "tipo": "number",
+          "obligatorio": false,
+          "calculado": true,
+          "mer": "Calculado: Σ subtotalLinea",
+          "descripcion": "Importe antes de descuento global e impuestos.",
+          "validacion": "Calculado; número no negativo."
+        },
+        {
+          "nombre": "discount",
+          "campoCodigo": "discount",
+          "tipo": "number",
+          "obligatorio": false,
+          "mer": "Descuento global de cabecera",
+          "descripcion": "Descuento global aplicado sobre el subtotal (lo captura el usuario).",
+          "validacion": "Opcional; número no negativo, no puede superar el subtotal."
+        },
+        {
+          "nombre": "taxAmount",
+          "campoCodigo": "taxAmount",
+          "tipo": "number",
+          "obligatorio": false,
+          "calculado": true,
+          "mer": "Calculado: (subtotal − discount) × tasa",
+          "descripcion": "Impuesto calculado sobre la base ya descontada.",
+          "validacion": "Calculado; número no negativo."
+        },
+        {
+          "nombre": "totalAmount",
+          "campoCodigo": "totalAmount",
+          "tipo": "number",
+          "obligatorio": false,
+          "calculado": true,
+          "mer": "Calculado: subtotal − discount + taxAmount",
+          "descripcion": "Importe total del documento.",
+          "validacion": "Calculado; número no negativo."
+        },
+        {
+          "nombre": "startDate",
+          "campoCodigo": "startDate",
+          "tipo": "date",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Fecha de inicio heredada del Documento base.",
+          "validacion": "Obligatoria en el storage actual; fecha válida YYYY-MM-DD."
+        },
+        {
+          "nombre": "endDate",
+          "campoCodigo": "endDate",
+          "tipo": "date",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Fecha de fin heredada del Documento base.",
+          "validacion": "Obligatoria en el storage actual; ≥ startDate."
+        },
+        {
+          "nombre": "quantity",
+          "campoCodigo": "quantity",
+          "tipo": "integer",
+          "obligatorio": false,
+          "enMer": false,
+          "descripcion": "Cantidad genérica de la base (las cantidades reales viven en las líneas).",
+          "validacion": "Opcional; entero positivo."
+        },
+        {
+          "nombre": "paymentTerms",
+          "campoCodigo": "paymentTerms",
+          "tipo": "string",
+          "obligatorio": false,
+          "enMer": false,
+          "descripcion": "Condiciones de pago del documento.",
+          "validacion": "Opcional."
+        },
+        {
+          "nombre": "notes",
+          "campoCodigo": "notes",
+          "tipo": "string",
+          "obligatorio": false,
+          "enMer": false,
+          "descripcion": "Notas u observaciones libres.",
+          "validacion": "Opcional."
+        },
+        {
+          "nombre": "createdAt",
+          "campoCodigo": "createdAt",
+          "tipo": "datetime",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Marca de tiempo de creación.",
+          "validacion": "Asignada por el storage."
+        },
+        {
+          "nombre": "updatedAt",
+          "campoCodigo": "updatedAt",
+          "tipo": "datetime",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Marca de tiempo de la última actualización.",
+          "validacion": "Asignada por el storage."
+        },
+        {
+          "nombre": "ID_Proveedor",
+          "campoCodigo": "entity_id",
+          "tipo": "string",
+          "obligatorio": true,
+          "clave": "FK",
+          "referencia": {
+            "entidad": "proveedor",
+            "atributo": "ID_Proveedor"
+          },
+          "mer": "",
+          "descripcion": "Proveedor al que se emite el documento.",
+          "validacion": "Obligatorio; debe existir en PROVEEDOR. Al eliminar el proveedor se eliminan sus documentos (cascada)."
+        }
+      ]
+    },
+    {
+      "id": "recepcion",
+      "titulo": "Recepción",
+      "implementacion": "Registro propio asociado a la Orden de Compra (spec.md FR-044); también existe como valor \"Recepción\" de tipoDocumento",
+      "descripcion": "Registro de una entrega física del proveedor contra una Orden de Compra.",
+      "vistas": [
+        "conceptual",
+        "logico"
+      ],
+      "layout": {
+        "conceptual": {
+          "x": 990,
+          "y": 200,
+          "ancho": 265
+        },
+        "logico": {
+          "x": 990,
+          "y": 200,
+          "ancho": 265
+        }
+      },
+      "atributos": [
+        {
+          "nombre": "ID_Recepcion",
+          "tipo": "string",
+          "obligatorio": true,
+          "clave": "PK",
+          "mer": "",
+          "descripcion": "Identificador único de la recepción.",
+          "validacion": "Generado automáticamente."
+        },
+        {
+          "nombre": "Fecha_Recepcion",
+          "tipo": "datetime",
+          "obligatorio": true,
+          "mer": "Fecha y hora de la entrega",
+          "descripcion": "Fecha y hora en que se registró la entrega.",
+          "validacion": "Obligatoria; fecha/hora válida."
+        },
+        {
+          "nombre": "Responsable_Almacen",
+          "tipo": "string",
+          "obligatorio": true,
+          "mer": "Encargado de recepción",
+          "descripcion": "Usuario con rol de encargado de recepción que confirma la entrega.",
+          "validacion": "Obligatorio; solo usuarios con rol de encargado de recepción (FR-046)."
+        },
+        {
+          "nombre": "Estado_Recepcion",
+          "tipo": "string",
+          "obligatorio": true,
+          "mer": "Completa / parcial",
+          "descripcion": "Resultado de la recepción frente a lo pendiente de la orden.",
+          "validacion": "Obligatorio."
+        },
+        {
+          "nombre": "Observaciones",
+          "tipo": "string",
+          "obligatorio": false,
+          "enMer": false,
+          "descripcion": "Observaciones generales de la entrega (spec.md, entidad Recepción).",
+          "validacion": "Opcional."
+        },
+        {
+          "nombre": "ID_OrdenCompra",
+          "tipo": "string",
+          "obligatorio": true,
+          "clave": "FK",
+          "referencia": {
+            "entidad": "ordenCompra",
+            "atributo": "ID_OrdenCompra"
+          },
+          "mer": "",
+          "descripcion": "Orden de compra que se recibe.",
+          "validacion": "Obligatorio; la orden debe existir y no estar recibida por completo, cancelada ni sin emitir (FR-047)."
+        }
+      ]
+    },
+    {
+      "id": "producto",
+      "titulo": "Producto",
+      "implementacion": "Catálogo de bienes/servicios referenciado por producto_id (aún sin colección propia en el storage)",
+      "descripcion": "Bien o servicio que puede comprarse.",
+      "vistas": [
+        "conceptual",
+        "logico"
+      ],
+      "layout": {
+        "conceptual": {
+          "x": 30,
+          "y": 700,
+          "ancho": 310
+        },
+        "logico": {
+          "x": 30,
+          "y": 830,
+          "ancho": 310
+        }
+      },
+      "atributos": [
+        {
+          "nombre": "ID_Producto",
+          "tipo": "string",
+          "obligatorio": true,
+          "clave": "PK",
+          "mer": "",
+          "descripcion": "Identificador único del producto.",
+          "validacion": "Generado automáticamente; único."
+        },
+        {
+          "nombre": "SKU / Código",
+          "tipo": "string",
+          "obligatorio": true,
+          "mer": "Código de inventario",
+          "descripcion": "SKU o código del producto; también es aceptado como producto_id en las líneas.",
+          "validacion": "Obligatorio; único."
+        },
+        {
+          "nombre": "Nombre_Producto",
+          "tipo": "string",
+          "obligatorio": true,
+          "mer": "Nombre del bien o servicio",
+          "descripcion": "Nombre del producto o servicio.",
+          "validacion": "No vacío."
+        },
+        {
+          "nombre": "Unidad_Medida",
+          "tipo": "string",
+          "obligatorio": true,
+          "mer": "unidades, cajas, litros…",
+          "descripcion": "Unidad de medida por defecto.",
+          "validacion": "Obligatoria; idealmente una de lineasDetalle.unidadesMedida."
+        },
+        {
+          "nombre": "Precio_Referencia",
+          "tipo": "number",
+          "obligatorio": false,
+          "mer": "Precio unitario sugerido",
+          "descripcion": "Precio unitario de referencia para proponer precioUnitario en las líneas.",
+          "validacion": "Opcional; número no negativo."
+        }
+      ]
+    },
+    {
+      "id": "lineaDetalle",
+      "titulo": "Línea de Detalle",
+      "implementacion": "Sub-esquema LINEA_DETALLE_FIELDS en src/module-config.js (lineasDetalle del documento)",
+      "descripcion": "Entidad intermedia que resuelve la relación N:M entre Orden de Compra y Producto (spec.md la llama Detalle_Orden).",
+      "vistas": [
+        "logico"
+      ],
+      "layout": {
+        "logico": {
+          "x": 500,
+          "y": 830,
+          "ancho": 380
+        }
+      },
+      "atributos": [
+        {
+          "nombre": "id",
+          "tipo": "string",
+          "obligatorio": true,
+          "clave": "PK",
+          "mer": "",
+          "descripcion": "Identificador único de la línea.",
+          "validacion": "Generado automáticamente."
+        },
+        {
+          "nombre": "descripcion",
+          "campoCodigo": "descripcion",
+          "tipo": "string",
+          "obligatorio": true,
+          "mer": "Descripción libre del ítem",
+          "descripcion": "Descripción libre del ítem.",
+          "validacion": "Obligatoria; no vacía."
+        },
+        {
+          "nombre": "cantidad",
+          "campoCodigo": "cantidad",
+          "tipo": "number",
+          "obligatorio": true,
+          "mer": "> 0",
+          "descripcion": "Cantidad solicitada.",
+          "validacion": "Obligatoria; número estrictamente positivo."
+        },
+        {
+          "nombre": "unidadMedida",
+          "campoCodigo": "unidadMedida",
+          "tipo": "select",
+          "obligatorio": true,
+          "mer": "unidades, cajas, litros…",
+          "descripcion": "Unidad de medida de la línea.",
+          "validacion": "Obligatoria; opciones de lineasDetalle.unidadesMedida (texto libre si no se configuran)."
+        },
+        {
+          "nombre": "precioUnitario",
+          "campoCodigo": "precioUnitario",
+          "tipo": "number",
+          "obligatorio": true,
+          "mer": "≥ 0",
+          "descripcion": "Precio por unidad.",
+          "validacion": "Obligatorio; número no negativo."
+        },
+        {
+          "nombre": "porcentajeDescuentoLinea",
+          "campoCodigo": "porcentajeDescuentoLinea",
+          "tipo": "number",
+          "obligatorio": false,
+          "mer": "0..maxPorcentajeDescuento (def. 0)",
+          "descripcion": "Descuento porcentual de la línea.",
+          "validacion": "Opcional; 0..maxPorcentajeDescuento (def. 100); por defecto 0."
+        },
+        {
+          "nombre": "subtotalLinea",
+          "campoCodigo": "subtotalLinea",
+          "tipo": "number",
+          "obligatorio": false,
+          "calculado": true,
+          "mer": "Calculado",
+          "descripcion": "cantidad × precioUnitario × (1 − porcentajeDescuentoLinea / 100).",
+          "validacion": "Calculado; nunca lo escribe el usuario."
+        },
+        {
+          "nombre": "documento_id",
+          "campoCodigo": "documento_id",
+          "tipo": "string",
+          "obligatorio": true,
+          "clave": "FK",
+          "referencia": {
+            "entidad": "ordenCompra",
+            "atributo": "ID_OrdenCompra"
+          },
+          "mer": "→ ORDEN DE COMPRA",
+          "descripcion": "Documento al que pertenece la línea; la asigna el storage, no el usuario.",
+          "validacion": "Asignada por el storage al persistir la línea dentro de su documento."
+        },
+        {
+          "nombre": "producto_id",
+          "campoCodigo": "producto_id",
+          "tipo": "string",
+          "obligatorio": true,
+          "clave": "FK",
+          "referencia": {
+            "entidad": "producto",
+            "atributo": "ID_Producto"
+          },
+          "mer": "→ PRODUCTO",
+          "descripcion": "Producto del catálogo (id o SKU).",
+          "validacion": "Obligatorio; no vacío."
+        }
+      ]
+    }
+  ],
+  "relaciones": [
+    {
+      "id": "proveedor-ordenCompra",
+      "origen": "proveedor",
+      "destino": "ordenCompra",
+      "cardinalidad": {
+        "origen": "1",
+        "destino": "N"
+      },
+      "participacion": {
+        "origen": "obligatoria",
+        "destino": "opcional"
+      },
+      "verbo": "emite",
+      "fk": {
+        "entidad": "ordenCompra",
+        "atributo": "ID_Proveedor"
+      },
+      "estilo": "solida",
+      "vistas": [
+        "conceptual",
+        "logico"
+      ],
+      "anotacion": "Un proveedor puede tener muchas órdenes de compra.",
+      "trazado": {
+        "origen": "derecha",
+        "destino": "izquierda",
+        "fraccionOrigen": 0.2
+      }
+    },
+    {
+      "id": "ordenCompra-recepcion",
+      "origen": "ordenCompra",
+      "destino": "recepcion",
+      "cardinalidad": {
+        "origen": "1",
+        "destino": "N"
+      },
+      "participacion": {
+        "origen": "obligatoria",
+        "destino": "opcional"
+      },
+      "verbo": "se recibe en",
+      "fk": {
+        "entidad": "recepcion",
+        "atributo": "ID_OrdenCompra"
+      },
+      "estilo": "solida",
+      "vistas": [
+        "conceptual",
+        "logico"
+      ],
+      "anotacion": "Una orden de compra puede tener una o varias recepciones.",
+      "trazado": {
+        "origen": "derecha",
+        "destino": "izquierda",
+        "fraccionOrigen": 0.3
+      }
+    },
+    {
+      "id": "ordenCompra-producto",
+      "origen": "ordenCompra",
+      "destino": "producto",
+      "cardinalidad": {
+        "origen": "N",
+        "destino": "M"
+      },
+      "participacion": {
+        "origen": "opcional",
+        "destino": "opcional"
+      },
+      "verbo": "incluye",
+      "estilo": "punteada",
+      "vistas": [
+        "conceptual"
+      ],
+      "anotacion": "Relación conceptual: una orden puede incluir muchos productos y un producto puede estar en muchas órdenes. Se implementa con la entidad intermedia Línea de Detalle.",
+      "trazado": {
+        "origen": "abajo",
+        "destino": "derecha",
+        "fraccionOrigen": 0.5,
+        "fraccionDestino": 0.5,
+        "anchoAnotacion": 430
+      }
+    },
+    {
+      "id": "ordenCompra-lineaDetalle",
+      "origen": "ordenCompra",
+      "destino": "lineaDetalle",
+      "cardinalidad": {
+        "origen": "1",
+        "destino": "N"
+      },
+      "participacion": {
+        "origen": "obligatoria",
+        "destino": "opcional"
+      },
+      "verbo": "contiene",
+      "fk": {
+        "entidad": "lineaDetalle",
+        "atributo": "documento_id"
+      },
+      "estilo": "solida",
+      "vistas": [
+        "logico"
+      ],
+      "anotacion": "Una orden tiene cero o muchas líneas de detalle.",
+      "trazado": {
+        "origen": "abajo",
+        "destino": "arriba",
+        "fraccionOrigen": 0.5,
+        "anchoAnotacion": 230
+      }
+    },
+    {
+      "id": "producto-lineaDetalle",
+      "origen": "producto",
+      "destino": "lineaDetalle",
+      "cardinalidad": {
+        "origen": "1",
+        "destino": "N"
+      },
+      "participacion": {
+        "origen": "obligatoria",
+        "destino": "opcional"
+      },
+      "verbo": "aparece en",
+      "fk": {
+        "entidad": "lineaDetalle",
+        "atributo": "producto_id"
+      },
+      "estilo": "solida",
+      "vistas": [
+        "logico"
+      ],
+      "anotacion": "Un producto puede aparecer en muchas líneas.",
+      "trazado": {
+        "origen": "derecha",
+        "destino": "izquierda",
+        "fraccionOrigen": 0.5
+      }
+    }
+  ],
+  "cicloDeVida": {
+    "entidad": "ordenCompra",
+    "atributo": "estado",
+    "estados": [
+      "borrador",
+      "cotización",
+      "aprobado",
+      "recibido",
+      "facturado",
+      "cancelado"
+    ],
+    "transiciones": {
+      "borrador": [
+        "cotización",
+        "cancelado"
+      ],
+      "cotización": [
+        "aprobado",
+        "cancelado"
+      ],
+      "aprobado": [
+        "recibido",
+        "cancelado"
+      ],
+      "recibido": [
+        "facturado"
+      ],
+      "facturado": [],
+      "cancelado": []
+    },
+    "nota": "El flujo avanza solicitud de cotización (cotización) → orden aprobada (aprobado) → recepción de mercancía (recibido) → factura de proveedor registrada (facturado). La cancelación se permite mientras la recepción no se haya confirmado."
+  },
+  "formulas": [
+    {
+      "campo": "subtotalLinea",
+      "expresion": "subtotalLinea = cantidad × precioUnitario × (1 − porcentajeDescuentoLinea / 100)",
+      "helper": "computeSubtotalLinea"
+    },
+    {
+      "campo": "subtotal",
+      "expresion": "subtotal = Σ subtotalLinea",
+      "helper": "subtotalFromLineas"
+    },
+    {
+      "campo": "taxAmount",
+      "expresion": "taxAmount = (subtotal − discount) × tasaImpuesto",
+      "helper": "applyTotalesToCabecera"
+    },
+    {
+      "campo": "totalAmount",
+      "expresion": "totalAmount = subtotal − discount + taxAmount",
+      "helper": "applyTotalesToCabecera"
+    }
+  ],
+  "notaFormulas": "Todos los importes se redondean a 2 decimales. tasaImpuesto es una fracción (p. ej., 0.19 para 19 %). El porcentaje de descuento de línea se acota a 0..100 antes de aplicarse. Cualquier cambio en las líneas recalcula en cascada los totales de la cabecera.",
+  "configuracionModulo": {
+    "descripcion": "Objeto ModuleConfig (`userConfig` en src/module-config.js) cargado al arrancar que adapta el módulo base al módulo Adquisiciones y Compras.",
+    "campos": [
+      {
+        "nombre": "moduleName",
+        "tipo": "string",
+        "descripcion": "Nombre visible del módulo (\"Adquisiciones y Compras\").",
+        "restricciones": "Obligatorio, no vacío."
+      },
+      {
+        "nombre": "labels",
+        "tipo": "object",
+        "descripcion": "Términos: entity → Proveedor, document → Orden de Compra (y sus plurales).",
+        "restricciones": "Opcional; retrocede a Entidad/Documento."
+      },
+      {
+        "nombre": "customFields",
+        "tipo": "array",
+        "descripcion": "Campos personalizados `{ target, key, label, type, required, options? }` (categoriaProveedor, vendedorContacto, tipoDocumento, prioridad, tipoCambio, fechaEmision).",
+        "restricciones": "Las claves no deben chocar con campos base."
+      },
+      {
+        "nombre": "statusLifecycle",
+        "tipo": "object",
+        "descripcion": "Estados y transiciones permitidas de los documentos (ver ciclo de vida).",
+        "restricciones": "Opcional; los estados de transitions deben existir en statuses."
+      },
+      {
+        "nombre": "lineasDetalle",
+        "tipo": "object",
+        "descripcion": "Configuración de las líneas: label, unidadesMedida, maxPorcentajeDescuento, camposExtra.",
+        "restricciones": "Opcional; maxPorcentajeDescuento entre 0 y 100; camposExtra no chocan con LINEA_DETALLE_FIELDS."
+      },
+      {
+        "nombre": "theme",
+        "tipo": "object",
+        "descripcion": "Marca; accentColor = #0f766e.",
+        "restricciones": "accentColor debe ser hexadecimal #rgb o #rrggbb."
+      }
+    ],
+    "reglas": [
+      "La configuración se carga una vez al arrancar y se aplica en todas las pantallas.",
+      "Sin configuración se usan los valores integrados: Entidad/Documento, sin campos personalizados, estado de texto libre y color de acento predeterminado.",
+      "Los valores inválidos o conflictivos se informan con claridad en lugar de fallar en silencio.",
+      "Los valores de campos personalizados se persisten junto a los campos base sin cambios de esquema en el storage.",
+      "Un ciclo de vida configurado reemplaza la entrada de estado de texto libre."
+    ]
+  },
+  "notasReconciliacion": [
+    {
+      "tema": "tipoDocumento incluye «Recepción»",
+      "detalle": "La imagen de referencia omite «Recepción» entre las opciones de tipoDocumento. plan.md y module-config.js la incluyen (Solicitud de Cotización / Orden de Compra / Recepción / Factura de Proveedor); prevalece plan.md."
+    },
+    {
+      "tema": "RECEPCIÓN como entidad y como tipoDocumento",
+      "detalle": "plan.md trata la recepción como un tipoDocumento del Documento base, mientras que spec.md (HU6, FR-044) exige guardar cada recepción como registro propio asociado a la Orden de Compra, sin sobrescribir las anteriores. El MER modela RECEPCIÓN como entidad propia (1:N desde ORDEN DE COMPRA) porque una orden puede recibirse en varias entregas parciales. Mientras no exista una colección propia, un documento con tipoDocumento = «Recepción» vinculado al mismo proveedor actúa como su implementación; ID_OrdenCompra es la FK que lo une a la orden de origen."
+    },
+    {
+      "tema": "Campos añadidos que faltaban en la imagen",
+      "detalle": "discount, tipoCambio y fechaEmision no aparecían en la imagen y se añaden porque existen en plan.md / module-config.js."
+    },
+    {
+      "tema": "discount no es calculado",
+      "detalle": "El encargo pedía marcar subtotal, discount, taxAmount y totalAmount como calculados. Según plan.md y applyTotalesToCabecera, discount es el descuento global que captura el usuario y se aplica después de Σ subtotalLinea; solo subtotal, taxAmount y totalAmount son calculados."
+    },
+    {
+      "tema": "Ortografía de categoriaProveedor",
+      "detalle": "La imagen dice «Materias primes»; lo correcto (y lo que usa module-config.js) es «Materias primas»."
+    },
+    {
+      "tema": "Nombres lógicos frente a campos de código",
+      "detalle": "ID_Proveedor corresponde a entity_id (identificador público al que apuntan los documentos; el storage también guarda un id interno), ID_OrdenCompra corresponde a document.id, telefono corresponde a phone y estado corresponde a status. La columna «Campo en código» de cada tabla da la correspondencia."
+    },
+    {
+      "tema": "taxId",
+      "detalle": "El encargo indica RFC / NIT / RUT; plan.md indica RFC/NIT/CUIT. Se documentan los cuatro, ya que el campo es texto libre."
+    },
+    {
+      "tema": "PK de la Línea de Detalle",
+      "detalle": "LINEA_DETALLE_FIELDS no declara un campo id: hoy la línea se identifica por su posición dentro de documento.lineasDetalle. El MER lógico declara la PK id como requisito para persistirla como entidad intermedia; el storage aún no la genera."
+    },
+    {
+      "tema": "PRODUCTO sin catálogo implementado",
+      "detalle": "plan.md solo define producto_id como «referencia al catálogo de bienes/servicios (id o SKU)», de tipo texto y sin validación referencial. PRODUCTO y sus atributos (SKU / Código, Nombre_Producto, Unidad_Medida, Precio_Referencia) son el catálogo conceptual al que apunta esa referencia; la FK producto_id → ID_Producto es lógica y el storage todavía no la valida."
+    },
+    {
+      "tema": "lineasDetalle no está activo en userConfig",
+      "detalle": "El bloque lineasDetalle solo aparece en el comentario de ejemplo de module-config.js; el perfil activo no lo declara, por lo que se usan los valores por defecto (sin unidadesMedida, maxPorcentajeDescuento = 100) y unidadMedida se captura como texto."
+    },
+    {
+      "tema": "Fechas base del Documento",
+      "detalle": "El storage actual sigue exigiendo startDate y endDate (endDate ≥ startDate) además de fechaEmision. Se documentan como obligatorias, pero no se muestran en el MER."
+    },
+    {
+      "tema": "Estados en spec.md",
+      "detalle": "spec.md (HU2/HU6) menciona estados Emitida, Recibida parcialmente, Recibida y Pagada, que no coinciden con el ciclo de vida de plan.md/module-config.js. Prevalece plan.md; «recibida parcialmente» se refleja en Estado_Recepcion (Completa / parcial) y no en estado de la orden."
+    },
+    {
+      "tema": "Nombre de la tabla intermedia",
+      "detalle": "spec.md (HU2) llama Detalle_Orden a la tabla intermedia; en el modelo se llama LÍNEA DE DETALLE, como en plan.md y LINEA_DETALLE_FIELDS."
+    },
+    {
+      "tema": "Línea de Recepción",
+      "detalle": "spec.md describe una Línea de Recepción (cantidad conforme, rechazada y motivo). Queda fuera de este MER, que se limita a las entidades pedidas; es la siguiente extensión natural de RECEPCIÓN (1:N)."
+    }
+  ]
+}

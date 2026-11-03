@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --port 4173",
-    "test": "vitest"
+    "test": "vitest",
+    "mer": "node scripts/generate-mer.js"
   },
   "devDependencies": {
     "jsdom": "^30.0.1",
