@@ -73,8 +73,20 @@ export const userConfig = {
       cancelado: []
     }
   },
+  lineasDetalle: {
+    label: 'Líneas de detalle',
+    unidadesMedida: ['unidades', 'cajas', 'litros', 'kg', 'metros'],
+    maxPorcentajeDescuento: 100,
+    camposExtra: [
+      { key: 'centroCosto', label: 'Centro de costo', type: 'text' }
+    ]
+  },
   theme: { accentColor: '#0f766e' }
 };
+
+// Tasa de impuesto aplicada en la cascada de totales de la cabecera
+// (fracción: 0.16 = 16 %).
+export const DEFAULT_TAX_RATE = 0.16;
 
 // ---------------------------------------------------------------------------
 // Cargador central — no deberías necesitar modificar nada debajo de esta línea.
@@ -132,7 +144,7 @@ export const BASE_LINEA_FIELDS = Object.freeze(Object.keys(LINEA_DETALLE_FIELDS)
 
 export const BASE_FIELDS = Object.freeze({
   entity: Object.freeze(['id', 'entity_id', 'name', 'code', 'taxId', 'email', 'phone', 'address', 'category', 'description', 'targetDate', 'creditLimit', 'paymentTerms', 'createdAt', 'updatedAt']),
-  document: Object.freeze(['id', 'entity_id', 'series', 'folio', 'startDate', 'endDate', 'quantity', 'subtotal', 'discount', 'taxAmount', 'totalAmount', 'currency', 'paymentTerms', 'notes', 'status', 'createdAt', 'updatedAt']),
+  document: Object.freeze(['id', 'entity_id', 'series', 'folio', 'startDate', 'endDate', 'quantity', 'subtotal', 'discount', 'taxAmount', 'totalAmount', 'currency', 'paymentTerms', 'notes', 'status', 'lineasDetalle', 'createdAt', 'updatedAt']),
   detalle: BASE_LINEA_FIELDS
 });
 

@@ -38,12 +38,12 @@
 - [X] T004 Crear la capa de almacenamiento y validación de entidades y documentos en `src/storage.js`
 - [X] T005 [P] Implementar el cargador, normalización y validación de configuración en `src/module-config.js`
 - [X] T006 [P] Construir el marco del espacio de trabajo (barra superior, barra lateral) y el panel en `src/components/shell.js` y `src/components/dashboard.js`
-- [ ] T007 [P] Definir el catálogo de roles (administrador, solicitante, aprobador, encargado de compras, encargado de recepción) y sus permisos en `src/auth.js`
-- [ ] T008 Implementar el contexto de sesión y el guard `can(permission)` en `src/auth.js`
-- [ ] T009 [P] Añadir claves y helpers de persistencia para usuarios, solicitudes, recepciones y líneas de recepción en `src/storage.js`
-- [ ] T010 [P] Activar `lineasDetalle` en `userConfig` y validar `unidadesMedida`, `maxPorcentajeDescuento` y `camposExtra` en `src/module-config.js`
-- [ ] T011 Integrar `applyTotalesToCabecera` en el guardado de documentos para recalcular subtotal, impuesto y total desde las líneas en `src/storage.js`
-- [ ] T012 [P] Crear utilidades de pruebas y datos semilla de roles en `tests/setup/roles.js`
+- [X] T007 [P] Definir el catálogo de roles (administrador, solicitante, aprobador, encargado de compras, encargado de recepción) y sus permisos en `src/auth.js`
+- [X] T008 Implementar el contexto de sesión y el guard `can(permission)` en `src/auth.js`
+- [X] T009 [P] Añadir claves y helpers de persistencia para usuarios, solicitudes, recepciones y líneas de recepción en `src/storage.js`
+- [X] T010 [P] Activar `lineasDetalle` en `userConfig` y validar `unidadesMedida`, `maxPorcentajeDescuento` y `camposExtra` en `src/module-config.js`
+- [X] T011 Integrar `applyTotalesToCabecera` en el guardado de documentos para recalcular subtotal, impuesto y total desde las líneas en `src/storage.js`
+- [X] T012 [P] Crear utilidades de pruebas y datos semilla de roles en `tests/setup/roles.js`
 
 **Punto de control**: La base, los roles y el cálculo de totales están listos; las historias pueden implementarse sin tocar infraestructura compartida.
 
@@ -57,18 +57,18 @@
 
 ### Pruebas para la Historia de Usuario 1
 
-- [ ] T013 [P] [US1] Añadir pruebas unitarias de validación de usuarios, asignación de rol y bloqueo de desactivación en `tests/unit/auth.test.js`
-- [ ] T014 [P] [US1] Añadir pruebas de integración de la gestión de usuarios y la navegación restringida por rol en `tests/integration/user-management.test.js`
+- [X] T013 [P] [US1] Añadir pruebas unitarias de validación de usuarios, asignación de rol y bloqueo de desactivación en `tests/unit/auth.test.js`
+- [X] T014 [P] [US1] Añadir pruebas de integración de la gestión de usuarios y la navegación restringida por rol en `tests/integration/user-management.test.js`
 
 ### Implementación de la Historia de Usuario 1
 
-- [ ] T015 [P] [US1] Implementar el CRUD de usuarios (`loadUsers`, `addUser`, `updateUser`, `deactivateUser`) en `src/storage.js`
-- [ ] T016 [P] [US1] Añadir el marcado de la vista de gestión de usuarios (listado, formulario, selector de rol) en `index.html`
-- [ ] T017 [US1] Crear `src/components/user-management.js` para renderizar el listado, asignar roles y activar/desactivar usuarios
-- [ ] T018 [US1] Aplicar el guard de permisos a la navegación por módulos y a las acciones en `src/app.js`
-- [ ] T019 [US1] Impedir la desactivación de usuarios con solicitudes u órdenes pendientes y mostrar la advertencia en `src/storage.js` y `src/components/user-management.js`
-- [ ] T020 [US1] Añadir un selector de sesión/usuario para verificar el acceso por rol en `src/components/shell.js`
-- [ ] T021 [P] [US1] Dar estilo a la vista de usuarios y a las insignias de rol en `src/styles.css`
+- [X] T015 [P] [US1] Implementar el CRUD de usuarios (`loadUsers`, `addUser`, `updateUser`, `deactivateUser`) en `src/storage.js`
+- [X] T016 [P] [US1] Añadir el marcado de la vista de gestión de usuarios (listado, formulario, selector de rol) en `index.html`
+- [X] T017 [US1] Crear `src/components/user-management.js` para renderizar el listado, asignar roles y activar/desactivar usuarios
+- [X] T018 [US1] Aplicar el guard de permisos a la navegación por módulos y a las acciones en `src/app.js`
+- [X] T019 [US1] Impedir la desactivación de usuarios con solicitudes u órdenes pendientes y mostrar la advertencia en `src/storage.js` y `src/components/user-management.js`
+- [X] T020 [US1] Añadir un selector de sesión/usuario para verificar el acceso por rol en `src/components/shell.js`
+- [X] T021 [P] [US1] Dar estilo a la vista de usuarios y a las insignias de rol en `src/styles.css`
 
 **Punto de control**: La gestión de usuarios y permisos funciona y es comprobable de forma independiente.
 
@@ -82,18 +82,18 @@
 
 ### Pruebas para la Historia de Usuario 7
 
-- [ ] T022 [P] [US7] Añadir pruebas unitarias de validación de solicitudes (justificación obligatoria, estado inicial) en `tests/unit/requisition.test.js`
-- [ ] T023 [P] [US7] Añadir pruebas de integración de creación, historial y visualización de la justificación en `tests/integration/requisition.test.js`
+- [X] T022 [P] [US7] Añadir pruebas unitarias de validación de solicitudes (justificación obligatoria, estado inicial) en `tests/unit/requisition.test.js`
+- [X] T023 [P] [US7] Añadir pruebas de integración de creación, historial y visualización de la justificación en `tests/integration/requisition.test.js`
 
 ### Implementación de la Historia de Usuario 7
 
-- [ ] T024 [P] [US7] Implementar la colección de solicitudes y su validación (justificación obligatoria, estado inicial "Pendiente de aprobación") en `src/storage.js`
-- [ ] T025 [P] [US7] Añadir el marcado del formulario de solicitud (productos/servicios, justificación, envío) en `index.html`
-- [ ] T026 [US7] Crear `src/components/requisition-form.js` con justificación obligatoria y líneas de productos/servicios
-- [ ] T027 [US7] Crear `src/components/requisition-list.js` para mostrar el historial y el detalle con la justificación completa
-- [ ] T028 [US7] Conectar la creación y el listado de solicitudes a la navegación y al panel en `src/app.js` y `src/components/dashboard.js`
-- [ ] T029 [US7] Exponer la justificación en el detalle del aprobador, antes de las acciones de aprobar/rechazar, en `src/components/requisition-list.js`
-- [ ] T030 [P] [US7] Dar estilo al formulario, al campo de justificación y al historial en `src/styles.css`
+- [X] T024 [P] [US7] Implementar la colección de solicitudes y su validación (justificación obligatoria, estado inicial "Pendiente de aprobación") en `src/storage.js`
+- [X] T025 [P] [US7] Añadir el marcado del formulario de solicitud (productos/servicios, justificación, envío) en `index.html`
+- [X] T026 [US7] Crear `src/components/requisition-form.js` con justificación obligatoria y líneas de productos/servicios
+- [X] T027 [US7] Crear `src/components/requisition-list.js` para mostrar el historial y el detalle con la justificación completa
+- [X] T028 [US7] Conectar la creación y el listado de solicitudes a la navegación y al panel en `src/app.js` y `src/components/dashboard.js`
+- [X] T029 [US7] Exponer la justificación en el detalle del aprobador, antes de las acciones de aprobar/rechazar, en `src/components/requisition-list.js`
+- [X] T030 [P] [US7] Dar estilo al formulario, al campo de justificación y al historial en `src/styles.css`
 
 **Punto de control**: El solicitante puede crear y consultar solicitudes justificadas de forma independiente.
 
@@ -107,19 +107,19 @@
 
 ### Pruebas para la Historia de Usuario 4
 
-- [ ] T031 [P] [US4] Añadir pruebas unitarias de autorización, rechazo y motivo obligatorio en `tests/unit/area-approval.test.js`
-- [ ] T032 [P] [US4] Añadir pruebas de integración de bandeja por departamento, detalle con presupuesto y flujos de autorizar/rechazar en `tests/integration/area-approval.test.js`
+- [X] T031 [P] [US4] Añadir pruebas unitarias de autorización, rechazo y motivo obligatorio en `tests/unit/area-approval.test.js`
+- [X] T032 [P] [US4] Añadir pruebas de integración de bandeja por departamento, detalle con presupuesto y flujos de autorizar/rechazar en `tests/integration/area-approval.test.js`
 
 ### Implementación de la Historia de Usuario 4
 
-- [ ] T033 [P] [US4] Extender las solicitudes con departamento, solicitante, partida presupuestaria y campos de aprobación en `src/storage.js`
-- [ ] T034 [P] [US4] Añadir el marcado de la bandeja del aprobador (pendientes, detalle, saldo presupuestario, botones autorizar/rechazar) en `index.html`
-- [ ] T035 [US4] Crear `src/components/approval-inbox.js` para listar solicitudes del departamento con solicitante, fecha y motivo
-- [ ] T036 [US4] Implementar la autorización (estado aprobada y envío a la cola del encargado de compras) en `src/storage.js` y `src/app.js`
-- [ ] T037 [US4] Implementar el rechazo con motivo obligatorio, manteniendo el estado pendiente si falta el motivo, en `src/storage.js` y `src/components/approval-inbox.js`
-- [ ] T038 [US4] Calcular y mostrar el saldo presupuestario disponible por departamento/partida en `src/storage.js` y `src/components/approval-inbox.js`
-- [ ] T039 [US4] Restringir la bandeja de aprobación al rol aprobador y a su departamento en `src/auth.js` y `src/app.js`
-- [ ] T040 [P] [US4] Dar estilo a la bandeja, las insignias de estado y el diálogo de rechazo en `src/styles.css`
+- [X] T033 [P] [US4] Extender las solicitudes con departamento, solicitante, partida presupuestaria y campos de aprobación en `src/storage.js`
+- [X] T034 [P] [US4] Añadir el marcado de la bandeja del aprobador (pendientes, detalle, saldo presupuestario, botones autorizar/rechazar) en `index.html`
+- [X] T035 [US4] Crear `src/components/approval-inbox.js` para listar solicitudes del departamento con solicitante, fecha y motivo
+- [X] T036 [US4] Implementar la autorización (estado aprobada y envío a la cola del encargado de compras) en `src/storage.js` y `src/app.js`
+- [X] T037 [US4] Implementar el rechazo con motivo obligatorio, manteniendo el estado pendiente si falta el motivo, en `src/storage.js` y `src/components/approval-inbox.js`
+- [X] T038 [US4] Calcular y mostrar el saldo presupuestario disponible por departamento/partida en `src/storage.js` y `src/components/approval-inbox.js`
+- [X] T039 [US4] Restringir la bandeja de aprobación al rol aprobador y a su departamento en `src/auth.js` y `src/app.js`
+- [X] T040 [P] [US4] Dar estilo a la bandeja, las insignias de estado y el diálogo de rechazo en `src/styles.css`
 
 **Punto de control**: El control financiero del departamento funciona de forma independiente sobre las solicitudes de la Fase 4.
 
@@ -133,18 +133,18 @@
 
 ### Pruebas para la Historia de Usuario 2
 
-- [ ] T041 [P] [US2] Añadir pruebas unitarias del subtotal de línea y la cascada de totales de cabecera en `tests/unit/detail-lines.test.js`
-- [ ] T042 [P] [US2] Añadir pruebas de integración de creación de orden con líneas, proveedor y totales en `tests/integration/purchase-order.test.js`
+- [X] T041 [P] [US2] Añadir pruebas unitarias del subtotal de línea y la cascada de totales de cabecera en `tests/unit/detail-lines.test.js`
+- [X] T042 [P] [US2] Añadir pruebas de integración de creación de orden con líneas, proveedor y totales en `tests/integration/purchase-order.test.js`
 
 ### Implementación de la Historia de Usuario 2
 
-- [ ] T043 [P] [US2] Persistir `lineasDetalle` dentro del documento con la FK `documento_id` asignada por el storage en `src/storage.js`
-- [ ] T044 [P] [US2] Añadir la sección de líneas de detalle al formulario de documento en `index.html`
-- [ ] T045 [US2] Crear `src/components/detail-lines.js` para agregar, editar y eliminar líneas (producto, cantidad, unidad, precio, descuento)
-- [ ] T046 [US2] Conectar las líneas al formulario y recalcular subtotal, descuento, impuesto y total con `computeSubtotalLinea`, `subtotalFromLineas` y `applyTotalesToCabecera` en `src/components/document-form.js` y `src/module-config.js`
-- [ ] T047 [US2] Guardar el `entity_id` del proveedor y las líneas junto con la orden en `src/storage.js`
-- [ ] T048 [US2] Inicializar el estado del ciclo de vida al crear la orden y exponer solo las transiciones configuradas en `src/storage.js` y `src/components/document-form.js`
-- [ ] T049 [P] [US2] Dar estilo a la tabla de líneas y al resumen de totales en `src/styles.css`
+- [X] T043 [P] [US2] Persistir `lineasDetalle` dentro del documento con la FK `documento_id` asignada por el storage en `src/storage.js`
+- [X] T044 [P] [US2] Añadir la sección de líneas de detalle al formulario de documento en `index.html`
+- [X] T045 [US2] Crear `src/components/detail-lines.js` para agregar, editar y eliminar líneas (producto, cantidad, unidad, precio, descuento)
+- [X] T046 [US2] Conectar las líneas al formulario y recalcular subtotal, descuento, impuesto y total con `computeSubtotalLinea`, `subtotalFromLineas` y `applyTotalesToCabecera` en `src/components/document-form.js` y `src/module-config.js`
+- [X] T047 [US2] Guardar el `entity_id` del proveedor y las líneas junto con la orden en `src/storage.js`
+- [X] T048 [US2] Inicializar el estado del ciclo de vida al crear la orden y exponer solo las transiciones configuradas en `src/storage.js` y `src/components/document-form.js`
+- [X] T049 [P] [US2] Dar estilo a la tabla de líneas y al resumen de totales en `src/styles.css`
 
 **Punto de control**: La Orden de Compra con líneas y totales funciona de forma independiente.
 
@@ -158,18 +158,18 @@
 
 ### Pruebas para la Historia de Usuario 3
 
-- [ ] T050 [P] [US3] Añadir pruebas unitarias de validación comercial del proveedor, límite de crédito y transiciones de ciclo de vida en `tests/unit/order-approval.test.js`
-- [ ] T051 [P] [US3] Añadir pruebas de integración de aprobación con folio oficial, cancelación y actualización del panel en `tests/integration/order-approval.test.js`
+- [X] T050 [P] [US3] Añadir pruebas unitarias de validación comercial del proveedor, límite de crédito y transiciones de ciclo de vida en `tests/unit/order-approval.test.js`
+- [X] T051 [P] [US3] Añadir pruebas de integración de aprobación con folio oficial, cancelación y actualización del panel en `tests/integration/order-approval.test.js`
 
 ### Implementación de la Historia de Usuario 3
 
-- [ ] T052 [US3] Implementar la aprobación validando `taxId`, `categoriaProveedor`, `paymentTerms` y `creditLimit`, y que `totalAmount` no exceda el crédito, en `src/storage.js`
-- [ ] T053 [US3] Generar la serie/folio oficial (p. ej. `OC-XXXX`) al aprobar en `src/storage.js`
-- [ ] T054 [US3] Implementar la cancelación y hacer cumplir las transiciones permitidas del ciclo de vida en `src/storage.js`
-- [ ] T055 [US3] Añadir los controles de aprobar/cancelar a la gestión de órdenes en `src/components/document-form.js` e `index.html`
-- [ ] T056 [US3] Refrescar los contadores del panel tras aprobar o cancelar sin recargar la página en `src/components/dashboard.js` y `src/app.js`
-- [ ] T057 [US3] Mostrar mensajes de error claros por datos del proveedor faltantes o crédito excedido en `src/components/document-form.js`
-- [ ] T058 [P] [US3] Dar estilo a los controles de aprobación/cancelación y a los mensajes de error en `src/styles.css`
+- [X] T052 [US3] Implementar la aprobación validando `taxId`, `categoriaProveedor`, `paymentTerms` y `creditLimit`, y que `totalAmount` no exceda el crédito, en `src/storage.js`
+- [X] T053 [US3] Generar la serie/folio oficial (p. ej. `OC-XXXX`) al aprobar en `src/storage.js`
+- [X] T054 [US3] Implementar la cancelación y hacer cumplir las transiciones permitidas del ciclo de vida en `src/storage.js`
+- [X] T055 [US3] Añadir los controles de aprobar/cancelar a la gestión de órdenes en `src/components/document-form.js` e `index.html`
+- [X] T056 [US3] Refrescar los contadores del panel tras aprobar o cancelar sin recargar la página en `src/components/dashboard.js` y `src/app.js`
+- [X] T057 [US3] Mostrar mensajes de error claros por datos del proveedor faltantes o crédito excedido en `src/components/document-form.js`
+- [X] T058 [P] [US3] Dar estilo a los controles de aprobación/cancelación y a los mensajes de error en `src/styles.css`
 
 **Punto de control**: El flujo de aprobación y el ciclo de vida de la orden funcionan de forma independiente sobre la Fase 6.
 
@@ -183,20 +183,20 @@
 
 ### Pruebas para la Historia de Usuario 6
 
-- [ ] T059 [P] [US6] Añadir pruebas unitarias de validación de cantidades (negativas, no numéricas, mayores a lo pendiente) y actualización de estado en `tests/unit/reception.test.js`
-- [ ] T060 [P] [US6] Añadir pruebas de integración de recepción completa, parcial, líneas rechazadas y restricción por rol en `tests/integration/reception.test.js`
+- [X] T059 [P] [US6] Añadir pruebas unitarias de validación de cantidades (negativas, no numéricas, mayores a lo pendiente) y actualización de estado en `tests/unit/reception.test.js`
+- [X] T060 [P] [US6] Añadir pruebas de integración de recepción completa, parcial, líneas rechazadas y restricción por rol en `tests/integration/reception.test.js`
 
 ### Implementación de la Historia de Usuario 6
 
-- [ ] T061 [P] [US6] Implementar las colecciones de recepciones y líneas de recepción (fecha/hora, responsable, observaciones) en `src/storage.js`
-- [ ] T062 [P] [US6] Añadir el marcado de la bandeja de recepción y del detalle de recepción en `index.html`
-- [ ] T063 [US6] Crear `src/components/reception-list.js` para listar órdenes Emitida/Recibida parcialmente con folio, proveedor y fecha
-- [ ] T064 [US6] Crear `src/components/reception-form.js` mostrando por línea la cantidad solicitada, la recibida acumulada y la pendiente
-- [ ] T065 [US6] Validar cantidades recibidas/rechazadas y exigir motivo de rechazo en `src/storage.js` y `src/components/reception-form.js`
-- [ ] T066 [US6] Guardar cada recepción como registro propio sin sobrescribir recepciones anteriores en `src/storage.js`
-- [ ] T067 [US6] Actualizar el estado de la orden a Recibida o Recibida parcialmente según las cantidades pendientes en `src/storage.js`
-- [ ] T068 [US6] Impedir recepciones sobre órdenes completas, canceladas o no emitidas y restringirlas al rol de recepción en `src/storage.js` y `src/auth.js`
-- [ ] T069 [P] [US6] Dar estilo a la bandeja, las cantidades pendientes y los campos de motivo de rechazo en `src/styles.css`
+- [X] T061 [P] [US6] Implementar las colecciones de recepciones y líneas de recepción (fecha/hora, responsable, observaciones) en `src/storage.js`
+- [X] T062 [P] [US6] Añadir el marcado de la bandeja de recepción y del detalle de recepción en `index.html`
+- [X] T063 [US6] Crear `src/components/reception-list.js` para listar órdenes Emitida/Recibida parcialmente con folio, proveedor y fecha
+- [X] T064 [US6] Crear `src/components/reception-form.js` mostrando por línea la cantidad solicitada, la recibida acumulada y la pendiente
+- [X] T065 [US6] Validar cantidades recibidas/rechazadas y exigir motivo de rechazo en `src/storage.js` y `src/components/reception-form.js`
+- [X] T066 [US6] Guardar cada recepción como registro propio sin sobrescribir recepciones anteriores en `src/storage.js`
+- [X] T067 [US6] Actualizar el estado de la orden a Recibida o Recibida parcialmente según las cantidades pendientes en `src/storage.js`
+- [X] T068 [US6] Impedir recepciones sobre órdenes completas, canceladas o no emitidas y restringirlas al rol de recepción en `src/storage.js` y `src/auth.js`
+- [X] T069 [P] [US6] Dar estilo a la bandeja, las cantidades pendientes y los campos de motivo de rechazo en `src/styles.css`
 
 **Punto de control**: El ciclo operativo de la compra se cierra de forma independiente sobre la Fase 6.
 
@@ -227,10 +227,10 @@
 
 **Propósito**: Asegurar calidad, seguridad, accesibilidad y documentación en todas las historias.
 
-- [ ] T075 [P] Sanitizar el contenido introducido por el usuario antes de renderizarlo en el DOM (prevención de XSS) en `src/components/` y `src/storage.js`
-- [ ] T076 [P] Revisar accesibilidad de las vistas nuevas (etiquetas, foco de teclado, ARIA) en `index.html` y `src/styles.css`
-- [ ] T077 [P] Actualizar `README.md` y `specs/001-erp-base-module/quickstart.md` con los flujos de usuarios/roles, solicitudes, órdenes y recepción
-- [ ] T078 Ejecutar la suite completa de Vitest y la compilación de producción; corregir regresiones en `tests/` y `src/`
+- [X] T075 [P] Sanitizar el contenido introducido por el usuario antes de renderizarlo en el DOM (prevención de XSS) en `src/components/` y `src/storage.js`
+- [X] T076 [P] Revisar accesibilidad de las vistas nuevas (etiquetas, foco de teclado, ARIA) en `index.html` y `src/styles.css`
+- [X] T077 [P] Actualizar `README.md` y `specs/001-erp-base-module/quickstart.md` con los flujos de usuarios/roles, solicitudes, órdenes y recepción
+- [X] T078 Ejecutar la suite completa de Vitest y la compilación de producción; corregir regresiones en `tests/` y `src/`
 - [ ] T079 Validar manualmente el flujo de extremo a extremo de cada historia según `specs/001-erp-base-module/quickstart.md`
 
 ---

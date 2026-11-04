@@ -89,7 +89,8 @@ h2 { font-size: 1.05rem; margin: 0 0 12px; }
   top: 14px;
 }
 
-.nav-module {
+.nav-module,
+.nav-module-extra {
   display: flex;
   align-items: center;
   gap: 11px;
@@ -104,9 +105,9 @@ h2 { font-size: 1.05rem; margin: 0 0 12px; }
   cursor: pointer;
 }
 
-.nav-module svg { flex-shrink: 0; }
+.nav-module svg, .nav-module-extra svg { flex-shrink: 0; }
 
-.nav-module:hover { background: rgba(255, 255, 255, 0.09); color: #ffffff; }
+.nav-module:hover, .nav-module-extra:hover { background: rgba(255, 255, 255, 0.09); color: #ffffff; }
 
 .nav-module:focus-visible,
 .action-card:focus-visible,
@@ -118,7 +119,7 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
-.nav-module.active {
+.nav-module.active, .nav-module-extra.active {
   background: var(--accent);
   color: #ffffff;
   font-weight: 600;
@@ -308,6 +309,84 @@ button.danger:hover { background: #fae3df; }
   white-space: nowrap;
 }
 
+.badge-inactive {
+  background: #f1f5f9;
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+/* ==========================================================================
+   Sesión, líneas de detalle y tablas de aprobación/recepción
+   ========================================================================== */
+.session-bar {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.session-bar label { margin: 0; font-weight: 600; color: var(--muted); }
+.session-bar select { width: auto; min-width: 220px; padding: 6px 8px; }
+
+.detail-lines-section {
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: #fbfcfe;
+}
+
+.detail-line {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.detail-line input[readonly] { background: #f1f5f9; }
+.detail-line-remove { display: flex; align-items: flex-end; }
+.detail-line-remove button { width: 100%; }
+
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 0.92rem;
+}
+
+.detail-table th,
+.detail-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 6px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.detail-table th { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.detail-table input { padding: 6px 8px; }
+
+.justification-box {
+  background: #f8fafc;
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 10px 0;
+}
+
+.justification-box p { margin: 6px 0 0; }
+
+#users-list,
+#requisitions-list,
+#approvals-list,
+#receptions-list { list-style: none; padding: 0; margin: 0; }
+
+#users-list .form-actions { margin-top: 8px; }
+
 /* ==========================================================================
    Responsive: collapse sidebar to an icon rail on narrow viewports
    ========================================================================== */
@@ -315,6 +394,6 @@ button.danger:hover { background: #fae3df; }
   :root { --sidebar-w: 60px; }
 
   .content { padding: 20px 16px 32px; }
-  .nav-module { justify-content: center; padding: 10px 8px; }
-  .nav-module .nav-label { display: none; }
+  .nav-module, .nav-module-extra { justify-content: center; padding: 10px 8px; }
+  .nav-module .nav-label, .nav-module-extra .nav-label { display: none; }
 }

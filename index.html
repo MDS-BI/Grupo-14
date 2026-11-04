@@ -14,6 +14,10 @@
           <span id="logo-mark" class="logo-mark" aria-hidden="true"></span>
           <span id="brand-name" class="brand-name">Módulo Base ERP</span>
         </div>
+        <div class="session-bar">
+          <label for="session-user">Sesión</label>
+          <select id="session-user" aria-label="Usuario de la sesión"></select>
+        </div>
       </header>
 
       <aside class="sidebar">
@@ -34,6 +38,22 @@
             <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="5"></circle><path d="m12.8 12.8 4.2 4.2"></path></svg>
             <span class="nav-label" id="nav-search-label">Búsqueda</span>
           </button>
+          <button type="button" class="nav-module-extra" data-module="requisitions" id="nav-requisitions">
+            <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 2.5h6l4 4v11h-10z"></path><path d="M11.5 2.5v4h4"></path><path d="M8 10h5"></path><path d="M8 13h3"></path></svg>
+            <span class="nav-label" id="nav-requisitions-label">Solicitudes</span>
+          </button>
+          <button type="button" class="nav-module-extra" data-module="approvals" id="nav-approvals">
+            <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 10.5 4 4 8-9"></path></svg>
+            <span class="nav-label" id="nav-approvals-label">Aprobaciones</span>
+          </button>
+          <button type="button" class="nav-module-extra" data-module="receptions" id="nav-receptions">
+            <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5 10 3l7 4.5v8L10 20l-7-4.5z"></path><path d="M3 7.5 10 12l7-4.5"></path><path d="M10 12v8"></path></svg>
+            <span class="nav-label" id="nav-receptions-label">Recepción</span>
+          </button>
+          <button type="button" class="nav-module-extra" data-module="users" id="nav-users">
+            <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="7" r="3"></circle><path d="M2.5 17c0-3 2.5-5 5.5-5s5.5 2 5.5 5"></path><circle cx="15" cy="8" r="2"></circle></svg>
+            <span class="nav-label" id="nav-users-label">Usuarios</span>
+          </button>
         </nav>
       </aside>
 
@@ -50,6 +70,18 @@
             <div class="stat-card">
               <span class="stat-value" id="stat-documents">0</span>
               <span class="stat-label" id="stat-documents-label">Documentos</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-requisitions">0</span>
+              <span class="stat-label" id="stat-requisitions-label">Solicitudes pendientes</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-orders">0</span>
+              <span class="stat-label" id="stat-orders-label">Órdenes emitidas</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-receptions">0</span>
+              <span class="stat-label" id="stat-receptions-label">Recepciones</span>
             </div>
           </div>
 
@@ -70,6 +102,22 @@
             <button type="button" class="action-card" id="action-find">
               <strong id="action-find-title">Buscar registros</strong>
               <span class="muted" id="action-find-sub">Buscar entidades</span>
+            </button>
+            <button type="button" class="action-card" id="action-new-requisition">
+              <strong id="action-new-requisition-title">Nueva Solicitud</strong>
+              <span class="muted" id="action-new-requisition-sub">Solicitar compra con justificación</span>
+            </button>
+            <button type="button" class="action-card" id="action-open-approvals">
+              <strong id="action-open-approvals-title">Aprobaciones</strong>
+              <span class="muted" id="action-open-approvals-sub">Autorizar solicitudes del área</span>
+            </button>
+            <button type="button" class="action-card" id="action-open-receptions">
+              <strong id="action-open-receptions-title">Recepción</strong>
+              <span class="muted" id="action-open-receptions-sub">Recibir Órdenes de compra</span>
+            </button>
+            <button type="button" class="action-card" id="action-open-users">
+              <strong id="action-open-users-title">Usuarios</strong>
+              <span class="muted" id="action-open-users-sub">Administrar roles y accesos</span>
             </button>
           </div>
         </section>
@@ -224,9 +272,20 @@
               </div>
               <div id="document-status-control"></div>
               <div id="document-custom-fields"></div>
+              <section class="detail-lines-section" aria-labelledby="detail-lines-heading">
+                <h3 id="detail-lines-heading">Líneas de detalle</h3>
+                <p class="muted" id="detail-lines-help">Agrega los productos o servicios de la orden. Al capturar líneas, los totales se calculan automáticamente.</p>
+                <div id="document-detail-lines"></div>
+                <div class="error" id="error-detail-lines" aria-live="polite"></div>
+                <div class="form-actions">
+                  <button type="button" id="add-detail-line" class="secondary">Agregar línea</button>
+                </div>
+              </section>
               <div class="form-actions">
                 <button type="submit" id="document-submit-button" class="primary">Guardar Documento</button>
                 <button type="button" id="document-cancel-edit" class="secondary" hidden>Cancelar edición</button>
+                <button type="button" id="document-approve" class="primary" hidden>Aprobar Orden</button>
+                <button type="button" id="document-cancel" class="danger" hidden>Cancelar Orden</button>
               </div>
             </form>
           </section>
@@ -256,6 +315,121 @@
             <h2 id="results-heading">Resultados</h2>
             <div id="search-empty" class="empty" hidden>Sin coincidencias para tu búsqueda.</div>
             <ul id="search-results-list" aria-live="polite"></ul>
+          </section>
+        </section>
+
+        <section id="view-users" aria-labelledby="users-view-heading" hidden>
+          <h1 id="users-view-heading">Usuarios y Permisos</h1>
+
+          <section class="card" aria-labelledby="user-form-heading">
+            <h2 id="user-form-heading">Agregar / Editar Usuario</h2>
+            <form id="user-form">
+              <input type="hidden" id="user-id" />
+              <div>
+                <label for="user-username">Usuario *</label>
+                <input id="user-username" autocomplete="off" />
+                <div class="error" id="error-user-username" aria-live="polite"></div>
+              </div>
+              <div>
+                <label for="user-name">Nombre *</label>
+                <input id="user-name" />
+                <div class="error" id="error-user-name" aria-live="polite"></div>
+              </div>
+              <div>
+                <label for="user-role">Rol *</label>
+                <select id="user-role"></select>
+                <div class="error" id="error-user-role" aria-live="polite"></div>
+              </div>
+              <div class="form-actions">
+                <button type="submit" id="user-submit-button" class="primary">Guardar Usuario</button>
+                <button type="button" id="user-cancel-edit" class="secondary" hidden>Cancelar edición</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="card" aria-labelledby="users-list-heading">
+            <h2 id="users-list-heading">Usuarios registrados</h2>
+            <div id="users-message" class="empty" hidden></div>
+            <div id="users-empty" class="empty" hidden>Sin usuarios registrados.</div>
+            <ul id="users-list" aria-live="polite"></ul>
+          </section>
+        </section>
+
+        <section id="view-requisitions" aria-labelledby="requisitions-view-heading" hidden>
+          <h1 id="requisitions-view-heading">Solicitudes de Compra</h1>
+
+          <section class="card" aria-labelledby="requisition-form-heading">
+            <h2 id="requisition-form-heading">Nueva Solicitud</h2>
+            <form id="requisition-form">
+              <input type="hidden" id="requisition-id" />
+              <div>
+                <label for="requisition-department">Departamento *</label>
+                <select id="requisition-department"></select>
+                <div class="error" id="error-requisition-department" aria-live="polite"></div>
+              </div>
+              <div>
+                <label for="requisition-budget-line">Partida presupuestal</label>
+                <input id="requisition-budget-line" />
+              </div>
+              <div>
+                <label for="requisition-justification">Justificación *</label>
+                <textarea id="requisition-justification" rows="3"></textarea>
+                <div class="error" id="error-requisition-justification" aria-live="polite"></div>
+              </div>
+              <h3>Productos o servicios</h3>
+              <div id="requisition-lines"></div>
+              <div class="error" id="error-requisition-lines" aria-live="polite"></div>
+              <div class="form-actions">
+                <button type="button" id="add-requisition-line" class="secondary">Agregar línea</button>
+                <button type="submit" id="requisition-submit-button" class="primary">Enviar Solicitud</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="card" aria-labelledby="requisitions-list-heading">
+            <h2 id="requisitions-list-heading">Mis solicitudes</h2>
+            <div id="requisitions-empty" class="empty" hidden>Sin solicitudes registradas.</div>
+            <ul id="requisitions-list" aria-live="polite"></ul>
+          </section>
+        </section>
+
+        <section id="view-approvals" aria-labelledby="approvals-view-heading" hidden>
+          <h1 id="approvals-view-heading">Aprobación de Solicitudes</h1>
+
+          <section class="card" aria-labelledby="approvals-list-heading">
+            <h2 id="approvals-list-heading">Solicitudes pendientes</h2>
+            <div id="approvals-empty" class="empty" hidden>No hay solicitudes pendientes.</div>
+            <ul id="approvals-list" aria-live="polite"></ul>
+          </section>
+
+          <section class="card" aria-labelledby="approval-detail-heading">
+            <h2 id="approval-detail-heading">Detalle de la solicitud</h2>
+            <div id="approval-detail"><p class="muted">Selecciona una solicitud pendiente.</p></div>
+            <div class="error" id="error-approval" aria-live="polite"></div>
+          </section>
+        </section>
+
+        <section id="view-receptions" aria-labelledby="receptions-view-heading" hidden>
+          <h1 id="receptions-view-heading">Recepción de Órdenes</h1>
+
+          <section class="card" aria-labelledby="receptions-list-heading">
+            <h2 id="receptions-list-heading">Órdenes por recibir</h2>
+            <div id="receptions-empty" class="empty" hidden>No hay Órdenes por recibir.</div>
+            <ul id="receptions-list" aria-live="polite"></ul>
+          </section>
+
+          <section class="card" aria-labelledby="reception-form-heading">
+            <h2 id="reception-form-heading">Registrar recepción</h2>
+            <input type="hidden" id="reception-order-id" />
+            <div class="error" id="error-reception-order" aria-live="polite"></div>
+            <div id="reception-detail"><p class="muted">Selecciona una orden por recibir.</p></div>
+            <div>
+              <label for="reception-observaciones">Observaciones</label>
+              <textarea id="reception-observaciones" rows="2"></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="button" id="reception-submit-button" class="primary">Registrar recepción</button>
+            </div>
           </section>
         </section>
       </main>
