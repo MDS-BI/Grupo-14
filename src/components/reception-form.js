@@ -27,6 +27,12 @@ export function renderReceptionDetail(container, order){
   const folio = `${order.series ? `${order.series}-` : ''}${order.folio}`;
   heading.textContent = `${folio} · ${order.status}`;
   container.appendChild(heading);
+  if(order.proveedor){
+    const provider = document.createElement('p');
+    provider.className = 'muted';
+    provider.textContent = `Proveedor: ${order.proveedor}`;
+    container.appendChild(provider);
+  }
 
   const lineas = Array.isArray(order.lineasDetalle) ? order.lineasDetalle : [];
   if(lineas.length === 0){
