@@ -13,6 +13,7 @@ import { ensureMockData, injectMockData } from './mock-data.js';
 import { clearEntityForm, startEntityEdit, collectEntityPayload, showEntityErrors } from './components/entity-form.js';
 import { createEntityItem, filterEntities, renderEntityTable, renderEntityDetail } from './components/entity-list.js';
 import { clearDocumentForm, startDocumentEdit, collectDocumentPayload, showDocumentErrors, addDocumentDetailLine, toggleOrderActions } from './components/document-form.js';
+import { syncDocumentTotalsFromLines } from './components/detail-lines.js';
 import { folioLabel } from './components/document-list.js';
 import { renderLogo, applyShellLabels, setActiveModule } from './components/shell.js';
 import { renderDashboard } from './components/dashboard.js';
@@ -709,6 +710,7 @@ function wireEvents(){
   qs('entity-status-filter').addEventListener('change', refreshEntities);
   qs('document-form').addEventListener('submit', handleDocumentSubmit);
   qs('document-cancel-edit').addEventListener('click', clearDocumentForm);
+  qs('discount').addEventListener('input', () => syncDocumentTotalsFromLines(qs('document-detail-lines')));
   qs('add-detail-line').addEventListener('click', addDocumentDetailLine);
   qs('document-approve').addEventListener('click', handleApproveDocument);
   qs('document-cancel').addEventListener('click', handleCancelDocument);

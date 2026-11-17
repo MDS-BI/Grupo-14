@@ -519,12 +519,13 @@
 
                 <section class="detail-lines-section" aria-labelledby="detail-lines-heading">
                   <h3 id="detail-lines-heading">Líneas de detalle</h3>
-                  <p class="muted" id="detail-lines-help">Agrega los productos o servicios de la orden. Al capturar líneas, los totales se calculan automáticamente.</p>
+                  <p class="muted" id="detail-lines-help">Captura Cantidad, Precio Unitario y Descuento de cada línea. El importe y el desglose con IVA (19%) se actualizan al escribir.</p>
                   <div id="document-detail-lines"></div>
                   <div class="error" id="error-detail-lines" aria-live="polite"></div>
                   <div class="form-actions">
                     <button type="button" id="add-detail-line" class="secondary">Agregar línea</button>
                   </div>
+                  <div id="document-totals-breakdown" class="totals-breakdown" aria-live="polite"></div>
                 </section>
 
                 <div class="form-actions form-actions-bar">

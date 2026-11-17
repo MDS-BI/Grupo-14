@@ -85,8 +85,8 @@ export const userConfig = {
 };
 
 // Tasa de impuesto aplicada en la cascada de totales de la cabecera
-// (fracción: 0.16 = 16 %).
-export const DEFAULT_TAX_RATE = 0.16;
+// (fracción: 0.19 = 19 % de IVA).
+export const DEFAULT_TAX_RATE = 0.19;
 
 // ---------------------------------------------------------------------------
 // Cargador central — no deberías necesitar modificar nada debajo de esta línea.
