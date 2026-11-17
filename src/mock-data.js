@@ -11,10 +11,11 @@ import { DEFAULT_TAX_RATE, applyTotalesToCabecera, computeSubtotalLinea } from '
 
 const RUT_WEIGHTS = [2, 3, 4, 5, 6, 7];
 const SEED_VERSION_KEY = 'erp_base_module:mockSeedVersion';
-const SEED_VERSION = '2026-11-v3';
+const SEED_VERSION = '2026-11-v4';
 
 export const MOCK_COUNTS = Object.freeze({
   entities: 7,
+  users: 20,
   documents: 150,
   pendingRequisitions: 3,
   issuedOrders: 44,
@@ -76,26 +77,26 @@ const ENTITY_SEEDS = [
 ];
 
 const USER_SEEDS = [
-  ['camila.herrera', 'Camila Herrera', 'administrador'],
-  ['miguel.andrade', 'Miguel Andrade', 'administrador'],
-  ['lucia.valdes', 'Lucía Valdés', 'administrador'],
-  ['javier.ortiz', 'Javier Ortiz', 'administrador'],
-  ['ana.torres', 'Ana Torres', 'solicitante'],
-  ['diego.silva', 'Diego Silva', 'solicitante'],
-  ['fernanda.rios', 'Fernanda Ríos', 'solicitante'],
-  ['patricio.vega', 'Patricio Vega', 'solicitante'],
-  ['valentina.cruz', 'Valentina Cruz', 'solicitante'],
-  ['rodrigo.lagos', 'Rodrigo Lagos', 'solicitante'],
-  ['claudia.mena', 'Claudia Mena', 'aprobador'],
-  ['ivan.ramos', 'Iván Ramos', 'aprobador'],
-  ['mariana.soto', 'Mariana Soto', 'aprobador'],
-  ['paulo.castro', 'Paulo Castro', 'aprobador'],
-  ['josefa.campos', 'Josefa Campos', 'encargado_compras'],
-  ['andres.pulido', 'Andrés Pulido', 'encargado_compras'],
-  ['carmen.vega', 'Carmen Vega', 'encargado_compras'],
-  ['martin.salgado', 'Martín Salgado', 'encargado_recepcion'],
-  ['jennifer.mora', 'Jennifer Mora', 'encargado_recepcion'],
-  ['oscar.araya', 'Óscar Araya', 'encargado_recepcion']
+  { username: 'camila.herrera', name: 'Camila Herrera', role: 'administrador', department: 'General' },
+  { username: 'miguel.andrade', name: 'Miguel Andrade', role: 'administrador', department: 'TI' },
+  { username: 'lucia.valdes', name: 'Lucía Valdés', role: 'administrador', department: 'General' },
+  { username: 'javier.ortiz', name: 'Javier Ortiz', role: 'administrador', department: 'Compras' },
+  { username: 'ana.torres', name: 'Ana Torres', role: 'solicitante', department: 'Operaciones' },
+  { username: 'diego.silva', name: 'Diego Silva', role: 'solicitante', department: 'Operaciones' },
+  { username: 'fernanda.rios', name: 'Fernanda Ríos', role: 'solicitante', department: 'Compras' },
+  { username: 'patricio.vega', name: 'Patricio Vega', role: 'solicitante', department: 'TI' },
+  { username: 'valentina.cruz', name: 'Valentina Cruz', role: 'solicitante', department: 'General' },
+  { username: 'rodrigo.lagos', name: 'Rodrigo Lagos', role: 'solicitante', department: 'Operaciones', active: false },
+  { username: 'claudia.mena', name: 'Claudia Mena', role: 'aprobador', department: 'General' },
+  { username: 'ivan.ramos', name: 'Iván Ramos', role: 'aprobador', department: 'Operaciones' },
+  { username: 'mariana.soto', name: 'Mariana Soto', role: 'aprobador', department: 'Compras' },
+  { username: 'paulo.castro', name: 'Paulo Castro', role: 'aprobador', department: 'General' },
+  { username: 'josefa.campos', name: 'Josefa Campos', role: 'encargado_compras', department: 'Compras' },
+  { username: 'andres.pulido', name: 'Andrés Pulido', role: 'encargado_compras', department: 'Compras' },
+  { username: 'carmen.vega', name: 'Carmen Vega', role: 'encargado_compras', department: 'Compras' },
+  { username: 'martin.salgado', name: 'Martín Salgado', role: 'encargado_recepcion', department: 'Operaciones' },
+  { username: 'jennifer.mora', name: 'Jennifer Mora', role: 'encargado_recepcion', department: 'Operaciones' },
+  { username: 'oscar.araya', name: 'Óscar Araya', role: 'encargado_recepcion', department: 'Operaciones', active: false }
 ];
 
 const PRODUCTS = [
@@ -199,13 +200,19 @@ function buildEntities(){
 
 function buildUsers(){
   return USER_SEEDS.map((seed, index) => {
-    const [username, name, role] = seed;
     return {
       id: `mock-user-${pad(index + 1)}`,
-      username,
-      name,
-      role,
-      active: true,
+      username: seed.username,
+      name: seed.name,
+      email: `${seed.username}@empresa.cl`,
+      rut: formatRut(12345000 + index + 1),
+      department: seed.department,
+      role: seed.role,
+      active: seed.active !== false,
+      lastAccess: isoFromDate(
+        `2026-11-${pad(8 + (index % 10))}`,
+        `${pad(8 + (index % 10))}:${pad((index * 7) % 60)}:00.000Z`
+      ),
       createdAt: isoFromDate(`2026-07-${pad((index % 28) + 1)}`),
       updatedAt: isoFromDate('2026-11-15')
     };

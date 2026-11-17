@@ -2,7 +2,7 @@ import { loadModuleConfig, normalizeConfig, setActiveConfig, labelFor } from './
 import {
   loadEntities, addEntity, updateEntity, deleteEntity, validateEntity, searchEntities,
   loadDocuments, addDocument, updateDocument, deleteDocument, validateDocument,
-  loadUsers, addUser, updateUser, deactivateUser, validateUser,
+  loadUsers, addUser, updateUser, setUserActive, touchUserAccess, validateUser,
   loadRequisitions, addRequisition, validateRequisition, approveRequisition, rejectRequisition,
   pendingRequisitionsForDepartment, budgetForDepartment,
   ordersPendingReception, addReception, validateReception,
@@ -17,7 +17,11 @@ import { folioLabel } from './components/document-list.js';
 import { renderLogo, applyShellLabels, setActiveModule } from './components/shell.js';
 import { renderDashboard } from './components/dashboard.js';
 import { setupSearchBar, renderSearchResults } from './components/search-bar.js';
-import { populateRoleSelect, clearUserForm, startUserEdit, collectUserPayload, showUserErrors, clearUserErrors, renderUsers } from './components/user-management.js';
+import {
+  populateRoleSelect, populateUserDepartmentSelect, populateRoleFilter,
+  clearUserForm, startUserEdit, collectUserPayload, showUserErrors,
+  renderUsers, filterUsers, renderPermissionMatrix
+} from './components/user-management.js';
 import { populateDepartmentSelect, clearRequisitionForm, collectRequisitionPayload, showRequisitionErrors, renderRequisitionLines, addRequisitionLine } from './components/requisition-form.js';
 import { renderRequisitionList } from './components/requisition-list.js';
 import { renderApprovalInbox, renderApprovalDetail, showApprovalError } from './components/approval-inbox.js';
@@ -101,8 +105,10 @@ function showModule(name, opts = {}){
   }
   if(name === 'users'){
     populateRoleSelect(qs('user-role'));
+    populateRoleFilter(qs('user-role-filter'));
     if(opts.newRecord) clearUserForm();
     refreshUsers();
+    renderPermissionMatrix();
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -292,6 +298,7 @@ function applyPermissions(){
   if(receptionButton) receptionButton.hidden = !can(PERMISSIONS.RECEPTIONS_MANAGE);
   const approveButton = qs('document-approve');
   if(approveButton && !can(PERMISSIONS.ORDERS_APPROVE)) approveButton.hidden = true;
+  renderPermissionMatrix();
 }
 
 function onSessionChange(){
@@ -300,8 +307,10 @@ function onSessionChange(){
     resetSession();
   } else {
     const user = loadUsers().find(u => u.id === id);
-    if(user) setSession(user);
-    else resetSession();
+    if(user){
+      touchUserAccess(user.id);
+      setSession(user);
+    } else resetSession();
   }
   applyPermissions();
   showModule('dashboard');
@@ -317,11 +326,18 @@ export function applySession(user){
 
 function refreshUsers(){
   const users = loadUsers();
+  const search = qs('user-search') ? qs('user-search').value : '';
+  const role = qs('user-role-filter') ? qs('user-role-filter').value : '';
+  const visible = filterUsers(users, search, role);
   const empty = qs('users-empty');
+  const noResults = qs('users-no-results');
   if(empty) empty.hidden = users.length > 0;
-  renderUsers(qs('users-list'), users, {
-    onEdit: (user) => { startUserEdit(user); qs('user-name').focus(); },
-    onDeactivate: handleDeactivateUser
+  if(noResults) noResults.hidden = users.length === 0 || visible.length > 0;
+  const count = qs('users-count');
+  if(count) count.textContent = `Mostrando ${visible.length} de ${users.length} usuarios`;
+  renderUsers(qs('users-list'), visible, {
+    onEditRole: (user) => { startUserEdit(user); qs('user-role').focus(); },
+    onToggleActive: handleToggleUserActive
   });
 }
 
@@ -343,16 +359,17 @@ function handleUserSubmit(ev){
   }
 }
 
-function handleDeactivateUser(user){
+function handleToggleUserActive(user){
   if(!can(PERMISSIONS.USERS_MANAGE)){
     const message = qs('users-message');
     message.hidden = false;
     message.textContent = 'Tu rol no permite administrar usuarios.';
     return;
   }
-  if(!confirm(`¿Desactivar a ${user.name}?`)) return;
+  const activate = user.active === false;
+  if(!confirm(`¿${activate ? 'Activar' : 'Desactivar'} a ${user.name}?`)) return;
   try{
-    deactivateUser(user.id);
+    setUserActive(user.id, activate);
     const message = qs('users-message');
     message.hidden = true;
     message.textContent = '';
@@ -368,7 +385,7 @@ function handleDeactivateUser(user){
 function showMockDataMessage(counts){
   const message = qs('mock-data-message');
   if(!message) return;
-  message.textContent = `Datos de prueba cargados: ${counts.entities} proveedores, ${counts.documents} órdenes de compra, ${counts.requisitions} solicitudes pendientes, ${counts.issuedOrders} órdenes emitidas y ${counts.receptions} recepciones.`;
+  message.textContent = `Datos de prueba cargados: ${counts.users} usuarios, ${counts.entities} proveedores, ${counts.documents} órdenes de compra, ${counts.requisitions} solicitudes pendientes, ${counts.issuedOrders} órdenes emitidas y ${counts.receptions} recepciones.`;
   message.hidden = false;
 }
 
@@ -686,6 +703,12 @@ function wireEvents(){
   qs('document-cancel').addEventListener('click', handleCancelDocument);
   qs('user-form').addEventListener('submit', handleUserSubmit);
   qs('user-cancel-edit').addEventListener('click', clearUserForm);
+  qs('user-search').addEventListener('input', refreshUsers);
+  qs('user-role-filter').addEventListener('change', refreshUsers);
+  qs('user-new-button').addEventListener('click', () => {
+    clearUserForm();
+    qs('user-username').focus();
+  });
   qs('requisition-form').addEventListener('submit', handleRequisitionSubmit);
   qs('add-requisition-line').addEventListener('click', () => addRequisitionLine(qs('requisition-lines'), {}));
   qs('reception-submit-button').addEventListener('click', handleReceptionSubmit);
@@ -707,6 +730,8 @@ export function initApp(resolved){
   clearEntityForm();
   clearDocumentForm();
   populateRoleSelect(qs('user-role'));
+  populateUserDepartmentSelect(qs('user-department'));
+  populateRoleFilter(qs('user-role-filter'));
   clearUserForm();
   populateDepartmentSelect(qs('requisition-department'));
   clearRequisitionForm();

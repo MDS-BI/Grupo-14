@@ -773,8 +773,34 @@ button.danger:hover { background: var(--red-soft); border-color: var(--red); }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-#users-list .form-actions { margin-top: 12px; }
-#users-list .form-actions button { min-height: 34px; padding: 0 12px; font-size: 0.82rem; }
+.users-view-stack { display: grid; gap: 24px; }
+.card-heading-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+.card-heading-row h2 { margin-bottom: 4px; }
+.card-heading-row .muted { font-size: 0.86rem; }
+.user-name-cell { display: flex; flex-direction: column; gap: 2px; }
+.user-username { color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+#users-table { min-width: 980px; }
+#users-table .table-actions button { min-height: 32px; padding: 0 11px; font-size: 0.8rem; }
+
+.card-permissions .muted { font-size: 0.86rem; }
+.permission-matrix { min-width: 900px; }
+.permission-matrix thead th { white-space: normal; vertical-align: bottom; }
+.permission-matrix thead th:not(:first-child),
+.permission-matrix tbody td:not(:first-child) { text-align: center; }
+.permission-matrix input[type="checkbox"] {
+  width: 16px; height: 16px; margin: 0;
+  accent-color: var(--accent); cursor: default;
+}
+.permission-matrix tbody tr.is-current-role td { background: var(--accent-tint); }
+.permission-matrix tbody tr.session-permission-row td { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+.current-role-tag {
+  display: inline-block; margin-left: 8px; padding: 2px 8px;
+  border-radius: 999px; background: var(--accent-soft);
+  color: var(--accent-strong); font-size: 0.7rem; font-weight: 650;
+}
 
 /* Detalle (aprobación / recepción) */
 .detail-pane { overflow-x: auto; }
@@ -851,6 +877,11 @@ button.danger:hover { background: var(--red-soft); border-color: var(--red); }
 }
 .status-badge.is-active { background: color-mix(in srgb, var(--green) 10%, #fff); color: var(--green); }
 .status-badge.is-inactive { background: var(--surface-3); color: var(--slate); }
+.role-badge[data-role="administrador"] { --tone: var(--red); }
+.role-badge[data-role="solicitante"] { --tone: var(--sky); }
+.role-badge[data-role="aprobador"] { --tone: var(--amber); }
+.role-badge[data-role="encargado_compras"] { --tone: var(--green); }
+.role-badge[data-role="encargado_recepcion"] { --tone: var(--accent); }
 .entity-detail { margin-top: 16px; }
 .entity-detail .detail-table { margin: 0; }
 

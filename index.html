@@ -586,12 +586,12 @@
             </div>
           </header>
 
-          <div class="view-grid layout-split">
+          <div class="users-view-stack">
             <section class="card" aria-labelledby="user-form-heading">
               <h2 id="user-form-heading">Agregar / Editar Usuario</h2>
               <form id="user-form">
                 <input type="hidden" id="user-id" />
-                <div class="field-grid field-grid-1">
+                <div class="field-grid field-grid-3">
                   <div>
                     <label for="user-username">Usuario *</label>
                     <input id="user-username" autocomplete="off" />
@@ -601,6 +601,21 @@
                     <label for="user-name">Nombre *</label>
                     <input id="user-name" />
                     <div class="error" id="error-user-name" aria-live="polite"></div>
+                  </div>
+                  <div>
+                    <label for="user-email">Correo</label>
+                    <input id="user-email" type="email" autocomplete="off" />
+                    <div class="error" id="error-user-email" aria-live="polite"></div>
+                  </div>
+                  <div>
+                    <label for="user-rut">RUT</label>
+                    <input id="user-rut" placeholder="12.345.678-9" autocomplete="off" />
+                    <div class="error" id="error-user-rut" aria-live="polite"></div>
+                  </div>
+                  <div>
+                    <label for="user-department">Departamento</label>
+                    <select id="user-department"><option value="">Sin departamento</option></select>
+                    <div class="error" id="error-user-department" aria-live="polite"></div>
                   </div>
                   <div>
                     <label for="user-role">Rol *</label>
@@ -615,15 +630,76 @@
               </form>
             </section>
 
-            <section class="card" aria-labelledby="users-list-heading">
-              <h2 id="users-list-heading">Usuarios registrados</h2>
+            <section class="card card-entity-table" aria-labelledby="users-list-heading">
+              <div class="card-heading-row">
+                <h2 id="users-list-heading">Usuarios registrados</h2>
+                <span id="users-count" class="muted"></span>
+              </div>
               <div id="users-message" class="notice" hidden></div>
+              <div class="table-toolbar">
+                <div class="search-field">
+                  <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                  <label class="sr-only" for="user-search">Buscar usuarios por nombre o correo</label>
+                  <input id="user-search" type="search" autocomplete="off" placeholder="Buscar por nombre o correo…" />
+                </div>
+                <label class="filter-field" for="user-role-filter">Rol
+                  <select id="user-role-filter"><option value="">Todos los roles</option></select>
+                </label>
+                <button type="button" id="user-new-button" class="primary">Crear usuario</button>
+              </div>
               <div id="users-empty" class="empty-state compact" hidden>
                 <span class="empty-icon" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"></path><path d="M19 8v6M16 11h6"></path></svg></span>
                 <h3>Sin usuarios registrados</h3>
                 <p class="muted">Crea el primero con el formulario y asígnale un rol del flujo de compras.</p>
               </div>
-              <ul id="users-list" class="record-list" aria-live="polite"></ul>
+              <div id="users-no-results" class="empty-state compact" hidden>
+                <h3>Sin coincidencias</h3>
+                <p class="muted">Prueba con otro nombre, correo o filtro de rol.</p>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table" id="users-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Nombre</th>
+                      <th scope="col">Correo</th>
+                      <th scope="col">RUT</th>
+                      <th scope="col">Departamento</th>
+                      <th scope="col">Rol</th>
+                      <th scope="col">Estado</th>
+                      <th scope="col">Último acceso</th>
+                      <th scope="col">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="users-list" aria-live="polite"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="card card-permissions" aria-labelledby="permission-matrix-heading">
+              <div class="card-heading-row">
+                <div>
+                  <h2 id="permission-matrix-heading">Matriz de Permisos por Rol</h2>
+                  <p id="permission-matrix-help" class="muted">Los checks muestran las acciones permitidas para cada rol. La última fila refleja lo que puedes ejecutar con la sesión activa.</p>
+                </div>
+                <span id="permission-session-badge" class="status-badge" data-tone="sky">Sesión activa</span>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table permission-matrix" id="permission-matrix">
+                  <thead>
+                    <tr>
+                      <th scope="col">Rol</th>
+                      <th scope="col">Crear solicitudes</th>
+                      <th scope="col">Emitir OC</th>
+                      <th scope="col">Aprobar/Rechazar OC</th>
+                      <th scope="col">Gestionar proveedores</th>
+                      <th scope="col">Registrar recepciones</th>
+                      <th scope="col">Administrar usuarios</th>
+                    </tr>
+                  </thead>
+                  <tbody id="permission-matrix-body"></tbody>
+                </table>
+              </div>
+              <p id="permission-matrix-note" class="muted"></p>
             </section>
           </div>
         </section>
