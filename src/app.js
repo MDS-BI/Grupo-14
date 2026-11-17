@@ -13,6 +13,7 @@ import { ensureMockData, injectMockData } from './mock-data.js';
 import { clearEntityForm, startEntityEdit, collectEntityPayload, showEntityErrors } from './components/entity-form.js';
 import { createEntityItem, filterEntities, renderEntityTable, renderEntityDetail } from './components/entity-list.js';
 import { clearDocumentForm, startDocumentEdit, collectDocumentPayload, showDocumentErrors, addDocumentDetailLine, toggleOrderActions } from './components/document-form.js';
+import { syncDocumentTotalsFromLines } from './components/detail-lines.js';
 import { folioLabel } from './components/document-list.js';
 import { renderLogo, applyShellLabels, setActiveModule } from './components/shell.js';
 import { renderDashboard } from './components/dashboard.js';
@@ -25,7 +26,7 @@ import {
 import { populateDepartmentSelect, clearRequisitionForm, collectRequisitionPayload, showRequisitionErrors, renderRequisitionLines, addRequisitionLine } from './components/requisition-form.js';
 import { renderRequisitionList } from './components/requisition-list.js';
 import { renderApprovalInbox, renderApprovalDetail, showApprovalError } from './components/approval-inbox.js';
-import { renderReceptionInbox } from './components/reception-list.js';
+import { renderReceptionInbox, filterReceptionOrders } from './components/reception-list.js';
 import { renderReceptionDetail, collectReceptionPayload, showReceptionErrors } from './components/reception-form.js';
 
 function qs(id){ return document.getElementById(id); }
@@ -488,15 +489,25 @@ function handleRejectRequisition(){
   }
 }
 
+function receptionOrders(){
+  const entities = loadEntities();
+  return ordersPendingReception().map(order => {
+    const provider = entities.find(e => e.entity_id === order.entity_id);
+    return { ...order, proveedor: provider ? provider.name : '' };
+  });
+}
+
 function refreshReceptions(){
-  const orders = ordersPendingReception();
+  const search = qs('reception-search') ? qs('reception-search').value : '';
+  const status = qs('reception-status-filter') ? qs('reception-status-filter').value : '';
+  const orders = filterReceptionOrders(receptionOrders(), search, status);
   if(selectedReceptionOrderId && !orders.some(o => o.id === selectedReceptionOrderId)){
     selectedReceptionOrderId = null;
     qs('reception-order-id').value = '';
     qs('reception-detail').innerHTML = '<p class="muted">Selecciona una orden por recibir.</p>';
   }
-  renderReceptionInbox(qs('receptions-list'), qs('receptions-empty'), orders, handleReceptionSelect);
-  if(selectedReceptionOrderId){
+  renderReceptionInbox(qs('receptions-list'), qs('receptions-empty'), orders, handleReceptionSelect, selectedReceptionOrderId);
+  if(selectedReceptionOrderId && qs('reception-order-id').value !== selectedReceptionOrderId){
     const selected = orders.find(o => o.id === selectedReceptionOrderId);
     if(selected) renderReceptionDetail(qs('reception-detail'), selected);
   }
@@ -507,6 +518,7 @@ function handleReceptionSelect(order){
   qs('reception-order-id').value = order.id;
   showReceptionErrors({});
   renderReceptionDetail(qs('reception-detail'), order);
+  refreshReceptions();
 }
 
 function handleReceptionSubmit(){
@@ -699,6 +711,7 @@ function wireEvents(){
   qs('entity-status-filter').addEventListener('change', refreshEntities);
   qs('document-form').addEventListener('submit', handleDocumentSubmit);
   qs('document-cancel-edit').addEventListener('click', clearDocumentForm);
+  qs('discount').addEventListener('input', () => syncDocumentTotalsFromLines(qs('document-detail-lines')));
   qs('add-detail-line').addEventListener('click', addDocumentDetailLine);
   qs('document-approve').addEventListener('click', handleApproveDocument);
   qs('document-cancel').addEventListener('click', handleCancelDocument);
@@ -712,6 +725,8 @@ function wireEvents(){
   });
   qs('requisition-form').addEventListener('submit', handleRequisitionSubmit);
   qs('add-requisition-line').addEventListener('click', () => addRequisitionLine(qs('requisition-lines'), {}));
+  qs('reception-search').addEventListener('input', refreshReceptions);
+  qs('reception-status-filter').addEventListener('change', refreshReceptions);
   qs('reception-submit-button').addEventListener('click', handleReceptionSubmit);
   qs('session-user').addEventListener('change', onSessionChange);
   setupSearchBar(qs('search-input'), () => refreshSearch());

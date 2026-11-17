@@ -519,12 +519,13 @@
 
                 <section class="detail-lines-section" aria-labelledby="detail-lines-heading">
                   <h3 id="detail-lines-heading">Líneas de detalle</h3>
-                  <p class="muted" id="detail-lines-help">Agrega los productos o servicios de la orden. Al capturar líneas, los totales se calculan automáticamente.</p>
+                  <p class="muted" id="detail-lines-help">Captura Cantidad, Precio Unitario y Descuento de cada línea. El importe y el desglose con IVA (19%) se actualizan al escribir.</p>
                   <div id="document-detail-lines"></div>
                   <div class="error" id="error-detail-lines" aria-live="polite"></div>
                   <div class="form-actions">
                     <button type="button" id="add-detail-line" class="secondary">Agregar línea</button>
                   </div>
+                  <div id="document-totals-breakdown" class="totals-breakdown" aria-live="polite"></div>
                 </section>
 
                 <div class="form-actions form-actions-bar">
@@ -815,17 +816,31 @@
 
           <div class="view-grid layout-inbox">
             <section class="card" aria-labelledby="receptions-list-heading">
-              <h2 id="receptions-list-heading">Órdenes por recibir</h2>
+              <h2 id="receptions-list-heading">Órdenes aprobadas</h2>
+              <div class="table-toolbar inbox-toolbar">
+                <div class="search-field">
+                  <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                  <input id="reception-search" type="search" autocomplete="off" placeholder="Buscar por folio o proveedor..." aria-label="Buscar órdenes por folio o proveedor" />
+                </div>
+                <label class="filter-field" for="reception-status-filter">
+                  <span>Estado</span>
+                  <select id="reception-status-filter">
+                    <option value="">Todos</option>
+                    <option value="aprobado">Aprobada</option>
+                    <option value="recibido parcialmente">Parcialmente recibida</option>
+                  </select>
+                </label>
+              </div>
               <div id="receptions-empty" class="empty-state compact" hidden>
                 <span class="empty-icon" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M21 8.5 12 3.5 3 8.5v7l9 5 9-5z"></path><path d="M3 8.5l9 5 9-5"></path><path d="M12 13.5v7"></path></svg></span>
                 <h3>No hay órdenes por recibir</h3>
-                <p class="muted">Cuando Compras apruebe una orden, aparecerá aquí para registrar su entrega.</p>
+                <p class="muted">Ajusta la búsqueda o el filtro para ver otras órdenes aprobadas.</p>
               </div>
               <ul id="receptions-list" class="record-list inbox-list" aria-live="polite"></ul>
             </section>
 
             <section class="card" aria-labelledby="reception-form-heading">
-              <h2 id="reception-form-heading">Registrar recepción</h2>
+              <h2 id="reception-form-heading">Detalle de la orden</h2>
               <input type="hidden" id="reception-order-id" />
               <div class="error" id="error-reception-order" aria-live="polite"></div>
               <div id="reception-detail" class="detail-pane"><p class="muted">Selecciona una orden por recibir.</p></div>
@@ -834,7 +849,7 @@
                 <textarea id="reception-observaciones" rows="2"></textarea>
               </div>
               <div class="form-actions">
-                <button type="button" id="reception-submit-button" class="primary">Registrar recepción</button>
+                <button type="button" id="reception-submit-button" class="primary">Confirmar recepción</button>
               </div>
             </section>
           </div>

@@ -115,6 +115,48 @@ describe('User Story 6 - reception', () => {
     expect(qs('reception-detail').textContent).toContain('motivo del rechazo');
   });
 
+  it('filters approved orders by folio, provider and status', () => {
+    addApprovedOrder();
+    app.applySession(ROLE_FIXTURES.recepcion);
+    qs('nav-receptions').click();
+
+    qs('reception-search').value = '2001';
+    qs('reception-search').dispatchEvent(new dom.window.Event('input'));
+    expect(qs('receptions-list').querySelectorAll('button')).toHaveLength(1);
+
+    qs('reception-search').value = 'proveedor recepcion';
+    qs('reception-search').dispatchEvent(new dom.window.Event('input'));
+    expect(qs('receptions-list').querySelectorAll('button')).toHaveLength(1);
+
+    qs('reception-search').value = 'inexistente';
+    qs('reception-search').dispatchEvent(new dom.window.Event('input'));
+    expect(qs('receptions-list').querySelectorAll('button')).toHaveLength(0);
+    expect(qs('receptions-empty').hidden).toBe(false);
+
+    qs('reception-search').value = '';
+    qs('reception-search').dispatchEvent(new dom.window.Event('input'));
+    qs('reception-status-filter').value = 'recibido parcialmente';
+    qs('reception-status-filter').dispatchEvent(new dom.window.Event('change'));
+    expect(qs('receptions-list').querySelectorAll('button')).toHaveLength(0);
+
+    qs('reception-status-filter').value = 'aprobado';
+    qs('reception-status-filter').dispatchEvent(new dom.window.Event('change'));
+    expect(qs('receptions-list').querySelectorAll('button')).toHaveLength(1);
+  });
+
+  it('confirms the reception with the confirmation button', () => {
+    addApprovedOrder();
+    app.applySession(ROLE_FIXTURES.recepcion);
+    qs('nav-receptions').click();
+    selectFirstOrder();
+
+    expect(qs('reception-submit-button').textContent).toBe('Confirmar recepción');
+    setReception({ cantidadRecibida: '10', cantidadRechazada: '0', motivoRechazo: '' });
+    qs('reception-submit-button').click();
+
+    expect(storage.loadDocuments()[0].status).toBe('recibido');
+  });
+
   it('restricts reception to the receiving role', () => {
     addApprovedOrder();
     app.applySession(ROLE_FIXTURES.solicitante);

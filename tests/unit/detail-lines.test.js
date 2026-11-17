@@ -38,8 +38,8 @@ describe('line subtotal and header cascade', () => {
       discount: 50
     }, DEFAULT_TAX_RATE);
     expect(cab.subtotal).toBe(200);
-    expect(cab.taxAmount).toBe(24);
-    expect(cab.totalAmount).toBe(174);
+    expect(cab.taxAmount).toBe(28.5);
+    expect(cab.totalAmount).toBe(178.5);
   });
 });
 
@@ -92,8 +92,8 @@ describe('documents with detail lines', () => {
     expect(doc.lineasDetalle[0].documento_id).toBe(doc.id);
     expect(doc.lineasDetalle[0].subtotalLinea).toBe(180);
     expect(doc.subtotal).toBe(230);
-    expect(doc.taxAmount).toBe(33.6);
-    expect(doc.totalAmount).toBe(243.6);
+    expect(doc.taxAmount).toBe(39.9);
+    expect(doc.totalAmount).toBe(249.9);
     expect(loadDocuments()[0].lineasDetalle).toHaveLength(2);
   });
 
@@ -110,7 +110,7 @@ describe('documents with detail lines', () => {
       lineasDetalle: [{ producto_id: 'A', descripcion: 'Uno', cantidad: 3, unidadMedida: 'unidades', precioUnitario: 100 }]
     });
     expect(updated.subtotal).toBe(300);
-    expect(updated.totalAmount).toBe(348);
+    expect(updated.totalAmount).toBe(357);
   });
 
   it('keeps manually entered totals when no lines are present', () => {

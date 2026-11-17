@@ -91,8 +91,8 @@ describe('User Story 2 - purchase order with detail lines', () => {
     expect(doc.lineasDetalle[1].subtotalLinea).toBe(50);
     expect(doc.subtotal).toBe(230);
     expect(doc.discount).toBe(50);
-    expect(doc.taxAmount).toBe(28.8);
-    expect(doc.totalAmount).toBe(208.8);
+    expect(doc.taxAmount).toBe(34.2);
+    expect(doc.totalAmount).toBe(214.2);
   });
 
   it('blocks the order when a line is incomplete', () => {
@@ -111,5 +111,33 @@ describe('User Story 2 - purchase order with detail lines', () => {
 
     expect(storage.loadDocuments()).toHaveLength(0);
     expect(qs('document-detail-lines').textContent).toContain('descripción');
+  });
+
+  it('updates the line amount and the CLP breakdown while typing', () => {
+    app.applySession(ROLE_FIXTURES.compras);
+    qs('nav-documents').click();
+    qs('add-detail-line').click();
+    const row = qs('document-detail-lines').querySelector('.detail-line');
+    Object.entries({ cantidad: '2', precioUnitario: '100', porcentajeDescuentoLinea: '10' }).forEach(([field, value]) => {
+      const input = row.querySelector(`[data-field="${field}"]`);
+      input.value = value;
+      input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    });
+
+    expect(row.querySelector('[data-field="subtotalLinea"]').value).toBe('$ 180');
+    expect(qs('subtotal').value).toBe('180');
+
+    qs('discount').value = '50';
+    qs('discount').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+
+    const breakdown = qs('document-totals-breakdown').textContent;
+    expect(breakdown).toContain('Subtotal');
+    expect(breakdown).toContain('Descuento total');
+    expect(breakdown).toContain('Monto Neto');
+    expect(breakdown).toContain('IVA (19%)');
+    expect(breakdown).toContain('Total Final');
+    expect(breakdown).toContain('$ 180');
+    expect(qs('taxAmount').value).toBe('24.7');
+    expect(qs('totalAmount').value).toBe('154.7');
   });
 });
