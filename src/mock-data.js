@@ -8,10 +8,12 @@ import {
   saveUsers
 } from './storage.js';
 import { DEFAULT_TAX_RATE, applyTotalesToCabecera, computeSubtotalLinea } from './module-config.js';
+import { formatRut, rutVerificador } from './rut.js';
 
-const RUT_WEIGHTS = [2, 3, 4, 5, 6, 7];
+export { formatRut, rutVerificador };
+
 const SEED_VERSION_KEY = 'erp_base_module:mockSeedVersion';
-const SEED_VERSION = '2026-11-v4';
+const SEED_VERSION = '2026-11-v5';
 
 export const MOCK_COUNTS = Object.freeze({
   entities: 7,
@@ -26,21 +28,21 @@ const ISSUED_STATUSES = ['aprobado', 'recibido parcialmente', 'recibido', 'factu
 
 const ENTITY_SEEDS = [
   {
-    name: 'Insumos Industriales Biobío SpA', code: 'PROV-001', taxId: '76.432.890-K',
+    name: 'Insumos Industriales Biobío SpA', code: 'PROV-001', taxId: '76.432.890-6',
     categoriaProveedor: 'Ferretería y seguridad industrial', category: 'Ferretería y seguridad industrial',
     vendedorContacto: 'Carlos Mendoza', email: 'cmendoza@insumosbiobio.cl', paymentTerms: '30 días', estado: 'Activo',
     phone: '+56 41 245 1200', address: 'Av. Coral 1200, Concepción',
     description: 'Ferretería y seguridad industrial', targetDate: '2026-12-15', creditLimit: 12000000
   },
   {
-    name: 'Logística y Transportes del Sur Ltda.', code: 'PROV-002', taxId: '77.120.456-7',
+    name: 'Logística y Transportes del Sur Ltda.', code: 'PROV-002', taxId: '77.120.456-2',
     categoriaProveedor: 'Transporte de carga y embalaje', category: 'Transporte de carga y embalaje',
     vendedorContacto: 'Valentina Rojas', email: 'vrojas@transportesdelsur.cl', paymentTerms: '45 días', estado: 'Activo',
     phone: '+56 41 246 8810', address: 'Av. Colmo 750, Concepción',
     description: 'Transporte de carga y embalaje', targetDate: '2026-12-20', creditLimit: 18000000
   },
   {
-    name: 'Tecnología y Redes Concepción S.A.', code: 'PROV-003', taxId: '96.854.120-5',
+    name: 'Tecnología y Redes Concepción S.A.', code: 'PROV-003', taxId: '96.854.120-K',
     categoriaProveedor: 'Equipamiento TI y redes', category: 'Equipamiento TI y redes',
     vendedorContacto: 'Felipe Herrera', email: 'fherrera@tecnoredconce.cl', paymentTerms: 'Contado', estado: 'Activo',
     phone: '+56 41 223 4470', address: 'Av. Alemania 0520, Concepción',
@@ -61,14 +63,14 @@ const ENTITY_SEEDS = [
     description: 'Estructuras metálicas y repuestos', targetDate: '2027-02-01', creditLimit: 18000000
   },
   {
-    name: 'Envases y Embalajes Austral Ltda.', code: 'PROV-006', taxId: '76.219.876-5',
+    name: 'Envases y Embalajes Austral Ltda.', code: 'PROV-006', taxId: '76.219.876-2',
     categoriaProveedor: 'Cartón corrugado y plásticos', category: 'Cartón corrugado y plásticos',
     vendedorContacto: 'Camila Muñoz', email: 'cmunoz@envasesaustral.cl', paymentTerms: '30 días', estado: 'Activo',
     phone: '+56 2 2789 4512', address: 'Av. Costanera Norte 890, Recoleta',
     description: 'Cartón corrugado y plásticos', targetDate: '2027-01-25', creditLimit: 15000000
   },
   {
-    name: 'Servicios de Aseo y Mantención Integral SpA', code: 'PROV-007', taxId: '77.890.123-K',
+    name: 'Servicios de Aseo y Mantención Integral SpA', code: 'PROV-007', taxId: '77.890.123-4',
     categoriaProveedor: 'Insumos químicos y limpieza', category: 'Insumos químicos y limpieza',
     vendedorContacto: 'Andrés Morales', email: 'amorales@mantencionintegral.cl', paymentTerms: '15 días', estado: 'Inactivo',
     phone: '+56 2 2634 1190', address: 'Calle Maipo 1450, San Bernardo',
@@ -169,25 +171,6 @@ function folioLabel(doc){
   return `${doc.series ? `${doc.series}-` : ''}${folio}`;
 }
 
-export function rutVerificador(base){
-  const digits = String(base).replace(/\D/g, '');
-  let sum = 0;
-  for(let i = 0; i < digits.length; i += 1){
-    const digit = Number(digits[digits.length - 1 - i]);
-    sum += digit * RUT_WEIGHTS[i % RUT_WEIGHTS.length];
-  }
-  const result = 11 - (sum % 11);
-  if(result === 11) return '0';
-  if(result === 10) return 'K';
-  return String(result);
-}
-
-export function formatRut(base){
-  const digits = String(base).replace(/\D/g, '');
-  const body = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `${body}-${rutVerificador(digits)}`;
-}
-
 function buildEntities(){
   return ENTITY_SEEDS.map((seed, index) => ({
     id: `mock-entity-${pad(index + 1)}`,
@@ -205,7 +188,7 @@ function buildUsers(){
       username: seed.username,
       name: seed.name,
       email: `${seed.username}@empresa.cl`,
-      rut: formatRut(12345000 + index + 1),
+      rut: formatRut(`${12345000 + index + 1}${rutVerificador(12345000 + index + 1)}`),
       department: seed.department,
       role: seed.role,
       active: seed.active !== false,

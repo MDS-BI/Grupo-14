@@ -156,4 +156,44 @@ describe('User Story 1 - users and permissions', () => {
     expect(qs('users-message').textContent).toContain('pendientes');
     expect(storage.loadUsers()[0].active).toBe(true);
   });
+
+  it('formats the user RUT while typing', () => {
+    qs('nav-users').click();
+    const input = qs('user-rut');
+    for(const digit of '123456785'){
+      input.value += digit;
+      input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    }
+    expect(input.value).toBe('12.345.678-5');
+  });
+
+  it('explains when the user RUT has an invalid verification digit', () => {
+    qs('nav-users').click();
+    qs('user-username').value = 'ana';
+    qs('user-name').value = 'Ana';
+    qs('user-role').value = 'solicitante';
+    qs('user-rut').value = '12.345.678-9';
+    submit(qs('user-form'));
+
+    expect(storage.loadUsers()).toHaveLength(0);
+    expect(qs('error-user-rut').textContent).toContain('no es válido');
+  });
+
+  it('explains when the user RUT is already registered', () => {
+    qs('nav-users').click();
+    qs('user-username').value = 'ana';
+    qs('user-name').value = 'Ana';
+    qs('user-role').value = 'solicitante';
+    qs('user-rut').value = '12.345.678-5';
+    submit(qs('user-form'));
+    expect(storage.loadUsers()).toHaveLength(1);
+
+    qs('user-username').value = 'otro';
+    qs('user-name').value = 'Otro Usuario';
+    qs('user-rut').value = '12345678-5';
+    submit(qs('user-form'));
+
+    expect(storage.loadUsers()).toHaveLength(1);
+    expect(qs('error-user-rut').textContent).toContain('ya está registrado');
+  });
 });

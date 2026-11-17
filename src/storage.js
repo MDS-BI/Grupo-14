@@ -1,5 +1,6 @@
 import { getConfig, computeSubtotalLinea, applyTotalesToCabecera, DEFAULT_TAX_RATE } from './module-config.js';
 import { can, currentUser, ROLE_KEYS, PERMISSIONS } from './auth.js';
+import { cleanRut, validateRut } from './rut.js';
 
 const ENTITIES_KEY = 'erp_base_module:entities';
 const DOCUMENTS_KEY = 'erp_base_module:documents';
@@ -116,11 +117,6 @@ function isValidEmail(value){
 // Usuarios y permisos (HU1)
 // ---------------------------------------------------------------------------
 
-function isValidRut(value){
-  const rut = String(value || '').trim();
-  return /^\d{7,8}-[\dkK]$/.test(rut) || /^\d{1,2}(\.\d{3}){2}-[\dkK]$/.test(rut);
-}
-
 export function validateUser(payload, existingId){
   const errors = {};
   const username = String(payload.username || '').trim();
@@ -137,7 +133,10 @@ export function validateUser(payload, existingId){
   if(!name) errors.name = 'El nombre es obligatorio';
   if(!ROLE_KEYS.includes(role)) errors.role = `El rol debe ser uno de: ${ROLE_KEYS.join(', ')}`;
   if(email && !isValidEmail(email)) errors.email = 'El correo electrónico no es válido';
-  if(rut && !isValidRut(rut)) errors.rut = 'El RUT debe tener formato 12.345.678-9';
+  if(rut){
+    if(!validateRut(rut)) errors.rut = 'El RUT no es válido';
+    else if(loadUsers().some(u => u.id !== existingId && cleanRut(u.rut) === cleanRut(rut))) errors.rut = 'El RUT ya está registrado';
+  }
   if(department && !DEPARTMENTS.includes(department)) errors.department = `El departamento debe ser uno de: ${DEPARTMENTS.join(', ')}`;
   return { valid: Object.keys(errors).length === 0, errors };
 }
@@ -227,10 +226,15 @@ export function touchUserAccess(id){
 // Entidades (proveedores)
 // ---------------------------------------------------------------------------
 
-export function validateEntity({name, code, email, targetDate, creditLimit, ...rest}){
+export function validateEntity({name, code, taxId, email, targetDate, creditLimit, ...rest}, existingId){
   const errors = {};
   if(!name || !name.trim()) errors.name = 'El nombre es obligatorio';
   if(!code || !code.trim()) errors.code = 'El código es obligatorio';
+  const rut = String(taxId || '').trim();
+  if(rut){
+    if(!validateRut(rut)) errors.taxId = 'El RUT no es válido';
+    else if(loadEntities().some(e => e.id !== existingId && cleanRut(e.taxId) === cleanRut(rut))) errors.taxId = 'El RUT ya está registrado';
+  }
   if(!isEmpty(email) && !isValidEmail(email)) errors.email = 'El correo electrónico no es válido';
   if(!isEmpty(targetDate) && !isValidDate(targetDate)) errors.targetDate = 'La fecha objetivo debe ser una fecha válida (YYYY-MM-DD)';
   if(!isEmpty(creditLimit)){

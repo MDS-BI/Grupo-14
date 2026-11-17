@@ -316,10 +316,11 @@
                       <input id="code" name="code" required />
                       <div class="error" id="error-code" aria-live="polite"></div>
                     </div>
-                    <div>
-                      <label for="taxId">Identificación fiscal</label>
-                      <input id="taxId" name="taxId" />
-                    </div>
+      <div>
+        <label for="taxId">RUT</label>
+        <input id="taxId" name="taxId" placeholder="12.345.678-5" autocomplete="off" />
+        <div class="error" id="error-taxId" aria-live="polite"></div>
+      </div>
                   </div>
                 </fieldset>
 
@@ -609,9 +610,9 @@
                     <div class="error" id="error-user-email" aria-live="polite"></div>
                   </div>
                   <div>
-                    <label for="user-rut">RUT</label>
-                    <input id="user-rut" placeholder="12.345.678-9" autocomplete="off" />
-                    <div class="error" id="error-user-rut" aria-live="polite"></div>
+      <label for="user-rut">RUT</label>
+      <input id="user-rut" placeholder="12.345.678-5" autocomplete="off" />
+      <div class="error" id="error-user-rut" aria-live="polite"></div>
                   </div>
                   <div>
                     <label for="user-department">Departamento</label>

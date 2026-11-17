@@ -51,7 +51,7 @@ describe('User Story 1 - create and organize entities', () => {
     qs('nav-entities').click();
     qs('name').value = 'Acme';
     qs('code').value = 'AC-001';
-    qs('taxId').value = 'RFC800101AB1';
+    qs('taxId').value = '12.345.678-5';
     qs('email').value = 'ventas@acme.mx';
     qs('phone').value = '555-1234';
     qs('address').value = 'Av. Reforma 100';
@@ -61,7 +61,7 @@ describe('User Story 1 - create and organize entities', () => {
     qs('cf-vendedorContacto').value = 'Laura Pérez';
     qs('entity-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
     const saved = loadEntities()[0];
-    expect(saved.taxId).toBe('RFC800101AB1');
+    expect(saved.taxId).toBe('12.345.678-5');
     expect(saved.email).toBe('ventas@acme.mx');
     expect(saved.phone).toBe('555-1234');
     expect(saved.address).toBe('Av. Reforma 100');
@@ -89,5 +89,46 @@ describe('User Story 1 - create and organize entities', () => {
     expect(loadEntities().length).toBe(0);
     expect(qs('error-name').textContent).toContain('obligatorio');
     expect(qs('error-code').textContent).toContain('obligatorio');
+  });
+
+  it('formats the RUT while typing', () => {
+    qs('nav-entities').click();
+    const input = qs('taxId');
+    for(const digit of '123456785'){
+      input.value += digit;
+      input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    }
+    expect(input.value).toBe('12.345.678-5');
+  });
+
+  it('explains when the provider RUT has an invalid verification digit', () => {
+    qs('nav-entities').click();
+    qs('name').value = 'Acme';
+    qs('code').value = 'AC-001';
+    qs('taxId').value = '12.345.678-9';
+    qs('cf-categoriaProveedor').value = 'Servicios';
+    qs('entity-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+
+    expect(loadEntities()).toHaveLength(0);
+    expect(qs('error-taxId').textContent).toContain('no es válido');
+  });
+
+  it('explains when the provider RUT is already registered', () => {
+    qs('nav-entities').click();
+    qs('name').value = 'Acme';
+    qs('code').value = 'AC-001';
+    qs('taxId').value = '12.345.678-5';
+    qs('cf-categoriaProveedor').value = 'Servicios';
+    qs('entity-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    expect(loadEntities()).toHaveLength(1);
+
+    qs('name').value = 'Otra Acme';
+    qs('code').value = 'AC-002';
+    qs('taxId').value = '12345678-5';
+    qs('cf-categoriaProveedor').value = 'Servicios';
+    qs('entity-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+
+    expect(loadEntities()).toHaveLength(1);
+    expect(qs('error-taxId').textContent).toContain('ya está registrado');
   });
 });

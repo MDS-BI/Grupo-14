@@ -23,7 +23,7 @@ export function clearEntityForm(){
 }
 
 export function clearEntityErrors(){
-  ['name', 'code', 'email', 'targetDate', 'creditLimit'].forEach(f => { qs(`error-${f}`).textContent = ''; });
+  ['name', 'code', 'taxId', 'email', 'targetDate', 'creditLimit'].forEach(f => { qs(`error-${f}`).textContent = ''; });
   clearCustomFieldErrors(qs('entity-custom-fields'));
 }
 
@@ -68,6 +68,7 @@ export function collectEntityPayload(){
 export function showEntityErrors(errors){
   qs('error-name').textContent = errors.name || '';
   qs('error-code').textContent = errors.code || '';
+  qs('error-taxId').textContent = errors.taxId || '';
   qs('error-email').textContent = errors.email || '';
   qs('error-targetDate').textContent = errors.targetDate || '';
   qs('error-creditLimit').textContent = errors.creditLimit || '';

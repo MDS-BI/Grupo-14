@@ -9,6 +9,7 @@ import {
   approveDocument, cancelDocument
 } from './storage.js';
 import { can, setSession, resetSession, getSession, PERMISSIONS, roleLabel } from './auth.js';
+import { attachRutFormatting } from './rut.js';
 import { ensureMockData, injectMockData } from './mock-data.js';
 import { clearEntityForm, startEntityEdit, collectEntityPayload, showEntityErrors } from './components/entity-form.js';
 import { createEntityItem, filterEntities, renderEntityTable, renderEntityDetail } from './components/entity-list.js';
@@ -599,7 +600,7 @@ function handleEntitySubmit(ev){
   ev.preventDefault();
   const id = qs('entity-id').value;
   const payload = collectEntityPayload();
-  const { valid, errors } = validateEntity(payload);
+  const { valid, errors } = validateEntity(payload, id || undefined);
   showEntityErrors(errors);
   if(!valid) return;
   if(id){
@@ -704,6 +705,8 @@ function wireEvents(){
   qs('action-open-receptions').addEventListener('click', () => showModule('receptions'));
   qs('action-open-users').addEventListener('click', () => showModule('users', { newRecord: true }));
   qs('action-load-mock-data').addEventListener('click', handleLoadMockData);
+  attachRutFormatting(qs('taxId'));
+  attachRutFormatting(qs('user-rut'));
   qs('entity-form').addEventListener('submit', handleEntitySubmit);
   qs('cancel-edit').addEventListener('click', clearEntityForm);
   qs('entity-table-search').addEventListener('input', refreshEntities);
