@@ -7,6 +7,12 @@ function num(value){
   return Number.isFinite(n) ? n : 0;
 }
 
+const clpFormatter = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 });
+
+export function formatCLP(value){
+  return `$ ${clpFormatter.format(num(value)).replace(/\u00a0/g, ' ')}`;
+}
+
 function field(label, input, errorId){
   const wrap = document.createElement('div');
   const lab = document.createElement('label');
@@ -75,15 +81,15 @@ function createRow(line = {}, index){
   subtotal.type = 'text';
   subtotal.readOnly = true;
   subtotal.dataset.field = 'subtotalLinea';
-  subtotal.value = String(line.subtotalLinea !== undefined ? line.subtotalLinea : computeSubtotalLinea(line));
+  subtotal.value = formatCLP(line.subtotalLinea !== undefined ? line.subtotalLinea : computeSubtotalLinea(line));
 
   row.appendChild(field('Producto *', producto, `error-linea-${index}-producto_id`));
   row.appendChild(field('Descripción *', descripcion, `error-linea-${index}-descripcion`));
   row.appendChild(field('Cantidad *', cantidad, `error-linea-${index}-cantidad`));
-  row.appendChild(field('Unidad *', unidad, `error-linea-${index}-unidadMedida`));
-  row.appendChild(field('Precio unitario *', precio, `error-linea-${index}-precioUnitario`));
+  row.appendChild(field('Precio Unitario *', precio, `error-linea-${index}-precioUnitario`));
   row.appendChild(field('% Descuento', pct, `error-linea-${index}-porcentajeDescuentoLinea`));
-  row.appendChild(field('Subtotal de línea', subtotal));
+  row.appendChild(field('Unidad *', unidad, `error-linea-${index}-unidadMedida`));
+  row.appendChild(field('Importe', subtotal));
 
   const removeWrap = document.createElement('div');
   removeWrap.className = 'detail-line-remove';
@@ -100,7 +106,7 @@ function createRow(line = {}, index){
   row.appendChild(removeWrap);
 
   [cantidad, precio, pct].forEach(input => input.addEventListener('input', () => {
-    subtotal.value = String(computeSubtotalLinea(readRow(row)));
+    subtotal.value = formatCLP(computeSubtotalLinea(readRow(row)));
     syncDocumentTotalsFromLines(row.parentElement);
   }));
 
@@ -168,10 +174,41 @@ export function clearDetailLineErrors(container){
   showDetailLineErrors(container, {});
 }
 
+function renderTotalsBreakdown(cab){
+  const container = qs('document-totals-breakdown');
+  if(!container) return;
+  const neto = Math.max(num(cab.subtotal) - num(cab.discount), 0);
+  const rows = [
+    ['Subtotal', cab.subtotal],
+    ['Descuento total', cab.discount],
+    ['Monto Neto', neto],
+    ['IVA (19%)', cab.taxAmount],
+    ['Total Final', cab.totalAmount]
+  ];
+  const list = document.createElement('dl');
+  list.className = 'totals-breakdown-list';
+  rows.forEach(([label, value]) => {
+    const row = document.createElement('div');
+    row.className = 'totals-breakdown-row';
+    const term = document.createElement('dt');
+    term.textContent = label;
+    const detail = document.createElement('dd');
+    detail.textContent = formatCLP(value);
+    row.append(term, detail);
+    list.appendChild(row);
+  });
+  container.innerHTML = '';
+  container.appendChild(list);
+}
+
 export function syncDocumentTotalsFromLines(container){
   if(!container) return;
   const lineas = [...container.querySelectorAll('.detail-line')].map(readRow);
-  if(lineas.length === 0) return;
+  if(lineas.length === 0){
+    const empty = qs('document-totals-breakdown');
+    if(empty) empty.innerHTML = '<p class="muted">Agrega líneas para ver el desglose automático.</p>';
+    return;
+  }
   const prepared = lineas.map(l => ({ ...l, subtotalLinea: computeSubtotalLinea(l) }));
   const discount = num(qs('discount') ? qs('discount').value : 0);
   const cab = applyTotalesToCabecera({ lineasDetalle: prepared, discount }, DEFAULT_TAX_RATE);
@@ -181,8 +218,9 @@ export function syncDocumentTotalsFromLines(container){
   lineas.forEach((l, i) => {
     const row = container.querySelectorAll('.detail-line')[i];
     const out = row && row.querySelector('[data-field="subtotalLinea"]');
-    if(out) out.value = String(computeSubtotalLinea(l));
+    if(out) out.value = formatCLP(computeSubtotalLinea(l));
   });
+  renderTotalsBreakdown(cab);
 }
 
 export { subtotalFromLineas };

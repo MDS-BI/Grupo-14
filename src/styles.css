@@ -706,6 +706,25 @@ button.danger:hover { background: var(--red-soft); border-color: var(--red); }
 .detail-line-remove { display: flex; align-items: flex-end; }
 .detail-line-remove button { width: 100%; min-height: 38px; }
 
+.totals-breakdown {
+  margin-top: 18px; padding: 16px 18px;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--r-md); box-shadow: var(--shadow-sm);
+}
+.totals-breakdown-list { margin: 0; }
+.totals-breakdown-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  padding: 7px 0; border-bottom: 1px dashed var(--border);
+}
+.totals-breakdown-row:last-child { border-bottom: 0; }
+.totals-breakdown-row dt { color: var(--muted); font-size: 0.86rem; }
+.totals-breakdown-row dd {
+  margin: 0; font-family: var(--font-mono); font-size: 0.92rem;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.totals-breakdown-row:last-child dt { color: var(--ink); font-weight: 650; }
+.totals-breakdown-row:last-child dd { color: var(--accent-strong); font-size: 1.05rem; font-weight: 700; }
+
 /* ==========================================================================
    Listas de registros
    ========================================================================== */
