@@ -34,3 +34,31 @@ Los m贸dulos ERP personalizados adaptan la base mediante un 煤nico archivo de co
 5. A帽ada reglas de validaci贸n espec铆ficas del m贸dulo junto a las reglas base donde sea necesario.
 
 La generaci贸n de identidad, marcas de tiempo, integridad referencial entre entidades y documentos, eliminaci贸n en cascada, navegaci贸n y b煤squeda siguen siendo gestionadas por el m贸dulo base. Sin archivo de configuraci贸n, la aplicaci贸n se ejecuta con el comportamiento predeterminado Entidad/Documento. Consulte `specs/001-erp-base-module/` para la especificaci贸n completa.
+
+## Administraci髇 de usuarios y permisos
+
+1. Abra **Usuarios** en la barra lateral (visible para el rol administrador).
+2. Cree usuarios con nombre, cuenta y rol; use **Editar** para cambiar el rol.
+3. Un usuario con documentos pendientes asignados no puede desactivarse: el sistema explica el motivo.
+4. Al iniciar sesi髇 como un rol distinto, las vistas y acciones no autorizadas quedan fuera de alcance.
+
+## Orden de compra con l韓eas de detalle
+
+1. Abra **觬denes de Compra** y seleccione un proveedor.
+2. Agregue una o m醩 l韓eas con producto, descripci髇, cantidad, unidad, precio y descuento.
+3. El subtotal, impuesto y total se calculan en cascada al guardar; las l韓eas quedan persistidas dentro del documento.
+
+## Aprobaciones y justificaci髇
+
+1. Registre una **Solicitud de Cotizaci髇**; la justificaci髇 y el departamento son obligatorios.
+2. La solicitud se guarda en estado **pendiente de aprobaci髇**.
+3. En **Aprobaciones** revise la justificaci髇 y las l韓eas antes de decidir.
+4. Aprobar valida identificaci髇 fiscal, categor韆, condiciones de pago y l韒ite de cr閐ito del proveedor, y asigna el folio oficial `OC-XXXX`.
+5. Rechazar exige un motivo, que queda registrado en el historial.
+
+## Recepci髇 de productos
+
+1. Abra **Recepci髇** y seleccione una orden aprobada con l韓eas.
+2. Registre cantidades recibidas por l韓ea; el sistema muestra solicitado, recibido acumulado y pendiente.
+3. Una recepci髇 parcial mantiene la orden en estado aprobado; al completar todas las l韓eas cambia a **recibido**.
+4. Cada recepci髇 conserva fecha, cantidades, observaciones y motivo de rechazo por l韓ea.

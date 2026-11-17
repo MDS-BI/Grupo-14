@@ -1,4 +1,5 @@
 import { renderCustomFields, collectCustomFields, showCustomFieldErrors, clearCustomFieldErrors } from './custom-fields.js';
+import { renderLineasDetalle, collectLineasDetalle, clearLineasErrors } from './detail-lines.js';
 import { getConfig } from '../module-config.js';
 
 function qs(id){ return document.getElementById(id); }
@@ -69,14 +70,16 @@ export function clearDocumentForm(){
   qs('currency').value = '';
   qs('docPaymentTerms').value = '';
   qs('notes').value = '';
+  qs('justificacion').value = '';
   clearDocumentErrors();
   renderCustomFields(qs('document-custom-fields'), 'document');
+  renderLineasDetalle(qs('document-lineas'), []);
   renderStatusControl('');
   qs('document-cancel-edit').hidden = true;
   qs('document-submit-button').textContent = 'Guardar Documento';
 }
 
-const DOCUMENT_ERROR_FIELDS = ['entityId', 'folio', 'startDate', 'endDate', 'quantity', 'subtotal', 'discount', 'taxAmount', 'totalAmount', 'status'];
+const DOCUMENT_ERROR_FIELDS = ['entityId', 'folio', 'startDate', 'endDate', 'quantity', 'subtotal', 'discount', 'taxAmount', 'totalAmount', 'status', 'justificacion', 'lineasDetalle'];
 
 export function clearDocumentErrors(){
   DOCUMENT_ERROR_FIELDS.forEach(f => {
@@ -85,6 +88,7 @@ export function clearDocumentErrors(){
     if(el) el.textContent = '';
   });
   clearCustomFieldErrors(qs('document-custom-fields'));
+  clearLineasErrors(qs('document-lineas'));
 }
 
 export function startDocumentEdit(doc){
@@ -104,6 +108,8 @@ export function startDocumentEdit(doc){
   qs('currency').value = doc.currency || '';
   qs('docPaymentTerms').value = doc.paymentTerms || '';
   qs('notes').value = doc.notes || '';
+  qs('justificacion').value = doc.justificacion || '';
+  renderLineasDetalle(qs('document-lineas'), doc.lineasDetalle || []);
   renderStatusControl(doc.status);
   setStatusValue(doc.status);
   clearDocumentErrors();
@@ -131,7 +137,9 @@ export function collectDocumentPayload(){
     currency: qs('currency').value,
     paymentTerms: qs('docPaymentTerms').value,
     notes: qs('notes').value,
+    justificacion: qs('justificacion') ? qs('justificacion').value : '',
     status: qs('status') ? qs('status').value : '',
+    lineasDetalle: collectLineasDetalle(qs('document-lineas')),
     ...collectCustomFields(qs('document-custom-fields'), 'document')
   };
 }

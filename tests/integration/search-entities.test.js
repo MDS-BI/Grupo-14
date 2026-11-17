@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
-import { addEntity } from '../../src/storage.js';
+import { addEntity, addDocument } from '../../src/storage.js';
 
 const html = fs.readFileSync(fileURLToPath(new URL('../../index.html', import.meta.url)), 'utf8');
 
@@ -69,6 +69,25 @@ describe('User Story 8 - search and find entities quickly', () => {
     expect(items.length).toBe(1);
     expect(items[0].textContent).toContain('IT-0499');
     expect(elapsed).toBeLessThan(1000);
+  });
+
+  it('searches documents by folio and justification', () => {
+    const entity = addEntity({ name: 'Acme', code: 'AC-001' });
+    addDocument({
+      entityId: entity.entity_id,
+      series: 'OC',
+      folio: 1001,
+      startDate: '2026-08-01',
+      endDate: '2026-08-05',
+      justificacion: 'Compra de insumos críticos'
+    });
+    qs('nav-search').click();
+    qs('doc-search-input').value = 'insumos';
+    qs('doc-search-input').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    const items = [...qs('doc-search-results-list').querySelectorAll('.document-item')];
+    expect(items.length).toBe(1);
+    expect(items[0].textContent).toContain('Compra de insumos críticos');
+    expect(qs('doc-search-empty').hidden).toBe(true);
   });
 
   it('keeps search results in sync with create and delete actions', () => {

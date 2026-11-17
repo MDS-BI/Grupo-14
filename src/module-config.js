@@ -60,7 +60,11 @@ export const userConfig = {
     { target: 'document', key: 'prioridad', label: 'Prioridad', type: 'select', options: ['Normal', 'Urgente'] },
     // Divisas y tipos de cambio: congelan el costo de la compra y su trazabilidad
     { target: 'document', key: 'tipoCambio', label: 'Tipo de cambio', type: 'number' },
-    { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
+    { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true },
+    // Aprobación departamental
+    { target: 'document', key: 'departamento', label: 'Departamento', type: 'text' },
+    { target: 'document', key: 'solicitante', label: 'Solicitante', type: 'text' },
+    { target: 'document', key: 'presupuestoDisponible', label: 'Presupuesto disponible', type: 'number' }
   ],
   statusLifecycle: {
     statuses: ['borrador', 'cotización', 'aprobado', 'recibido', 'facturado', 'cancelado'],
@@ -72,6 +76,14 @@ export const userConfig = {
       facturado: [],
       cancelado: []
     }
+  },
+  justificacion: { requiredFor: ['Solicitud de Cotización'] },
+  tasaImpuesto: 0.16,
+  monedaLocal: 'MXN',
+  lineasDetalle: {
+    label: 'Líneas de detalle',
+    unidadesMedida: ['unidades', 'cajas', 'litros', 'kg', 'metros'],
+    maxPorcentajeDescuento: 100
   },
   theme: { accentColor: '#0f766e' }
 };
@@ -90,6 +102,10 @@ export const DEFAULT_CONFIG = Object.freeze({
   }),
   customFields: Object.freeze([]),
   statusLifecycle: null,
+  roles: Object.freeze({}),
+  justificacion: Object.freeze({ requiredFor: Object.freeze([]) }),
+  tasaImpuesto: 0,
+  monedaLocal: 'MXN',
   lineasDetalle: Object.freeze({
     label: 'Líneas de detalle',
     unidadesMedida: Object.freeze([]),
@@ -233,6 +249,68 @@ function validateLifecycle(raw, errors){
   return { statuses: [...raw.statuses], transitions };
 }
 
+function validateRoles(raw, errors){
+  if(raw === null || raw === undefined) return structuredClone(DEFAULT_CONFIG.roles);
+  if(typeof raw !== 'object'){
+    errors.push('roles debe ser un objeto que mapee clave de rol -> definición');
+    return structuredClone(DEFAULT_CONFIG.roles);
+  }
+  const out = {};
+  for(const [key, value] of Object.entries(raw)){
+    if(!isNonEmptyString(key)){
+      errors.push('roles contiene una clave de rol vacía');
+      continue;
+    }
+    if(!value || typeof value !== 'object'){
+      errors.push(`roles.${key} debe ser un objeto`);
+      continue;
+    }
+    if(value.label !== undefined && !isNonEmptyString(value.label)){
+      errors.push(`roles.${key}.label debe ser una cadena no vacía`);
+      continue;
+    }
+    if(value.permissions !== undefined
+      && (!Array.isArray(value.permissions) || !value.permissions.every(isNonEmptyString))){
+      errors.push(`roles.${key}.permissions debe ser un arreglo de cadenas`);
+      continue;
+    }
+    out[key] = {
+      label: value.label ? value.label.trim() : key,
+      permissions: Array.isArray(value.permissions) ? value.permissions.map(p => p.trim()) : []
+    };
+    if(value.description !== undefined){
+      if(isNonEmptyString(value.description)) out[key].description = value.description.trim();
+      else errors.push(`roles.${key}.description debe ser una cadena no vacía`);
+    }
+    if(value.story !== undefined){
+      if(isNonEmptyString(value.story)) out[key].story = value.story.trim();
+      else errors.push(`roles.${key}.story debe ser una cadena no vacía`);
+    }
+    if(value.capabilities !== undefined){
+      if(Array.isArray(value.capabilities) && value.capabilities.every(isNonEmptyString)){
+        out[key].capabilities = value.capabilities.map(c => c.trim());
+      } else {
+        errors.push(`roles.${key}.capabilities debe ser un arreglo de cadenas`);
+      }
+    }
+  }
+  return out;
+}
+
+function validateJustificacion(raw, errors){
+  if(raw === null || raw === undefined) return { requiredFor: [] };
+  if(typeof raw !== 'object'){
+    errors.push('justificacion debe ser un objeto');
+    return { requiredFor: [] };
+  }
+  const requiredFor = raw.requiredFor === undefined || raw.requiredFor === null ? [] : raw.requiredFor;
+  if(!Array.isArray(requiredFor) || !requiredFor.every(isNonEmptyString)){
+    errors.push('justificacion.requiredFor debe ser un arreglo de cadenas');
+    return { requiredFor: [] };
+  }
+  return { requiredFor: requiredFor.map(t => t.trim()) };
+}
+
 function validateTheme(raw, errors){
   if(raw === null || raw === undefined) return structuredClone(DEFAULT_CONFIG.theme);
   if(typeof raw !== 'object'){
@@ -280,6 +358,24 @@ export function normalizeConfig(raw){
   if(raw.statusLifecycle !== undefined){
     const lc = validateLifecycle(raw.statusLifecycle, errors);
     if(lc) cfg.statusLifecycle = lc;
+  }
+  if(raw.roles !== undefined){
+    cfg.roles = validateRoles(raw.roles, errors);
+  }
+  if(raw.justificacion !== undefined){
+    cfg.justificacion = validateJustificacion(raw.justificacion, errors);
+  }
+  if(raw.tasaImpuesto !== undefined){
+    const tasa = Number(raw.tasaImpuesto);
+    if(!Number.isFinite(tasa) || tasa < 0 || tasa > 1){
+      errors.push('tasaImpuesto debe ser un número entre 0 y 1');
+    } else {
+      cfg.tasaImpuesto = tasa;
+    }
+  }
+  if(raw.monedaLocal !== undefined){
+    if(!isNonEmptyString(raw.monedaLocal)) errors.push('monedaLocal debe ser una cadena no vacía');
+    else cfg.monedaLocal = raw.monedaLocal.trim();
   }
   if(raw.lineasDetalle !== undefined){
     cfg.lineasDetalle = validateLineasDetalle(raw.lineasDetalle, errors);

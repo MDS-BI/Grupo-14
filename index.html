@@ -14,6 +14,11 @@
           <span id="logo-mark" class="logo-mark" aria-hidden="true"></span>
           <span id="brand-name" class="brand-name">Módulo Base ERP</span>
         </div>
+        <div class="profile-switcher">
+          <label for="active-profile-select">Perfil activo</label>
+          <select id="active-profile-select" aria-label="Perfil activo"></select>
+          <button type="button" id="open-profile" class="secondary">Mi perfil</button>
+        </div>
       </header>
 
       <aside class="sidebar">
@@ -34,6 +39,18 @@
             <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="5"></circle><path d="m12.8 12.8 4.2 4.2"></path></svg>
             <span class="nav-label" id="nav-search-label">Búsqueda</span>
           </button>
+          <button type="button" class="nav-extra" data-module="approvals" id="nav-approvals">
+            <span class="nav-label">Aprobaciones</span>
+          </button>
+          <button type="button" class="nav-extra" data-module="reception" id="nav-reception">
+            <span class="nav-label">Recepción</span>
+          </button>
+          <button type="button" class="nav-extra" data-module="profile" id="nav-profile">
+            <span class="nav-label">Mi perfil</span>
+          </button>
+          <button type="button" class="nav-extra" data-module="users" id="nav-users">
+            <span class="nav-label">Usuarios</span>
+          </button>
         </nav>
       </aside>
 
@@ -50,6 +67,14 @@
             <div class="stat-card">
               <span class="stat-value" id="stat-documents">0</span>
               <span class="stat-label" id="stat-documents-label">Documentos</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-pending-approvals">0</span>
+              <span class="stat-label">Pendientes de aprobación</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-pending-reception">0</span>
+              <span class="stat-label">Órdenes por recibir</span>
             </div>
           </div>
 
@@ -222,6 +247,12 @@
                 <label for="notes">Notas</label>
                 <textarea id="notes" name="notes" rows="2"></textarea>
               </div>
+              <div>
+                <label for="justificacion">Justificación</label>
+                <textarea id="justificacion" name="justificacion" rows="2" placeholder="Obligatoria para solicitudes de cotización"></textarea>
+                <div class="error" id="error-justificacion" aria-live="polite"></div>
+              </div>
+              <div id="document-lineas" class="card-inner"></div>
               <div id="document-status-control"></div>
               <div id="document-custom-fields"></div>
               <div class="form-actions">
@@ -256,6 +287,113 @@
             <h2 id="results-heading">Resultados</h2>
             <div id="search-empty" class="empty" hidden>Sin coincidencias para tu búsqueda.</div>
             <ul id="search-results-list" aria-live="polite"></ul>
+          </section>
+
+          <section class="card" aria-labelledby="doc-search-heading">
+            <h2 id="doc-search-heading">Buscar documentos</h2>
+            <input id="doc-search-input" name="doc-search-input" placeholder="Buscar por folio, serie, estado, notas..." aria-label="Buscar documentos" />
+            <div id="doc-search-empty" class="empty" hidden>Sin documentos que coincidan.</div>
+            <ul id="doc-search-results-list" aria-live="polite"></ul>
+          </section>
+        </section>
+
+        <section id="view-approvals" aria-labelledby="approvals-view-heading" hidden>
+          <h1 id="approvals-view-heading">Aprobaciones</h1>
+          <section class="card" aria-labelledby="approval-inbox-heading">
+            <h2 id="approval-inbox-heading">Solicitudes pendientes</h2>
+            <div id="approval-empty" class="empty" hidden>No hay solicitudes pendientes de aprobación.</div>
+            <ul id="approval-list" aria-live="polite"></ul>
+            <div class="error" id="error-approval" aria-live="polite"></div>
+          </section>
+        </section>
+
+        <section id="view-reception" aria-labelledby="reception-view-heading" hidden>
+          <h1 id="reception-view-heading">Recepción de órdenes</h1>
+          <section class="card" aria-labelledby="reception-form-heading">
+            <h2 id="reception-form-heading">Registrar recepción</h2>
+            <div>
+              <label for="reception-document">Orden de compra aprobada</label>
+              <select id="reception-document"></select>
+              <div class="error" id="error-reception-document" aria-live="polite"></div>
+            </div>
+            <div>
+              <label for="reception-date">Fecha de recepción *</label>
+              <input id="reception-date" type="date" />
+              <div class="error" id="error-reception-date" aria-live="polite"></div>
+            </div>
+            <div id="reception-lines"></div>
+            <div>
+              <label for="reception-notes">Notas</label>
+              <textarea id="reception-notes" rows="2"></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="button" id="reception-submit" class="primary">Registrar recepción</button>
+            </div>
+            <div class="error" id="error-reception" aria-live="polite"></div>
+          </section>
+          <section class="card" aria-labelledby="reception-history-heading">
+            <h2 id="reception-history-heading">Historial de recepciones</h2>
+            <div id="reception-history-empty" class="empty" hidden>Sin recepciones registradas.</div>
+            <ul id="reception-history" aria-live="polite"></ul>
+          </section>
+        </section>
+
+        <section id="view-profile" aria-labelledby="profile-view-heading" hidden>
+          <h1 id="profile-view-heading">Perfil de usuario</h1>
+          <section class="card" aria-labelledby="profile-current-heading">
+            <h2 id="profile-current-heading">Perfil activo</h2>
+            <div id="profile-current"></div>
+            <div class="profile-switch-field">
+              <label for="profile-view-select">Cambiar perfil activo</label>
+              <select id="profile-view-select"></select>
+              <p class="muted">El perfil activo determina los módulos y acciones disponibles según el rol.</p>
+            </div>
+          </section>
+          <section class="card" aria-labelledby="profile-roles-heading">
+            <h2 id="profile-roles-heading">Perfiles según las historias de usuario</h2>
+            <ul id="profile-role-list" class="profile-role-list" aria-live="polite"></ul>
+          </section>
+        </section>
+
+        <section id="view-users" aria-labelledby="users-view-heading" hidden>
+          <h1 id="users-view-heading">Usuarios y roles</h1>
+          <section class="card" aria-labelledby="user-form-heading">
+            <h2 id="user-form-heading">Agregar / Editar usuario</h2>
+            <form id="user-form">
+              <input type="hidden" id="user-id" />
+              <div>
+                <label for="user-username">Usuario *</label>
+                <input id="user-username" />
+                <div class="error" id="error-user-username" aria-live="polite"></div>
+              </div>
+              <div>
+                <label for="user-name">Nombre *</label>
+                <input id="user-name" />
+                <div class="error" id="error-user-name" aria-live="polite"></div>
+              </div>
+              <div>
+                <label for="user-role">Rol *</label>
+                <select id="user-role"></select>
+                <div class="error" id="error-user-role" aria-live="polite"></div>
+              </div>
+              <div>
+                <label for="user-departamento">Departamento</label>
+                <input id="user-departamento" placeholder="p. ej., Producción" />
+              </div>
+              <div>
+                <label><input type="checkbox" id="user-active" checked /> Activo</label>
+              </div>
+              <div class="form-actions">
+                <button type="submit" id="user-submit" class="primary">Guardar usuario</button>
+                <button type="button" id="user-cancel" class="secondary" hidden>Cancelar edición</button>
+              </div>
+            </form>
+          </section>
+          <section class="card" aria-labelledby="user-list-heading">
+            <h2 id="user-list-heading">Usuarios registrados</h2>
+            <div id="user-empty" class="empty" hidden>Sin usuarios. El sistema opera como administrador único.</div>
+            <ul id="user-list" aria-live="polite"></ul>
+            <div class="error" id="error-user-list" aria-live="polite"></div>
           </section>
         </section>
       </main>
