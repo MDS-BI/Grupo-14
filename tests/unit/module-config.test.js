@@ -147,8 +147,9 @@ describe('module-config', () => {
     it('expone el ciclo de vida de estados del flujo de compras', async () => {
       const { config, errors } = await loadModuleConfig();
       expect(errors).toEqual([]);
-      expect(config.statusLifecycle.statuses).toEqual(['borrador', 'cotización', 'aprobado', 'recibido', 'facturado', 'cancelado']);
+      expect(config.statusLifecycle.statuses).toEqual(['borrador', 'cotización', 'aprobado', 'recibido parcialmente', 'recibido', 'facturado', 'cancelado']);
       expect(config.statusLifecycle.transitions.borrador).toEqual(['cotización', 'cancelado']);
+      expect(config.statusLifecycle.transitions['recibido parcialmente']).toEqual(['recibido']);
       expect(config.statusLifecycle.transitions.recibido).toEqual(['facturado']);
     });
   });

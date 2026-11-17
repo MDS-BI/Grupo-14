@@ -63,11 +63,13 @@ export const userConfig = {
     { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
   ],
   statusLifecycle: {
-    statuses: ['borrador', 'cotización', 'aprobado', 'recibido', 'facturado', 'cancelado'],
+    statuses: ['borrador', 'cotización', 'aprobado', 'recibido parcialmente', 'recibido', 'facturado', 'cancelado'],
     transitions: {
       borrador: ['cotización', 'cancelado'],
       cotización: ['aprobado', 'cancelado'],
-      aprobado: ['recibido', 'cancelado'],
+      // recibido parcialmente / recibido solo se asignan al registrar recepciones (FR-045)
+      aprobado: ['recibido parcialmente', 'recibido', 'cancelado'],
+      'recibido parcialmente': ['recibido'],
       recibido: ['facturado'],
       facturado: [],
       cancelado: []

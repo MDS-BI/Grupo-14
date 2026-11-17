@@ -1,17 +1,21 @@
 import { renderCustomFields, collectCustomFields, showCustomFieldErrors, clearCustomFieldErrors } from './custom-fields.js';
 import { renderDetailLines, collectDetailLines, addDetailLine, showDetailLineErrors, clearDetailLineErrors } from './detail-lines.js';
 import { getConfig } from '../module-config.js';
+import { RECEPTION_DERIVED_STATUSES } from '../storage.js';
 
 function qs(id){ return document.getElementById(id); }
 
+// Los estados de recepción solo los asigna el registro de recepciones, así que
+// no se ofrecen como opción manual (salvo para mostrar el estado actual).
 function allowedStatusesFor(currentStatus){
   const lc = getConfig().statusLifecycle;
   if(!lc) return null;
+  const manual = s => !RECEPTION_DERIVED_STATUSES.includes(s);
   if(currentStatus === undefined || currentStatus === null || currentStatus === ''){
-    return [...lc.statuses];
+    return lc.statuses.filter(manual);
   }
   const next = lc.transitions[currentStatus] || [];
-  return [currentStatus, ...next.filter(s => s !== currentStatus)];
+  return [currentStatus, ...next.filter(s => s !== currentStatus && manual(s))];
 }
 
 export function renderStatusControl(currentStatus){
@@ -84,7 +88,7 @@ export function toggleOrderActions(doc){
   const cancel = qs('document-cancel');
   const status = doc ? doc.status : '';
   const canApprove = Boolean(doc) && status === 'cotización';
-  const canCancel = Boolean(doc) && !['recibido', 'facturado', 'cancelado'].includes(status);
+  const canCancel = Boolean(doc) && !['recibido parcialmente', 'recibido', 'facturado', 'cancelado'].includes(status);
   if(approve) approve.hidden = !canApprove;
   if(cancel) cancel.hidden = !canCancel;
 }

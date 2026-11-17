@@ -254,7 +254,7 @@
           "campoCodigo": "status",
           "tipo": "select",
           "obligatorio": false,
-          "mer": "borrador, cotización, aprobado, recibido, facturado, cancelado",
+          "mer": "borrador, cotización, aprobado, recibido parcialmente, recibido, facturado, cancelado",
           "descripcion": "Estado del documento dentro del ciclo de vida configurado.",
           "validacion": "Uno de los estados de statusLifecycle; solo transiciones permitidas."
         },
@@ -816,6 +816,7 @@
       "borrador",
       "cotización",
       "aprobado",
+      "recibido parcialmente",
       "recibido",
       "facturado",
       "cancelado"
@@ -830,8 +831,12 @@
         "cancelado"
       ],
       "aprobado": [
+        "recibido parcialmente",
         "recibido",
         "cancelado"
+      ],
+      "recibido parcialmente": [
+        "recibido"
       ],
       "recibido": [
         "facturado"
@@ -839,7 +844,7 @@
       "facturado": [],
       "cancelado": []
     },
-    "nota": "El flujo avanza solicitud de cotización (cotización) → orden aprobada (aprobado) → recepción de mercancía (recibido) → factura de proveedor registrada (facturado). La cancelación se permite mientras la recepción no se haya confirmado."
+    "nota": "El flujo avanza solicitud de cotización (cotización) → orden emitida/aprobada (aprobado) → recepción parcial (recibido parcialmente) → recepción completa (recibido) → factura de proveedor registrada (facturado). La aprobación solo parte de cotización; recibido parcialmente y recibido solo se asignan al registrar recepciones (FR-045, SC-013). La cancelación se permite mientras no se haya confirmado ninguna recepción."
   },
   "formulas": [
     {
@@ -959,7 +964,7 @@
     },
     {
       "tema": "Estados en spec.md",
-      "detalle": "spec.md (HU2/HU6) menciona estados Emitida, Recibida parcialmente, Recibida y Pagada, que no coinciden con el ciclo de vida de plan.md/module-config.js. Prevalece plan.md; «recibida parcialmente» se refleja en Estado_Recepcion (Completa / parcial) y no en estado de la orden."
+      "detalle": "spec.md (HU2/HU6) menciona estados Emitida, Recibida parcialmente, Recibida y Pagada, que se mapean al ciclo de vida de plan.md/module-config.js así: Emitida = aprobado, Recibida parcialmente = recibido parcialmente, Recibida = recibido, Pagada = facturado. Por FR-045 «recibido parcialmente» es un estado de la orden (además de Estado_Recepcion = parcial) y, junto con recibido, solo lo asigna el registro de recepciones."
     },
     {
       "tema": "Nombre de la tabla intermedia",

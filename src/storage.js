@@ -1,5 +1,5 @@
 import { getConfig, computeSubtotalLinea, applyTotalesToCabecera, DEFAULT_TAX_RATE } from './module-config.js';
-import { can, currentUser, ROLE_KEYS, PERMISSIONS } from './auth.js';
+import { can, currentUser, isAdmin, ROLE_KEYS, PERMISSIONS } from './auth.js';
 
 const ENTITIES_KEY = 'erp_base_module:entities';
 const DOCUMENTS_KEY = 'erp_base_module:documents';
@@ -23,6 +23,8 @@ export const DEPARTMENT_BUDGETS = Object.freeze({
 export const DEPARTMENTS = Object.freeze(Object.keys(DEPARTMENT_BUDGETS));
 
 const RECEPTION_ORDER_STATUSES = Object.freeze(['aprobado', 'recibido parcialmente']);
+// Estados que solo se alcanzan registrando recepciones (FR-045, SC-013).
+export const RECEPTION_DERIVED_STATUSES = Object.freeze(['recibido parcialmente', 'recibido']);
 const FINAL_ORDER_STATUSES = Object.freeze(['recibido', 'facturado', 'cancelado']);
 
 function readJson(key, fallback){
@@ -439,6 +441,10 @@ function baseDocumentFields(payload, id, now){
 
 export function addDocument(payload){
   const now = new Date().toISOString();
+  const initialStatus = (payload.status || '').trim();
+  if(RECEPTION_DERIVED_STATUSES.includes(initialStatus)){
+    throw new Error(`El estado "${initialStatus}" solo se asigna al registrar recepciones de la orden`);
+  }
   const check = validateDocument(payload);
   if(!check.valid){
     throw new Error(Object.values(check.errors)[0]);
@@ -461,7 +467,12 @@ export function updateDocument(id, updates){
   if(idx === -1) throw new Error('Documento no encontrado');
   const prev = list[idx];
   const merged = { ...prev, ...updates };
+  const nextStatus = updates.status !== undefined ? (updates.status||'').trim() : merged.status;
+  if(nextStatus !== prev.status && RECEPTION_DERIVED_STATUSES.includes(nextStatus)){
+    throw new Error(`El estado "${nextStatus}" solo se asigna al registrar recepciones de la orden`);
+  }
   const check = validateDocument({
+    ...merged,
     entityId: merged.entity_id,
     series: merged.series,
     folio: merged.folio,
@@ -540,6 +551,9 @@ export function approveDocument(id){
   const idx = docs.findIndex(d => d.id === id);
   if(idx === -1) throw new Error('Documento no encontrado');
   const doc = docs[idx];
+  if(doc.status !== 'cotización'){
+    throw new Error(`Solo se pueden aprobar documentos en estado "cotización" (estado actual: "${doc.status || 'sin estado'}")`);
+  }
   const entity = loadEntities().find(e => e.entity_id === doc.entity_id);
   if(!entity) throw new Error('El proveedor del documento no existe');
   const missing = [];
@@ -571,7 +585,7 @@ export function cancelDocument(id){
   const idx = docs.findIndex(d => d.id === id);
   if(idx === -1) throw new Error('Documento no encontrado');
   const doc = docs[idx];
-  if(['recibido', 'facturado', 'cancelado'].includes(doc.status)){
+  if(['recibido parcialmente', 'recibido', 'facturado', 'cancelado'].includes(doc.status)){
     throw new Error(`No se puede cancelar un documento en estado "${doc.status}"`);
   }
   docs[idx] = { ...doc, status: 'cancelado', cancelledAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
@@ -651,10 +665,23 @@ export function addRequisition(payload){
   return requisition;
 }
 
+// T039: el aprobador solo decide sobre solicitudes de su departamento; el
+// administrador puede decidir sobre cualquiera. Se valida aquí, no solo en la UI.
+function assertCanDecideRequisition(requisition){
+  if(!can(PERMISSIONS.REQUISITIONS_APPROVE)) throw new Error('Tu rol no permite aprobar o rechazar solicitudes');
+  if(isAdmin()) return;
+  const department = String((currentUser() || {}).department || '').trim();
+  if(!department) throw new Error('Tu usuario no tiene un departamento asignado');
+  if(requisition.department !== department){
+    throw new Error('Solo puedes aprobar o rechazar solicitudes de tu departamento');
+  }
+}
+
 export function approveRequisition(id){
   const list = loadRequisitions();
   const idx = list.findIndex(r => r.id === id);
   if(idx === -1) throw new Error('Solicitud no encontrada');
+  assertCanDecideRequisition(list[idx]);
   if(list[idx].status !== REQUISITION_STATUS.PENDING){
     throw new Error(`Solo se pueden aprobar solicitudes pendientes (estado actual: ${list[idx].status})`);
   }
@@ -673,6 +700,7 @@ export function rejectRequisition(id, reason){
   const list = loadRequisitions();
   const idx = list.findIndex(r => r.id === id);
   if(idx === -1) throw new Error('Solicitud no encontrada');
+  assertCanDecideRequisition(list[idx]);
   if(list[idx].status !== REQUISITION_STATUS.PENDING){
     throw new Error(`Solo se pueden rechazar solicitudes pendientes (estado actual: ${list[idx].status})`);
   }
@@ -691,6 +719,15 @@ export function pendingRequisitionsForDepartment(department){
   return loadRequisitions().filter(r =>
     r.status === REQUISITION_STATUS.PENDING && (!department || r.department === department)
   );
+}
+
+// Bandeja del aprobador de la sesión: su departamento; todos si es administrador;
+// ninguno si no tiene permiso o no tiene departamento asignado.
+export function pendingRequisitionsForApprover(){
+  if(!can(PERMISSIONS.REQUISITIONS_APPROVE)) return [];
+  if(isAdmin()) return pendingRequisitionsForDepartment();
+  const department = String((currentUser() || {}).department || '').trim();
+  return department ? pendingRequisitionsForDepartment(department) : [];
 }
 
 export function budgetForDepartment(department){

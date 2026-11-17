@@ -86,6 +86,7 @@ export function setSession(user){
     username: user.username,
     name: user.name,
     role: user.role,
+    department: String(user.department || '').trim(),
     active: user.active !== false,
     system: Boolean(user.system)
   } : null;
