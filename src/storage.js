@@ -116,11 +116,19 @@ function isValidEmail(value){
 // Usuarios y permisos (HU1)
 // ---------------------------------------------------------------------------
 
+function isValidRut(value){
+  const rut = String(value || '').trim();
+  return /^\d{7,8}-[\dkK]$/.test(rut) || /^\d{1,2}(\.\d{3}){2}-[\dkK]$/.test(rut);
+}
+
 export function validateUser(payload, existingId){
   const errors = {};
   const username = String(payload.username || '').trim();
   const name = String(payload.name || '').trim();
   const role = String(payload.role || '').trim();
+  const email = String(payload.email || '').trim();
+  const rut = String(payload.rut || '').trim();
+  const department = String(payload.department || '').trim();
   if(!username) errors.username = 'El usuario es obligatorio';
   else {
     const dup = loadUsers().some(u => u.id !== existingId && String(u.username).toLowerCase() === username.toLowerCase());
@@ -128,6 +136,9 @@ export function validateUser(payload, existingId){
   }
   if(!name) errors.name = 'El nombre es obligatorio';
   if(!ROLE_KEYS.includes(role)) errors.role = `El rol debe ser uno de: ${ROLE_KEYS.join(', ')}`;
+  if(email && !isValidEmail(email)) errors.email = 'El correo electrónico no es válido';
+  if(rut && !isValidRut(rut)) errors.rut = 'El RUT debe tener formato 12.345.678-9';
+  if(department && !DEPARTMENTS.includes(department)) errors.department = `El departamento debe ser uno de: ${DEPARTMENTS.join(', ')}`;
   return { valid: Object.keys(errors).length === 0, errors };
 }
 
@@ -139,8 +150,12 @@ export function addUser(payload){
     id: generateId(),
     username: String(payload.username).trim(),
     name: String(payload.name).trim(),
+    email: String(payload.email || '').trim(),
+    rut: String(payload.rut || '').trim(),
+    department: String(payload.department || '').trim(),
     role: String(payload.role).trim(),
     active: payload.active !== false,
+    lastAccess: now,
     createdAt: now,
     updatedAt: now
   };
@@ -161,6 +176,9 @@ export function updateUser(id, updates){
     ...list[idx],
     username: String(merged.username).trim(),
     name: String(merged.name).trim(),
+    email: String(merged.email || '').trim(),
+    rut: String(merged.rut || '').trim(),
+    department: String(merged.department || '').trim(),
     role: String(merged.role).trim(),
     active: merged.active !== false,
     updatedAt: new Date().toISOString()
@@ -175,15 +193,32 @@ export function usersWithPendingWork(userId){
   return { requisitions: requisitions.length, documents: documents.length };
 }
 
-export function deactivateUser(id){
+export function setUserActive(id, active){
   const list = loadUsers();
   const idx = list.findIndex(u => u.id === id);
   if(idx === -1) throw new Error('Usuario no encontrado');
-  const pending = usersWithPendingWork(id);
-  if(pending.requisitions > 0 || pending.documents > 0){
-    throw new Error('No se puede desactivar el usuario: tiene solicitudes u órdenes pendientes en su flujo. Reasigna o concluye esos trámites primero.');
+  const next = Boolean(active);
+  if(!next){
+    const pending = usersWithPendingWork(id);
+    if(pending.requisitions > 0 || pending.documents > 0){
+      throw new Error('No se puede desactivar el usuario: tiene solicitudes u órdenes pendientes en su flujo. Reasigna o concluye esos trámites primero.');
+    }
   }
-  list[idx] = { ...list[idx], active: false, updatedAt: new Date().toISOString() };
+  list[idx] = { ...list[idx], active: next, updatedAt: new Date().toISOString() };
+  saveUsers(list);
+  return list[idx];
+}
+
+export function deactivateUser(id){
+  return setUserActive(id, false);
+}
+
+export function touchUserAccess(id){
+  const list = loadUsers();
+  const idx = list.findIndex(u => u.id === id);
+  if(idx === -1) return null;
+  const now = new Date().toISOString();
+  list[idx] = { ...list[idx], lastAccess: now, updatedAt: now };
   saveUsers(list);
   return list[idx];
 }
@@ -231,6 +266,7 @@ export function addEntity(payload){
     targetDate: (payload.targetDate||'').trim() || undefined,
     creditLimit: isEmpty(payload.creditLimit) ? undefined : Number(payload.creditLimit),
     paymentTerms: (payload.paymentTerms||'').trim() || undefined,
+    estado: (payload.estado||'Activo').trim() || 'Activo',
     ...pickCustomFields('entity', payload),
     createdAt: now,
     updatedAt: now
@@ -259,6 +295,7 @@ export function updateEntity(id, updates){
     targetDate: (merged.targetDate||'').trim() || undefined,
     creditLimit: isEmpty(merged.creditLimit) ? undefined : Number(merged.creditLimit),
     paymentTerms: (merged.paymentTerms||'').trim() || undefined,
+    estado: (merged.estado||'Activo').trim() || 'Activo',
     ...pickCustomFields('entity', merged),
     updatedAt: new Date().toISOString()
   };

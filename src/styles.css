@@ -517,6 +517,11 @@ svg.i {
   border-radius: var(--r-md); border: 1px solid var(--red-line);
   background: var(--red-soft); color: var(--red); font-size: 0.88rem; font-weight: 500;
 }
+.notice.is-success {
+  border-color: color-mix(in srgb, var(--green) 30%, #fff);
+  background: color-mix(in srgb, var(--green) 8%, #fff);
+  color: var(--green);
+}
 
 /* ==========================================================================
    Panel: acciones rápidas
@@ -768,8 +773,34 @@ button.danger:hover { background: var(--red-soft); border-color: var(--red); }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-#users-list .form-actions { margin-top: 12px; }
-#users-list .form-actions button { min-height: 34px; padding: 0 12px; font-size: 0.82rem; }
+.users-view-stack { display: grid; gap: 24px; }
+.card-heading-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+.card-heading-row h2 { margin-bottom: 4px; }
+.card-heading-row .muted { font-size: 0.86rem; }
+.user-name-cell { display: flex; flex-direction: column; gap: 2px; }
+.user-username { color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+#users-table { min-width: 980px; }
+#users-table .table-actions button { min-height: 32px; padding: 0 11px; font-size: 0.8rem; }
+
+.card-permissions .muted { font-size: 0.86rem; }
+.permission-matrix { min-width: 900px; }
+.permission-matrix thead th { white-space: normal; vertical-align: bottom; }
+.permission-matrix thead th:not(:first-child),
+.permission-matrix tbody td:not(:first-child) { text-align: center; }
+.permission-matrix input[type="checkbox"] {
+  width: 16px; height: 16px; margin: 0;
+  accent-color: var(--accent); cursor: default;
+}
+.permission-matrix tbody tr.is-current-role td { background: var(--accent-tint); }
+.permission-matrix tbody tr.session-permission-row td { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+.current-role-tag {
+  display: inline-block; margin-left: 8px; padding: 2px 8px;
+  border-radius: 999px; background: var(--accent-soft);
+  color: var(--accent-strong); font-size: 0.7rem; font-weight: 650;
+}
 
 /* Detalle (aprobación / recepción) */
 .detail-pane { overflow-x: auto; }
@@ -806,6 +837,53 @@ button.danger:hover { background: var(--red-soft); border-color: var(--red); }
 .detail-table tbody tr:hover td { background: var(--surface-2); }
 .detail-table td input { height: 36px; min-width: 64px; padding: 0 10px; }
 .detail-table td:last-child input { min-width: 120px; }
+
+/* Tabla de proveedores */
+.card-entity-table { margin-bottom: 24px; }
+.table-toolbar {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  margin: 14px 0 16px;
+}
+.table-toolbar .search-field { flex: 1 1 280px; max-width: 420px; }
+.table-toolbar .search-field input { height: 40px; padding-left: 42px; font-size: 0.9rem; border-radius: var(--r-sm); }
+.table-toolbar .search-field > svg.i { left: 14px; width: 18px; height: 18px; }
+.filter-field { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; font-weight: 550; color: var(--ink-2); }
+.filter-field select { height: 40px; min-width: 130px; padding: 0 10px; }
+.table-responsive { overflow-x: auto; }
+.data-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font-size: 0.86rem; border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden;
+}
+.data-table thead th {
+  padding: 11px 12px; background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.7rem; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); text-align: left; white-space: nowrap;
+}
+.data-table tbody td {
+  padding: 11px 12px; border-bottom: 1px solid var(--border);
+  color: var(--ink-2); vertical-align: middle;
+}
+.data-table tbody tr:last-child td { border-bottom: 0; }
+.data-table tbody tr:hover td { background: var(--surface-2); }
+.data-table tbody td:first-child { color: var(--ink); font-weight: 600; min-width: 210px; }
+.data-table tbody td:nth-child(2), .data-table tbody td:nth-child(5) { font-variant-numeric: tabular-nums; }
+.table-actions { white-space: nowrap; }
+.table-actions button { min-height: 32px; padding: 0 11px; font-size: 0.8rem; }
+.table-actions button + button { margin-left: 6px; }
+.status-badge {
+  display: inline-block; padding: 4px 10px; border-radius: 999px;
+  font-size: 0.76rem; font-weight: 600; white-space: nowrap;
+}
+.status-badge.is-active { background: color-mix(in srgb, var(--green) 10%, #fff); color: var(--green); }
+.status-badge.is-inactive { background: var(--surface-3); color: var(--slate); }
+.role-badge[data-role="administrador"] { --tone: var(--red); }
+.role-badge[data-role="solicitante"] { --tone: var(--sky); }
+.role-badge[data-role="aprobador"] { --tone: var(--amber); }
+.role-badge[data-role="encargado_compras"] { --tone: var(--green); }
+.role-badge[data-role="encargado_recepcion"] { --tone: var(--accent); }
+.entity-detail { margin-top: 16px; }
+.entity-detail .detail-table { margin: 0; }
 
 /* Búsqueda */
 .card-search { padding: 24px 28px; }
@@ -956,4 +1034,174 @@ button.danger:hover { background: var(--red-soft); border-color: var(--red); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ==========================================================================
+   Extensiones ERP: usuarios, aprobaciones, l�neas y recepci�n
+   ========================================================================== */
+.nav-extra {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-extra:hover { background: rgba(255, 255, 255, 0.09); color: #ffffff; }
+
+.nav-extra.active {
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.nav-extra[hidden] { display: none; }
+
+.lineas-rows { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+
+.linea-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) auto auto;
+  gap: 8px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.03);
+}
+
+.linea-row label { font-size: 0.75rem; }
+.linea-subtotal { font-weight: 600; padding-bottom: 6px; }
+.linea-remove { align-self: end; }
+
+.approval-item,
+.user-item,
+.reception-history-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.approval-item:last-child,
+.user-item:last-child,
+.reception-history-item:last-child { border-bottom: none; }
+
+.approval-info { flex: 1 1 320px; }
+
+.reception-line {
+  display: grid;
+  grid-template-columns: 2fr 1fr 2fr;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--border, #e2e8f0);
+}
+
+.reception-line strong,
+.reception-line span { grid-column: 1 / -1; }
+
+@media (max-width: 820px) {
+  .linea-row { grid-template-columns: 1fr 1fr; }
+  .reception-line { grid-template-columns: 1fr; }
+  .nav-extra .nav-label { display: none; }
+}
+
+/* ==========================================================================
+   Perfiles de usuario
+   ========================================================================== */
+.profile-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 0.88rem;
+}
+
+.profile-switcher label {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.profile-switcher select {
+  width: auto;
+  min-width: 210px;
+  max-width: 320px;
+  padding: 7px 9px;
+}
+
+.profile-switcher button { padding: 7px 12px; white-space: nowrap; }
+
+.profile-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
+.profile-facts dt {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.profile-facts dd { margin: 2px 0 0; font-weight: 600; }
+
+.profile-switch-field { margin-top: 16px; }
+
+.profile-role-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.profile-role-item {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  background: #fbfcfe;
+}
+
+.profile-role-item.active {
+  border-color: var(--accent);
+  border-left-color: var(--accent);
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.profile-role-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+
+.profile-role-item p { margin: 6px 0; }
+
+.profile-role-capabilities {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 720px) {
+  .profile-switcher label { display: none; }
+  .profile-switcher select { min-width: 0; width: 100%; }
 }

@@ -11,6 +11,7 @@ export function clearEntityForm(){
   qs('phone').value = '';
   qs('address').value = '';
   qs('category').value = '';
+  qs('estado').value = 'Activo';
   qs('description').value = '';
   qs('targetDate').value = '';
   qs('creditLimit').value = '';
@@ -36,6 +37,7 @@ export function startEntityEdit(entity){
   qs('phone').value = entity.phone || '';
   qs('address').value = entity.address || '';
   qs('category').value = entity.category || '';
+  qs('estado').value = entity.estado || 'Activo';
   qs('description').value = entity.description || '';
   qs('targetDate').value = entity.targetDate || '';
   qs('creditLimit').value = entity.creditLimit === undefined ? '' : entity.creditLimit;
@@ -54,6 +56,7 @@ export function collectEntityPayload(){
     phone: qs('phone').value,
     address: qs('address').value,
     category: qs('category').value,
+    estado: qs('estado').value,
     description: qs('description').value,
     targetDate: qs('targetDate').value,
     creditLimit: qs('creditLimit').value,

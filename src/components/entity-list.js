@@ -4,6 +4,106 @@ import { createDocumentItem } from './document-list.js';
 
 function escapeHtml(s){ return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
 
+function normalizeText(value){
+  return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+export function filterEntities(entities, search = '', status = ''){
+  const term = normalizeText(search).trim();
+  const termDigits = term.replace(/[^0-9k]/g, '');
+  return (entities || []).filter(entity => {
+    if(status && (entity.estado || 'Activo') !== status) return false;
+    if(!term) return true;
+    const name = normalizeText(entity.name);
+    const taxId = normalizeText(entity.taxId);
+    const taxIdDigits = taxId.replace(/[^0-9k]/g, '');
+    return name.includes(term) || (termDigits.length > 0 && taxIdDigits.includes(termDigits));
+  });
+}
+
+function cell(value){
+  const td = document.createElement('td');
+  td.textContent = value === undefined || value === null || value === '' ? '—' : String(value);
+  return td;
+}
+
+function actionButton(action, entity, label, handler){
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = action === 'view' ? 'secondary' : 'primary';
+  button.dataset.action = action;
+  button.dataset.entityId = entity.id;
+  button.textContent = label;
+  if(handler) button.addEventListener('click', () => handler(entity));
+  return button;
+}
+
+export function renderEntityTable(tbody, entities, handlers = {}){
+  tbody.innerHTML = '';
+  for(const entity of entities){
+    const row = document.createElement('tr');
+    row.dataset.entityId = entity.id;
+    [
+      entity.name,
+      entity.taxId,
+      entity.categoriaProveedor || entity.category,
+      entity.vendedorContacto,
+      entity.email,
+      entity.paymentTerms
+    ].forEach(value => row.appendChild(cell(value)));
+
+    const status = entity.estado || 'Activo';
+    const statusCell = cell(status);
+    statusCell.innerHTML = '';
+    const badge = document.createElement('span');
+    badge.className = `status-badge ${status === 'Inactivo' ? 'is-inactive' : 'is-active'}`;
+    badge.textContent = status;
+    statusCell.appendChild(badge);
+    row.appendChild(statusCell);
+
+    const actions = document.createElement('td');
+    actions.className = 'table-actions';
+    actions.appendChild(actionButton('view', entity, 'Ver', handlers.onView));
+    actions.appendChild(actionButton('edit', entity, 'Editar', handlers.onEdit));
+    row.appendChild(actions);
+    tbody.appendChild(row);
+  }
+}
+
+export function renderEntityDetail(container, entity){
+  container.innerHTML = '';
+  if(!entity){
+    container.hidden = true;
+    return;
+  }
+  const fields = [
+    ['Nombre', entity.name],
+    ['RUT', entity.taxId],
+    ['Rubro', entity.categoriaProveedor || entity.category],
+    ['Contacto', entity.vendedorContacto],
+    ['Email', entity.email],
+    ['Teléfono', entity.phone],
+    ['Dirección', entity.address],
+    ['Condiciones de pago', entity.paymentTerms],
+    ['Estado', entity.estado || 'Activo'],
+    ['Descripción', entity.description]
+  ];
+  const table = document.createElement('table');
+  table.className = 'detail-table';
+  const tbody = document.createElement('tbody');
+  for(const [label, value] of fields){
+    const row = document.createElement('tr');
+    const nameCell = document.createElement('td');
+    nameCell.textContent = label;
+    row.appendChild(nameCell);
+    row.appendChild(cell(value));
+    tbody.appendChild(row);
+  }
+  table.appendChild(tbody);
+  container.appendChild(table);
+  container.hidden = false;
+}
+
 export function createEntityItem(entity){
   const li = document.createElement('li');
   li.className = 'entity-item';

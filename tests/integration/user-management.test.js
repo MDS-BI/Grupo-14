@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
 import { ROLE_FIXTURES } from '../setup/roles.js';
+import { injectMockData } from '../../src/mock-data.js';
 
 const html = fs.readFileSync(fileURLToPath(new URL('../../index.html', import.meta.url)), 'utf8');
 
@@ -83,6 +84,58 @@ describe('User Story 1 - users and permissions', () => {
     select.value = user.id;
     select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
     expect(qs('nav-documents').hidden).toBe(true);
+  });
+
+  it('renders the full mock user table and filters by name, email and role', () => {
+    injectMockData();
+    app.applySession(ROLE_FIXTURES.admin);
+    qs('nav-users').click();
+
+    const rows = () => [...qs('users-list').querySelectorAll('tr')];
+    expect(rows()).toHaveLength(20);
+    const tableText = qs('users-table').textContent;
+    expect(tableText).toContain('Camila Herrera');
+    expect(tableText).toContain('camila.herrera@empresa.cl');
+    expect(tableText).toMatch(/\d{2}\.\d{3}\.\d{3}-[\dkK]/);
+    expect(tableText).toContain('Inactivo');
+
+    qs('user-search').value = 'ana.torres@';
+    qs('user-search').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0].textContent).toContain('Ana Torres');
+
+    qs('user-search').value = '';
+    qs('user-search').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    qs('user-role-filter').value = 'administrador';
+    qs('user-role-filter').dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    expect(rows()).toHaveLength(4);
+  });
+
+  it('shows a permission matrix that follows the active session', () => {
+    injectMockData();
+    app.applySession(ROLE_FIXTURES.solicitante);
+    const checks = () => [...qs('permission-session-row').querySelectorAll('input')].map(i => i.checked);
+
+    expect(qs('permission-matrix-body').querySelectorAll('tr')).toHaveLength(6);
+    expect(checks()).toEqual([true, false, false, false, false, false]);
+
+    app.applySession(ROLE_FIXTURES.compras);
+    expect(checks()).toEqual([false, true, true, true, false, false]);
+    const comprasRow = qs('permission-matrix-body').querySelector('[data-role="encargado_compras"]');
+    expect([...comprasRow.querySelectorAll('input')].map(i => i.checked))
+      .toEqual([false, true, true, true, false, false]);
+  });
+
+  it('changes a user state from the table', () => {
+    storage.addUser({ username: 'sol', name: 'Sol', role: 'solicitante' });
+    qs('nav-users').click();
+    const buttonWithText = (text) => [...qs('users-list').querySelectorAll('button')].find(b => b.textContent === text);
+
+    buttonWithText('Desactivar').click();
+    expect(storage.loadUsers()[0].active).toBe(false);
+
+    buttonWithText('Activar').click();
+    expect(storage.loadUsers()[0].active).toBe(true);
   });
 
   it('prevents deactivating a user with pending work and shows the warning', () => {

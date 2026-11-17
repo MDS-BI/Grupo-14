@@ -53,7 +53,7 @@ export const userConfig = {
   },
   customFields: [
     // Proveedores
-    { target: 'entity', key: 'categoriaProveedor', label: 'Categoría del proveedor', type: 'select', options: ['Materias primas', 'Servicios', 'Equipos', 'General'], required: true },
+    { target: 'entity', key: 'categoriaProveedor', label: 'Categoría del proveedor', type: 'select', options: ['Ferretería y seguridad industrial', 'Transporte de carga y embalaje', 'Equipamiento TI y redes', 'Artículos de escritorio e impresión', 'Estructuras metálicas y repuestos', 'Cartón corrugado y plásticos', 'Insumos químicos y limpieza', 'Materias primas', 'Servicios', 'Equipos', 'General'], required: true },
     { target: 'entity', key: 'vendedorContacto', label: 'Vendedor de contacto', type: 'text' },
     // Documentos de compra
     { target: 'document', key: 'tipoDocumento', label: 'Tipo de documento', type: 'select', options: ['Solicitud de Cotización', 'Orden de Compra', 'Recepción', 'Factura de Proveedor'], required: true },
@@ -143,7 +143,7 @@ export const LINEA_DETALLE_FIELDS = Object.freeze({
 export const BASE_LINEA_FIELDS = Object.freeze(Object.keys(LINEA_DETALLE_FIELDS));
 
 export const BASE_FIELDS = Object.freeze({
-  entity: Object.freeze(['id', 'entity_id', 'name', 'code', 'taxId', 'email', 'phone', 'address', 'category', 'description', 'targetDate', 'creditLimit', 'paymentTerms', 'createdAt', 'updatedAt']),
+  entity: Object.freeze(['id', 'entity_id', 'name', 'code', 'taxId', 'email', 'phone', 'address', 'category', 'description', 'targetDate', 'creditLimit', 'paymentTerms', 'estado', 'createdAt', 'updatedAt']),
   document: Object.freeze(['id', 'entity_id', 'series', 'folio', 'startDate', 'endDate', 'quantity', 'subtotal', 'discount', 'taxAmount', 'totalAmount', 'currency', 'paymentTerms', 'notes', 'status', 'lineasDetalle', 'createdAt', 'updatedAt']),
   detalle: BASE_LINEA_FIELDS
 });
