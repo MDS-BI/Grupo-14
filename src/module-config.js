@@ -81,7 +81,7 @@ export const userConfig = {
       { key: 'centroCosto', label: 'Centro de costo', type: 'text' }
     ]
   },
-  theme: { accentColor: '#0f766e' }
+  theme: { accentColor: '#0e6278' }
 };
 
 // Tasa de impuesto aplicada en la cascada de totales de la cabecera
