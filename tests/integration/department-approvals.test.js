@@ -67,7 +67,7 @@ describe('User Story 4 - department approval inbox', () => {
     item.querySelector('.approval-approve').click();
 
     const doc = loadDocuments()[0];
-    expect(doc.status).toBe('aprobado');
+    expect(doc.status).toBe('Emitida');
     expect(doc.series).toBe('OC');
     expect(qs('approval-list').querySelectorAll('.approval-item')).toHaveLength(0);
     expect(qs('approval-empty').hidden).toBe(false);
@@ -84,6 +84,6 @@ describe('User Story 4 - department approval inbox', () => {
 
     globalThis.prompt = vi.fn(() => 'Sin presupuesto');
     qs('approval-list').querySelector('.approval-reject').click();
-    expect(loadDocuments()[0].status).toBe('cancelado');
+    expect(loadDocuments()[0].status).toBe('Rechazada');
   });
 });

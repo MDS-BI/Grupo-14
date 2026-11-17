@@ -1,5 +1,6 @@
 import {
-  PENDING_STATUS, decideApproval, isRequestDocument, loadDocuments, loadEntities, patchDocument
+  PENDING_STATUS, decideApproval, isRequestDocument, loadDocuments, loadEntities, patchDocument,
+  DOCUMENT_STATUS
 } from './storage.js';
 
 export function validateApproval(doc){
@@ -42,7 +43,7 @@ export function approveRequest(id, { userId, comment } = {}){
   const check = validateApproval(doc);
   if(!check.valid) throw new Error(Object.values(check.errors)[0]);
 
-  decideApproval(id, 'aprobado', { userId, comment });
+  decideApproval(id, DOCUMENT_STATUS.ISSUED, { userId, comment });
   const folio = nextOrderFolio();
   return patchDocument(id, { series: 'OC', folio });
 }
@@ -54,5 +55,5 @@ export function rejectRequest(id, { userId, comment } = {}){
   const doc = loadDocuments().find(d => d.id === id);
   if(!doc) throw new Error('La solicitud no existe');
   if(doc.status !== PENDING_STATUS) throw new Error('La solicitud no está pendiente de aprobación');
-  return decideApproval(id, 'cancelado', { userId, comment });
+  return decideApproval(id, DOCUMENT_STATUS.REJECTED, { userId, comment });
 }

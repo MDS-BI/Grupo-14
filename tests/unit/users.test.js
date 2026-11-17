@@ -48,7 +48,7 @@ describe('deactivation guard', () => {
       folio: 1,
       startDate: '2026-08-01',
       endDate: '2026-08-05',
-      status: 'borrador',
+      status: 'Aprobada',
       solicitante_id: user.id
     });
     expect(hasPendingWorkForUser(user.id)).toBe(true);

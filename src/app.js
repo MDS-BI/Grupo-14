@@ -428,7 +428,8 @@ function handleRequisitionSubmit(ev){
 }
 
 function refreshApprovals(){
-  const pending = pendingRequisitionsForDepartment();
+  const activeUser = getSession();
+  const pending = pendingRequisitionsForDepartment(activeUser && activeUser.department);
   if(selectedApprovalId && !pending.some(r => r.id === selectedApprovalId)){
     selectedApprovalId = null;
     qs('approval-detail').innerHTML = '<p class="muted">Selecciona una solicitud pendiente.</p>';
