@@ -517,6 +517,11 @@ svg.i {
   border-radius: var(--r-md); border: 1px solid var(--red-line);
   background: var(--red-soft); color: var(--red); font-size: 0.88rem; font-weight: 500;
 }
+.notice.is-success {
+  border-color: color-mix(in srgb, var(--green) 30%, #fff);
+  background: color-mix(in srgb, var(--green) 8%, #fff);
+  color: var(--green);
+}
 
 /* ==========================================================================
    Panel: acciones rápidas

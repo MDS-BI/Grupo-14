@@ -9,6 +9,7 @@ import {
   approveDocument, cancelDocument
 } from './storage.js';
 import { can, setSession, resetSession, getSession, PERMISSIONS, roleLabel } from './auth.js';
+import { ensureMockData, injectMockData } from './mock-data.js';
 import { clearEntityForm, startEntityEdit, collectEntityPayload, showEntityErrors } from './components/entity-form.js';
 import { createEntityItem } from './components/entity-list.js';
 import { clearDocumentForm, startDocumentEdit, collectDocumentPayload, showDocumentErrors, addDocumentDetailLine, toggleOrderActions } from './components/document-form.js';
@@ -245,7 +246,8 @@ function applyPermissions(){
     'action-new-requisition': PERMISSIONS.REQUISITIONS_CREATE,
     'action-open-approvals': PERMISSIONS.REQUISITIONS_APPROVE,
     'action-open-receptions': PERMISSIONS.RECEPTIONS_MANAGE,
-    'action-open-users': PERMISSIONS.USERS_MANAGE
+    'action-open-users': PERMISSIONS.USERS_MANAGE,
+    'action-load-mock-data': PERMISSIONS.USERS_MANAGE
   };
   Object.entries(actions).forEach(([id, permission]) => {
     const el = qs(id);
@@ -330,6 +332,25 @@ function handleDeactivateUser(user){
     message.hidden = false;
     message.textContent = e.message;
   }
+}
+
+function showMockDataMessage(counts){
+  const message = qs('mock-data-message');
+  if(!message) return;
+  message.textContent = `Datos de prueba cargados: ${counts.entities} proveedores, ${counts.documents} órdenes de compra, ${counts.requisitions} solicitudes pendientes, ${counts.issuedOrders} órdenes emitidas y ${counts.receptions} recepciones.`;
+  message.hidden = false;
+}
+
+function handleLoadMockData(){
+  if(!can(PERMISSIONS.USERS_MANAGE)) return;
+  const counts = injectMockData();
+  selectedApprovalId = null;
+  selectedReceptionOrderId = null;
+  resetSession();
+  populateSessionSelect();
+  applyPermissions();
+  showModule('dashboard');
+  showMockDataMessage(counts);
 }
 
 function refreshRequisitions(){
@@ -620,6 +641,7 @@ function wireEvents(){
   qs('action-open-approvals').addEventListener('click', () => showModule('approvals'));
   qs('action-open-receptions').addEventListener('click', () => showModule('receptions'));
   qs('action-open-users').addEventListener('click', () => showModule('users', { newRecord: true }));
+  qs('action-load-mock-data').addEventListener('click', handleLoadMockData);
   qs('entity-form').addEventListener('submit', handleEntitySubmit);
   qs('cancel-edit').addEventListener('click', clearEntityForm);
   qs('document-form').addEventListener('submit', handleDocumentSubmit);
@@ -658,7 +680,10 @@ export function initApp(resolved){
   showModule('dashboard');
 }
 
-export async function boot(overrideConfig){
+export async function boot(overrideConfig, options = {}){
   const resolved = overrideConfig !== undefined ? normalizeConfig(overrideConfig) : await loadModuleConfig();
+  const shouldSeed = options.seedMockData ?? (import.meta.env?.MODE !== 'test');
+  const seeded = shouldSeed ? ensureMockData() : null;
   initApp(resolved);
+  if(seeded) showMockDataMessage(seeded);
 }

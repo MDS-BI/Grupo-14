@@ -11,7 +11,7 @@ export function createDocumentItem(doc, entityName){
   const li = document.createElement('li');
   li.className = 'document-item';
   const amount = (doc.totalAmount !== undefined) ? ` &middot; ${escapeHtml(String(doc.currency || ''))}${escapeHtml(String(doc.totalAmount))}` : '';
-  const status = doc.status ? ` <span class="status-badge">${escapeHtml(doc.status)}</span>` : '';
+  const status = doc.status ? ` <span class="status-badge">${escapeHtml(doc.estadoVisible || doc.status)}</span>` : '';
   const info = document.createElement('span');
   const lineas = Array.isArray(doc.lineasDetalle) && doc.lineasDetalle.length > 0
     ? ` &middot; ${doc.lineasDetalle.length} línea(s)`
