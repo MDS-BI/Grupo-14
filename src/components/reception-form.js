@@ -1,65 +1,109 @@
-import { escapeHtml } from '../dom.js';
+import { receivedQuantityForLine, pendingQuantityForLine } from '../storage.js';
 
-export function renderReceptionLines(container, doc, pendingForLine, receivedForLine){
-  if(!container) return;
-  container.innerHTML = '';
-  if(!doc || !Array.isArray(doc.lineasDetalle) || doc.lineasDetalle.length === 0){
-    const note = document.createElement('p');
-    note.className = 'empty';
-    note.textContent = 'Esta orden no tiene líneas de detalle registradas.';
-    container.appendChild(note);
-    return;
-  }
-  const title = document.createElement('h3');
-  title.textContent = 'Líneas por recibir';
-  container.appendChild(title);
+function qs(id){ return document.getElementById(id); }
 
-  doc.lineasDetalle.forEach(linea => {
-    const pendiente = pendingForLine ? pendingForLine(linea.id) : Number(linea.cantidad);
-    const recibida = receivedForLine ? receivedForLine(linea.id) : Math.max(Number(linea.cantidad) - pendiente, 0);
-    const row = document.createElement('div');
-    row.className = 'reception-line';
-    row.dataset.id = linea.id;
-    row.innerHTML = `<strong>${escapeHtml(linea.producto_id)}</strong>`
-      + ` &middot; ${escapeHtml(linea.descripcion)}`
-      + ` <span class="muted">(solicitado: ${escapeHtml(String(linea.cantidad))} ${escapeHtml(linea.unidadMedida)}`
-      + ` &middot; recibido: ${escapeHtml(String(recibida))} &middot; pendiente: ${escapeHtml(String(pendiente))})</span>`;
+function escapeHtml(s){ return String(s ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
 
-    const label = document.createElement('label');
-    label.textContent = `Cantidad recibida (pendiente: ${pendiente})`;
-    label.setAttribute('for', `reception-cantidad-${linea.id}`);
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.className = 'reception-cantidad';
-    input.min = '0';
-    input.step = 'any';
-    input.max = String(pendiente);
-    input.value = pendiente > 0 ? String(pendiente) : '0';
-    input.disabled = pendiente <= 0;
-    input.id = `reception-cantidad-${linea.id}`;
-
-    const motivoLabel = document.createElement('label');
-    motivoLabel.textContent = 'Motivo de rechazo (opcional)';
-    const motivo = document.createElement('input');
-    motivo.type = 'text';
-    motivo.className = 'reception-motivo';
-    motivo.placeholder = 'Solo si rechazas unidades';
-
-    row.appendChild(label);
-    row.appendChild(input);
-    row.appendChild(motivoLabel);
-    row.appendChild(motivo);
-    container.appendChild(row);
-  });
+function numberCell(value, field, index){
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = '0';
+  input.step = 'any';
+  input.value = value === undefined || value === null ? '' : String(value);
+  input.dataset.field = field;
+  input.dataset.index = String(index);
+  input.setAttribute('aria-label', field === 'cantidadRecibida' ? `Cantidad recibida línea ${index + 1}` : `Cantidad rechazada línea ${index + 1}`);
+  return input;
 }
 
-export function collectReceptionLines(container){
-  if(!container) return [];
-  return [...container.querySelectorAll('.reception-line')]
-    .map(row => ({
-      linea_id: row.dataset.id,
-      cantidadRecibida: row.querySelector('.reception-cantidad').value,
-      motivoRechazo: row.querySelector('.reception-motivo').value
-    }))
-    .filter(linea => Number(linea.cantidadRecibida) > 0);
+export function renderReceptionDetail(container, order){
+  if(!container) return;
+  if(!order){
+    container.innerHTML = '<p class="muted">Selecciona una orden por recibir.</p>';
+    return;
+  }
+  container.innerHTML = '';
+  const heading = document.createElement('h3');
+  const folio = `${order.series ? `${order.series}-` : ''}${order.folio}`;
+  heading.textContent = `${folio} · ${order.status}`;
+  container.appendChild(heading);
+
+  const lineas = Array.isArray(order.lineasDetalle) ? order.lineasDetalle : [];
+  if(lineas.length === 0){
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'La orden no tiene líneas de detalle.';
+    container.appendChild(empty);
+    return;
+  }
+
+  const table = document.createElement('table');
+  table.className = 'detail-table';
+  table.innerHTML = '<thead><tr><th>Producto</th><th>Solicitada</th><th>Recibida</th><th>Pendiente</th><th>Recibir</th><th>Rechazar</th><th>Motivo</th></tr></thead>';
+  const tbody = document.createElement('tbody');
+  lineas.forEach((line, i) => {
+    const tr = document.createElement('tr');
+    const requested = Number(line.cantidad) || 0;
+    const received = receivedQuantityForLine(order.id, i);
+    const pending = pendingQuantityForLine(order, i);
+    tr.innerHTML = `<td>${escapeHtml(line.descripcion)}</td>` +
+      `<td>${escapeHtml(String(requested))}</td>` +
+      `<td>${escapeHtml(String(received))}</td>` +
+      `<td>${escapeHtml(String(pending))}</td>`;
+    const recibidaCell = document.createElement('td');
+    recibidaCell.appendChild(numberCell('', 'cantidadRecibida', i));
+    const rechazadaCell = document.createElement('td');
+    rechazadaCell.appendChild(numberCell('', 'cantidadRechazada', i));
+    const motivoCell = document.createElement('td');
+    const motivo = document.createElement('input');
+    motivo.type = 'text';
+    motivo.dataset.field = 'motivoRechazo';
+    motivo.dataset.index = String(i);
+    motivo.placeholder = 'Motivo si rechaza';
+    motivo.setAttribute('aria-label', `Motivo del rechazo línea ${i + 1}`);
+    motivoCell.appendChild(motivo);
+    tr.appendChild(recibidaCell);
+    tr.appendChild(rechazadaCell);
+    tr.appendChild(motivoCell);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  container.appendChild(table);
+
+  const errors = document.createElement('div');
+  errors.className = 'error';
+  errors.id = 'error-reception-lines';
+  errors.setAttribute('aria-live', 'polite');
+  container.appendChild(errors);
+}
+
+export function collectReceptionPayload(){
+  const container = qs('reception-detail');
+  const lineas = [...(container?.querySelectorAll('[data-field="cantidadRecibida"]') || [])].map(input => {
+    const idx = Number(input.dataset.index);
+    const rechazada = container.querySelector(`[data-field="cantidadRechazada"][data-index="${idx}"]`);
+    const motivo = container.querySelector(`[data-field="motivoRechazo"][data-index="${idx}"]`);
+    return {
+      ordenLineaIndex: idx,
+      cantidadRecibida: input.value,
+      cantidadRechazada: rechazada ? rechazada.value : '',
+      motivoRechazo: motivo ? motivo.value : ''
+    };
+  });
+  return {
+    orderId: qs('reception-order-id') ? qs('reception-order-id').value : '',
+    observaciones: qs('reception-observaciones') ? qs('reception-observaciones').value : '',
+    lineas
+  };
+}
+
+export function showReceptionErrors(errors = {}){
+  const orderErr = qs('error-reception-order');
+  if(orderErr) orderErr.textContent = errors.orderId || errors.role || '';
+  const general = qs('error-reception-lines');
+  if(general) general.textContent = errors.lineas || '';
+  Object.entries(errors).forEach(([key, msg]) => {
+    if(!key.startsWith('linea-')) return;
+    if(general && !general.textContent) general.textContent = msg;
+  });
 }

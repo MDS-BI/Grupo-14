@@ -10,24 +10,15 @@
 Nuestro proyecto tiene como prop√≥sito dise√±ar e implementar un prototipo funcional del m√≥dulo de Compras y Adquisiciones de un sistema ERP, orientado a facilitar la gesti√≥n del abastecimiento y la relaci√≥n con los proveedores de una empresa. Buscamos que los usuarios puedan generar solicitudes de compra, comparar cotizaciones, emitir √≥rdenes de compra y registrar recepciones mediante una interfaz clara y f√°cil de utilizar, que permite organizar la informaci√≥n y dar seguimiento a cada operaci√≥n.
 
 Como equipo, queremos desarrollar un producto m√≠nimo viable que represente las principales funciones del m√≥dulo y contemple su futura integraci√≥n con otras √°reas del ERP, como inventario, finanzas y cuentas por pagar. Para ello, definiremos un modelo de datos coherente y utilizaremos una metodolog√≠a de desarrollo basada en especificaciones. El resultado ser√° un prototipo de interfaz que permitir√° demostrar el flujo de adquisiciones y establecer una base para futuras mejoras y ampliaciones.
-# Estado de implementaciÛn ó MÛdulo de Adquisiciones y Compras
 
-La aplicaciÛn incluye actualmente:
+# Uso del prototipo
 
-- Marco ERP con panel, navegaciÛn lateral, b˙squeda y persistencia en `localStorage`.
-- AdministraciÛn de usuarios y roles (solicitante, compras, aprobador, recepciÛn, administrador) con guardas de permisos.
-- ”rdenes de compra con lÌneas de detalle, descuentos, moneda, tipo de cambio y totales en cascada.
-- Solicitudes de cotizaciÛn con justificaciÛn obligatoria y estado "pendiente de aprobaciÛn".
-- AprobaciÛn y rechazo con validaciÛn de datos comerciales del proveedor y lÌmite de crÈdito.
-- RecepciÛn parcial o completa de Ûrdenes con seguimiento de cantidades pendientes.
-- B˙squeda de entidades y documentos por folio, estado, justificaciÛn y campos personalizados.
+1. Instale dependencias con `npm install` e inicie la aplicaci√≥n con `npm run dev`.
+2. Elija la sesi√≥n activa en el selector **Sesi√≥n** de la barra superior; por defecto se usa el administrador del sistema.
+3. Como administrador, cree usuarios en **Usuarios** y asigne uno de los roles: Solicitante, Aprobador, Encargado de Compras o Encargado de Recepci√≥n.
+4. Como solicitante, registre una **Solicitud** con justificaci√≥n obligatoria y l√≠neas de productos o servicios.
+5. Como aprobador, autorice o rechace las solicitudes de su departamento desde **Aprobaciones**; el rechazo exige un motivo.
+6. Como encargado de compras, cree **Documentos** con proveedor y l√≠neas de detalle, y apru√©belos o canc√©lelos desde el mismo formulario.
+7. Como encargado de recepci√≥n, registre entregas totales o parciales en **Recepci√≥n**, incluyendo cantidades rechazadas y su motivo.
 
-## Comandos
-
-```bash
-npm install      # instalar dependencias
-npm run dev      # servidor de desarrollo
-npm test         # suite de pruebas (Vitest + jsdom)
-npm run lint     # an·lisis est·tico con ESLint
-npm run build    # compilaciÛn de producciÛn
-```
+Consulte `specs/001-erp-base-module/quickstart.md` para el flujo detallado y las validaciones esperadas. Las pruebas se ejecutan con `npx vitest run`.

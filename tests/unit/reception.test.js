@@ -1,9 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { setActiveConfig } from '../../src/module-config.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-  addEntity, addDocument, loadDocuments, loadRecepciones, addRecepcion,
-  validateRecepcion, pendingQuantityForLine, receivedQuantityForLine
+  addEntity, addDocument, approveDocument, loadDocuments,
+  validateReception, addReception, loadReceptions, ordersPendingReception,
+  receivedQuantityForLine, pendingQuantityForLine
 } from '../../src/storage.js';
+import { setActiveConfig, userConfig } from '../../src/module-config.js';
+import { setSession, resetSession } from '../../src/auth.js';
 
 const store = new Map();
 globalThis.localStorage = {
@@ -13,70 +15,121 @@ globalThis.localStorage = {
   clear: () => store.clear()
 };
 
-function seedOrder(status = 'aprobado'){
-  const entity = addEntity({ name: 'Acme', code: 'AC-001' });
-  return addDocument({
-    entityId: entity.entity_id,
-    series: 'OC',
-    folio: 1,
-    startDate: '2026-08-01',
-    endDate: '2026-08-05',
-    status,
-    lineasDetalle: [
-      { producto_id: 'P-1', descripcion: 'Monitor', cantidad: 10, unidadMedida: 'unidades', precioUnitario: 100 },
-      { producto_id: 'P-2', descripcion: 'Cable', cantidad: 5, unidadMedida: 'unidades', precioUnitario: 20 }
-    ]
+const RECEPTION_USER = { id: 'rec', username: 'rec', name: 'Recepción', role: 'encargado_recepcion', active: true };
+
+function approvedOrder(cantidad = 10){
+  const entity = addEntity({
+    name: 'Proveedor',
+    code: 'PR-1',
+    taxId: 'RFC123456789',
+    categoriaProveedor: 'Servicios',
+    paymentTerms: 'neto 30',
+    creditLimit: 100000
   });
+  const draft = addDocument({
+    entityId: entity.entity_id,
+    folio: 1001,
+    startDate: '2026-01-01',
+    endDate: '2026-01-10',
+    status: 'cotización',
+    tipoDocumento: 'Orden de Compra',
+    fechaEmision: '2026-01-01',
+    lineasDetalle: [{ producto_id: 'SKU-1', descripcion: 'Caja', cantidad, unidadMedida: 'cajas', precioUnitario: 10 }]
+  });
+  setSession(RECEPTION_USER);
+  return approveDocument(draft.id);
 }
 
 beforeEach(() => {
   store.clear();
-  setActiveConfig({ tasaImpuesto: 0.16 });
+  setActiveConfig(userConfig);
+  setSession(RECEPTION_USER);
 });
+
+afterEach(() => resetSession());
 
 describe('reception validation', () => {
-  it('rejects negative, non-numeric and excessive quantities', () => {
-    const doc = seedOrder();
-    const [linea] = doc.lineasDetalle;
-    expect(validateRecepcion({ documentoId: doc.id, fechaRecepcion: '2026-08-03', lineas: [{ linea_id: linea.id, cantidadRecibida: -1 }] }).valid).toBe(false);
-    expect(validateRecepcion({ documentoId: doc.id, fechaRecepcion: '2026-08-03', lineas: [{ linea_id: linea.id, cantidadRecibida: 'abc' }] }).valid).toBe(false);
-    expect(validateRecepcion({ documentoId: doc.id, fechaRecepcion: '2026-08-03', lineas: [{ linea_id: linea.id, cantidadRecibida: 11 }] }).valid).toBe(false);
+  it('rejects negative or non numeric quantities', () => {
+    const order = approvedOrder();
+    const negative = validateReception({ orderId: order.id, lineas: [{ ordenLineaIndex: 0, cantidadRecibida: -1 }] });
+    expect(negative.valid).toBe(false);
+    expect(negative.errors['linea-0-cantidadRecibida']).toBeTruthy();
+    const notNumber = validateReception({ orderId: order.id, lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 'abc' }] });
+    expect(notNumber.errors['linea-0-cantidadRecibida']).toBeTruthy();
   });
 
-  it('rejects orders that are not approved', () => {
-    const doc = seedOrder('borrador');
-    const [linea] = doc.lineasDetalle;
-    const check = validateRecepcion({ documentoId: doc.id, fechaRecepcion: '2026-08-03', lineas: [{ linea_id: linea.id, cantidadRecibida: 1 }] });
-    expect(check.valid).toBe(false);
-    expect(check.errors.documentoId).toMatch(/aprobadas/);
+  it('rejects quantities above the pending amount', () => {
+    const order = approvedOrder(5);
+    const result = validateReception({ orderId: order.id, lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 6 }] });
+    expect(result.errors['linea-0-cantidadRecibida']).toContain('pendiente');
+  });
+
+  it('requires a rejection reason when rejecting units', () => {
+    const order = approvedOrder();
+    const result = validateReception({
+      orderId: order.id,
+      lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 0, cantidadRechazada: 2 }]
+    });
+    expect(result.errors['linea-0-motivoRechazo']).toBeTruthy();
+  });
+
+  it('restricts reception to the reception role', () => {
+    const order = approvedOrder();
+    setSession({ id: 'sol', username: 'sol', name: 'Sol', role: 'solicitante', active: true });
+    const result = validateReception({ orderId: order.id, lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 1 }] });
+    expect(result.errors.role).toBeTruthy();
+  });
+
+  it('refuses orders that are not approved or partially received', () => {
+    const order = approvedOrder();
+    const docs = loadDocuments();
+    docs[0] = { ...docs[0], status: 'cancelado' };
+    localStorage.setItem('erp_base_module:documents', JSON.stringify(docs));
+    const result = validateReception({ orderId: order.id, lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 1 }] });
+    expect(result.errors.orderId).toContain('emitidas');
   });
 });
 
-describe('accumulated reception', () => {
-  it('records partial and complete receptions and updates the order status', () => {
-    const doc = seedOrder();
-    const [monitor, cable] = doc.lineasDetalle;
-
-    addRecepcion({
-      documentoId: doc.id,
-      fechaRecepcion: '2026-08-03',
-      lineas: [{ linea_id: monitor.id, cantidadRecibida: 4 }]
+describe('reception storage', () => {
+  it('stores a partial reception and marks the order as partially received', () => {
+    const order = approvedOrder(10);
+    const reception = addReception({
+      orderId: order.id,
+      responsable: 'Raúl',
+      observaciones: 'Faltaron cajas',
+      lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 4, cantidadRechazada: 1, motivoRechazo: 'Dañada' }]
     });
-    expect(loadRecepciones()).toHaveLength(1);
-    expect(receivedQuantityForLine(doc.id, monitor.id)).toBe(4);
-    expect(pendingQuantityForLine(doc.id, monitor.id)).toBe(6);
-    expect(loadDocuments()[0].status).toBe('aprobado');
+    expect(loadReceptions()).toHaveLength(1);
+    expect(reception.fechaRecepcion).toBeTruthy();
+    expect(reception.responsable).toBe('Raúl');
+    expect(reception.lineas[0].cantidadRecibida).toBe(4);
+    expect(reception.lineas[0].cantidadRechazada).toBe(1);
+    expect(loadDocuments()[0].status).toBe('recibido parcialmente');
+    expect(receivedQuantityForLine(order.id, 0)).toBe(4);
+    expect(pendingQuantityForLine(loadDocuments()[0], 0)).toBe(6);
+  });
 
-    addRecepcion({
-      documentoId: doc.id,
-      fechaRecepcion: '2026-08-04',
-      lineas: [
-        { linea_id: monitor.id, cantidadRecibida: 6 },
-        { linea_id: cable.id, cantidadRecibida: 5 }
-      ]
-    });
-    expect(loadRecepciones()).toHaveLength(2);
-    expect(pendingQuantityForLine(doc.id, monitor.id)).toBe(0);
+  it('accumulates multiple receptions without overwriting previous records', () => {
+    const order = approvedOrder(10);
+    addReception({ orderId: order.id, lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 3 }] });
+    addReception({ orderId: order.id, lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 2 }] });
+    expect(loadReceptions()).toHaveLength(2);
+    expect(receivedQuantityForLine(order.id, 0)).toBe(5);
+    expect(pendingQuantityForLine(loadDocuments()[0], 0)).toBe(5);
+  });
+
+  it('marks the order as received once all pending units arrive', () => {
+    const order = approvedOrder(10);
+    addReception({ orderId: order.id, lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 4 }] });
+    addReception({ orderId: order.id, lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 6 }] });
     expect(loadDocuments()[0].status).toBe('recibido');
+    expect(ordersPendingReception()).toHaveLength(0);
+  });
+
+  it('lists approved and partially received orders in the inbox', () => {
+    const order = approvedOrder(10);
+    expect(ordersPendingReception().map(o => o.id)).toEqual([order.id]);
+    addReception({ orderId: order.id, lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 1 }] });
+    expect(ordersPendingReception()).toHaveLength(1);
   });
 });

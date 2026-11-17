@@ -2,49 +2,55 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
-import { setActiveConfig, userConfig } from '../../src/module-config.js';
-import { addEntity, addDocument, loadDocuments, loadRecepciones } from '../../src/storage.js';
+import { ROLE_FIXTURES } from '../setup/roles.js';
 
 const html = fs.readFileSync(fileURLToPath(new URL('../../index.html', import.meta.url)), 'utf8');
 
 let dom;
+let app;
+let storage;
 
 function qs(id){ return document.getElementById(id); }
 
-function seedOrder(description = 'Monitor'){
-  const entity = addEntity({ name: 'Acme', code: 'AC-001', categoriaProveedor: 'Materias primas' });
-  return addDocument({
+function addApprovedOrder(){
+  const entity = storage.addEntity({
+    name: 'Proveedor Recepción',
+    code: 'PR-REC',
+    taxId: 'RFC123456789',
+    categoriaProveedor: 'Servicios',
+    paymentTerms: 'neto 30',
+    creditLimit: 100000
+  });
+  return storage.addDocument({
     entityId: entity.entity_id,
     series: 'OC',
-    folio: 1,
-    startDate: '2026-08-01',
-    endDate: '2026-08-05',
+    folio: 2001,
+    startDate: '2026-01-01',
+    endDate: '2026-01-10',
     status: 'aprobado',
     tipoDocumento: 'Orden de Compra',
-    fechaEmision: '2026-08-01',
+    fechaEmision: '2026-01-01',
     lineasDetalle: [
-      { producto_id: 'P-1', descripcion: description, cantidad: 10, unidadMedida: 'unidades', precioUnitario: 100 },
-      { producto_id: 'P-2', descripcion: 'Cable', cantidad: 5, unidadMedida: 'unidades', precioUnitario: 20 }
+      { producto_id: 'SKU-1', descripcion: 'Caja', cantidad: 10, unidadMedida: 'cajas', precioUnitario: 100 }
     ]
   });
 }
 
-function selectOrder(doc){
-  const select = qs('reception-document');
-  select.value = doc.id;
-  select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
-  qs('reception-date').value = '2026-08-03';
+function selectFirstOrder(){
+  const button = qs('receptions-list').querySelector('button');
+  expect(button).toBeTruthy();
+  button.click();
 }
 
-function setQuantities(values){
-  const rows = [...document.querySelectorAll('#reception-lines .reception-line')];
-  rows.forEach((row, index) => {
-    row.querySelector('.reception-cantidad').value = String(values[index] || 0);
+function setReception(values){
+  const container = qs('reception-detail');
+  Object.entries(values).forEach(([field, value]) => {
+    const input = container.querySelector(`[data-field="${field}"][data-index="0"]`);
+    input.value = value;
   });
 }
 
 beforeEach(async () => {
-  setActiveConfig(userConfig);
   dom = new JSDOM(html, { url: 'http://localhost/' });
   const w = dom.window;
   globalThis.window = w;
@@ -55,49 +61,66 @@ beforeEach(async () => {
   w.scrollTo = vi.fn();
   w.localStorage.clear();
   vi.resetModules();
-  const { boot } = await import('../../src/app.js');
-  await boot();
+  app = await import('../../src/app.js');
+  storage = await import('../../src/storage.js');
+  await app.boot();
 });
 
 afterEach(() => {
   dom.window.close();
 });
 
-describe('User Story 6 - product reception', () => {
-  it('records partial and complete receptions and updates the order status', () => {
-    const doc = seedOrder();
-    qs('nav-reception').click();
-    expect(qs('view-reception').hidden).toBe(false);
-    selectOrder(doc);
-    setQuantities([4, 0]);
-    qs('reception-submit').click();
+describe('User Story 6 - reception', () => {
+  it('registers a partial reception with a rejection reason', () => {
+    const order = addApprovedOrder();
+    app.applySession(ROLE_FIXTURES.recepcion);
+    qs('nav-receptions').click();
+    expect(qs('receptions-empty').hidden).toBe(true);
+    selectFirstOrder();
 
-    expect(loadRecepciones()).toHaveLength(1);
-    expect(loadDocuments()[0].status).toBe('aprobado');
+    setReception({ cantidadRecibida: '4', cantidadRechazada: '1', motivoRechazo: 'Dañada' });
+    qs('reception-submit-button').click();
 
-    setQuantities([6, 5]);
-    qs('reception-submit').click();
-
-    expect(loadRecepciones()).toHaveLength(2);
-    expect(loadDocuments()[0].status).toBe('recibido');
-    expect(qs('reception-history').textContent).toContain('2026-08-03');
+    const receptions = storage.loadReceptions();
+    expect(receptions).toHaveLength(1);
+    expect(receptions[0].orderId).toBe(order.id);
+    expect(receptions[0].lineas[0].cantidadRecibida).toBe(4);
+    expect(receptions[0].lineas[0].cantidadRechazada).toBe(1);
+    expect(receptions[0].lineas[0].motivoRechazo).toBe('Dañada');
+    expect(storage.loadDocuments()[0].status).toBe('recibido parcialmente');
   });
 
-  it('shows pending and accumulated quantities per line', () => {
-    const doc = seedOrder();
-    qs('nav-reception').click();
-    selectOrder(doc);
-    const first = qs('reception-lines').querySelector('.reception-line');
-    expect(first.textContent).toContain('solicitado: 10');
-    expect(first.textContent).toContain('recibido: 0');
-    expect(first.textContent).toContain('pendiente: 10');
+  it('completes the order when the pending quantity is received', () => {
+    addApprovedOrder();
+    app.applySession(ROLE_FIXTURES.recepcion);
+    qs('nav-receptions').click();
+    selectFirstOrder();
+    setReception({ cantidadRecibida: '10', cantidadRechazada: '0', motivoRechazo: '' });
+    qs('reception-submit-button').click();
+
+    expect(storage.loadDocuments()[0].status).toBe('recibido');
+    expect(qs('receptions-empty').hidden).toBe(false);
+    expect(qs('stat-receptions').textContent).toBe('1');
   });
 
-  it('escapes line descriptions from storage', () => {
-    const doc = seedOrder('<img src=x onerror="alert(1)">');
-    qs('nav-reception').click();
-    selectOrder(doc);
-    expect(qs('reception-lines').querySelector('img')).toBeNull();
-    expect(qs('reception-lines').textContent).toContain('<img');
+  it('requires a reason when a line is rejected', () => {
+    addApprovedOrder();
+    app.applySession(ROLE_FIXTURES.recepcion);
+    qs('nav-receptions').click();
+    selectFirstOrder();
+    setReception({ cantidadRecibida: '0', cantidadRechazada: '1', motivoRechazo: '' });
+    qs('reception-submit-button').click();
+
+    expect(storage.loadReceptions()).toHaveLength(0);
+    expect(qs('reception-detail').textContent).toContain('motivo del rechazo');
+  });
+
+  it('restricts reception to the receiving role', () => {
+    addApprovedOrder();
+    app.applySession(ROLE_FIXTURES.solicitante);
+    expect(qs('nav-receptions').hidden).toBe(true);
+    qs('nav-receptions').click();
+    expect(qs('view-receptions').hidden).toBe(true);
+    expect(qs('view-dashboard').hidden).toBe(false);
   });
 });

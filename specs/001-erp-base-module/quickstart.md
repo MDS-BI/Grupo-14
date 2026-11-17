@@ -14,6 +14,16 @@
 4. Edite o elimine una entidad desde el área de gestión.
 5. Cambie entre módulos usando la barra lateral; actualice la página para confirmar que las entidades persisten en el almacenamiento local y que el marco con marca (logotipo, nombre del módulo) permanece consistente.
 
+## Flujos por rol
+
+La sesión activa se elige en el selector **Sesión** de la barra superior. El administrador del sistema se usa por defecto.
+
+1. **Administrador**: abra **Usuarios**, cree una cuenta con rol Solicitante, Aprobador, Encargado de Compras o Encargado de Recepción y confirme que la barra lateral se adapta al rol de la sesión. No se puede desactivar a un usuario con solicitudes u órdenes pendientes.
+2. **Solicitante**: abra **Solicitudes**, elija departamento y partida, escriba la justificación y agregue productos o servicios. La solicitud queda en estado *Pendiente de aprobación* y la justificación se muestra completa en el historial.
+3. **Aprobador**: abra **Aprobaciones**, seleccione una solicitud de su departamento, revise la justificación y el saldo presupuestario y use **Autorizar** o **Rechazar**. El rechazo exige un motivo; sin él la solicitud permanece pendiente.
+4. **Encargado de Compras**: abra **Documentos**, seleccione un proveedor, capture las líneas de detalle y guarde la orden. Los totales se recalculan desde las líneas. Desde el mismo formulario puede **Aprobar** (valida datos comerciales y límite de crédito y asigna la serie/folio OC-XXXX) o **Cancelar**.
+5. **Encargado de Recepción**: abra **Recepción**, seleccione una orden emitida o parcialmente recibida, registre cantidades recibidas y rechazadas (con motivo) y confirme. La orden pasa a *Recibido parcialmente* o *Recibido* según las cantidades pendientes.
+
 ## Validación
 
 - Verifique que los campos obligatorios muestran errores de validación.
@@ -22,6 +32,9 @@
 - Verifique que los resultados de búsqueda se actualizan a medida que el usuario escribe.
 - Verifique que la lista permanece consistente tras las acciones de edición y eliminación.
 - Verifique que las estadísticas del panel coinciden con el número de registros almacenados.
+- Verifique que una solicitud sin justificación no se guarda y que un rechazo sin motivo mantiene el estado pendiente.
+- Verifique que la aprobación se bloquea si faltan `taxId`, `categoriaProveedor`, `paymentTerms` o `creditLimit`, o si el total excede el crédito del proveedor.
+- Verifique que no se puede recibir una orden cancelada, completa o no emitida, y que recibida + rechazada no supera la cantidad solicitada.
 
 ## Extender el Módulo Base
 

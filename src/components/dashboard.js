@@ -1,14 +1,16 @@
 import { getConfig } from '../module-config.js';
-import { loadEntities, loadDocuments, pendingApprovalDocuments } from '../storage.js';
+import { loadEntities, loadDocuments, loadRequisitions, loadReceptions, REQUISITION_STATUS } from '../storage.js';
+
+const EMITTED_STATUSES = ['aprobado', 'recibido parcialmente', 'recibido', 'facturado'];
 
 export function recordCounts(){
   const documents = loadDocuments();
   return {
     entities: loadEntities().length,
     documents: documents.length,
-    pendingApprovals: pendingApprovalDocuments().length,
-    pendingReception: documents.filter(d => d.status === 'aprobado'
-      && Array.isArray(d.lineasDetalle) && d.lineasDetalle.length > 0).length
+    requisitions: loadRequisitions().filter(r => r.status === REQUISITION_STATUS.PENDING).length,
+    orders: documents.filter(d => EMITTED_STATUSES.includes(d.status)).length,
+    receptions: loadReceptions().length
   };
 }
 
@@ -16,14 +18,15 @@ export function renderDashboard(){
   const counts = recordCounts();
   const labels = getConfig().labels;
 
-  const entitiesValue = document.getElementById('stat-entities');
-  if(entitiesValue) entitiesValue.textContent = String(counts.entities);
-  const documentsValue = document.getElementById('stat-documents');
-  if(documentsValue) documentsValue.textContent = String(counts.documents);
-  const pendingApprovalsValue = document.getElementById('stat-pending-approvals');
-  if(pendingApprovalsValue) pendingApprovalsValue.textContent = String(counts.pendingApprovals);
-  const pendingReceptionValue = document.getElementById('stat-pending-reception');
-  if(pendingReceptionValue) pendingReceptionValue.textContent = String(counts.pendingReception);
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = String(value);
+  };
+  set('stat-entities', counts.entities);
+  set('stat-documents', counts.documents);
+  set('stat-requisitions', counts.requisitions);
+  set('stat-orders', counts.orders);
+  set('stat-receptions', counts.receptions);
 
   const entitiesLabel = document.getElementById('stat-entities-label');
   if(entitiesLabel) entitiesLabel.textContent = labels.entities;

@@ -2,13 +2,22 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
-import { addEntity, loadDocuments } from '../../src/storage.js';
+import { ROLE_FIXTURES } from '../setup/roles.js';
 
 const html = fs.readFileSync(fileURLToPath(new URL('../../index.html', import.meta.url)), 'utf8');
 
 let dom;
+let app;
+let storage;
 
 function qs(id){ return document.getElementById(id); }
+function submit(form){ form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })); }
+function fillLine(index, values){
+  const row = qs('document-detail-lines').querySelectorAll('.detail-line')[index];
+  Object.entries(values).forEach(([field, value]) => {
+    row.querySelector(`[data-field="${field}"]`).value = value;
+  });
+}
 
 beforeEach(async () => {
   dom = new JSDOM(html, { url: 'http://localhost/' });
@@ -21,67 +30,86 @@ beforeEach(async () => {
   w.scrollTo = vi.fn();
   w.localStorage.clear();
   vi.resetModules();
-  const { boot } = await import('../../src/app.js');
-  await boot();
+  app = await import('../../src/app.js');
+  storage = await import('../../src/storage.js');
+  await app.boot();
 });
 
 afterEach(() => {
   dom.window.close();
 });
 
-function fillLine(rowIndex, values){
-  const rows = document.querySelectorAll('#document-lineas .linea-row');
-  const row = rows[rowIndex];
-  row.querySelector('.linea-producto').value = values.producto;
-  row.querySelector('.linea-descripcion').value = values.descripcion;
-  row.querySelector('.linea-cantidad').value = String(values.cantidad);
-  row.querySelector('.linea-unidad').value = values.unidad;
-  row.querySelector('.linea-precio').value = String(values.precio);
-  row.querySelector('.linea-descuento').value = String(values.descuento || 0);
-}
-
 describe('User Story 2 - purchase order with detail lines', () => {
-  it('creates an order with multiple lines and cascaded totals', () => {
-    const entity = addEntity({ name: 'Acme', code: 'AC-001' });
+  it('saves the provider, the lines and the computed totals', () => {
+    const entity = storage.addEntity({
+      name: 'Proveedor Uno',
+      code: 'PR-1',
+      taxId: 'RFC123456789',
+      categoriaProveedor: 'Servicios',
+      paymentTerms: 'neto 30',
+      creditLimit: 100000
+    });
+    app.applySession(ROLE_FIXTURES.compras);
     qs('nav-documents').click();
     qs('document-entity').value = entity.entity_id;
     qs('series').value = 'OC';
-    qs('folio').value = '1';
-    qs('startDate').value = '2026-08-01';
-    qs('endDate').value = '2026-08-05';
-    qs('currency').value = 'MXN';
+    qs('folio').value = '1001';
+    qs('startDate').value = '2026-01-01';
+    qs('endDate').value = '2026-01-10';
     qs('status').value = 'borrador';
     qs('cf-tipoDocumento').value = 'Orden de Compra';
-    qs('cf-fechaEmision').value = '2026-08-01';
-    fillLine(0, { producto: 'P-1', descripcion: 'Monitor', cantidad: 2, unidad: 'unidades', precio: 100, descuento: 10 });
-    qs('lineas-add').click();
-    fillLine(1, { producto: 'P-2', descripcion: 'Cable', cantidad: 1, unidad: 'unidades', precio: 50 });
+    qs('cf-fechaEmision').value = '2026-01-01';
 
-    qs('document-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    qs('add-detail-line').click();
+    fillLine(0, {
+      producto_id: 'SKU-1',
+      descripcion: 'Caja',
+      cantidad: '2',
+      unidadMedida: 'cajas',
+      precioUnitario: '100',
+      porcentajeDescuentoLinea: '10'
+    });
+    qs('add-detail-line').click();
+    fillLine(1, {
+      producto_id: 'SKU-2',
+      descripcion: 'Sobre',
+      cantidad: '1',
+      unidadMedida: 'unidades',
+      precioUnitario: '50',
+      porcentajeDescuentoLinea: '0'
+    });
+    qs('discount').value = '50';
+    submit(qs('document-form'));
 
-    const docs = loadDocuments();
+    const docs = storage.loadDocuments();
     expect(docs).toHaveLength(1);
-    expect(docs[0].lineasDetalle).toHaveLength(2);
-    expect(docs[0].subtotal).toBe(230);
-    expect(docs[0].taxAmount).toBe(36.8);
-    expect(docs[0].totalAmount).toBe(266.8);
-    expect(docs[0].currency).toBe('MXN');
+    const doc = docs[0];
+    expect(doc.entity_id).toBe(entity.entity_id);
+    expect(doc.lineasDetalle).toHaveLength(2);
+    expect(doc.lineasDetalle[0].documento_id).toBe(doc.id);
+    expect(doc.lineasDetalle[0].subtotalLinea).toBe(180);
+    expect(doc.lineasDetalle[1].subtotalLinea).toBe(50);
+    expect(doc.subtotal).toBe(230);
+    expect(doc.discount).toBe(50);
+    expect(doc.taxAmount).toBe(28.8);
+    expect(doc.totalAmount).toBe(208.8);
   });
 
-  it('blocks a line with a zero quantity and explains the problem', () => {
-    const entity = addEntity({ name: 'Acme', code: 'AC-001' });
+  it('blocks the order when a line is incomplete', () => {
+    const entity = storage.addEntity({ name: 'Proveedor Dos', code: 'PR-2' });
+    app.applySession(ROLE_FIXTURES.compras);
     qs('nav-documents').click();
     qs('document-entity').value = entity.entity_id;
-    qs('folio').value = '2';
-    qs('startDate').value = '2026-08-01';
-    qs('endDate').value = '2026-08-05';
+    qs('folio').value = '1002';
+    qs('startDate').value = '2026-01-01';
+    qs('endDate').value = '2026-01-10';
     qs('cf-tipoDocumento').value = 'Orden de Compra';
-    qs('cf-fechaEmision').value = '2026-08-01';
-    fillLine(0, { producto: 'P-1', descripcion: 'Monitor', cantidad: 0, unidad: 'unidades', precio: 100 });
+    qs('cf-fechaEmision').value = '2026-01-01';
+    qs('add-detail-line').click();
+    fillLine(0, { producto_id: 'SKU-1', descripcion: '', cantidad: '0', unidadMedida: 'cajas', precioUnitario: '10' });
+    submit(qs('document-form'));
 
-    qs('document-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
-
-    expect(loadDocuments()).toHaveLength(0);
-    expect(qs('error-lineasDetalle').textContent).toMatch(/cantidad/);
+    expect(storage.loadDocuments()).toHaveLength(0);
+    expect(qs('document-detail-lines').textContent).toContain('descripción');
   });
 });

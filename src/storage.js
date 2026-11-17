@@ -1,47 +1,58 @@
-import { getConfig, applyTotalesToCabecera, computeSubtotalLinea } from './module-config.js';
-import { ROLE_KEYS } from './auth.js';
+import { getConfig, computeSubtotalLinea, applyTotalesToCabecera, DEFAULT_TAX_RATE } from './module-config.js';
+import { can, currentUser, ROLE_KEYS, PERMISSIONS } from './auth.js';
 
 const ENTITIES_KEY = 'erp_base_module:entities';
 const DOCUMENTS_KEY = 'erp_base_module:documents';
 const USERS_KEY = 'erp_base_module:users';
+const REQUISITIONS_KEY = 'erp_base_module:requisitions';
 const RECEPTIONS_KEY = 'erp_base_module:receptions';
 
-export const PENDING_STATUS = 'pendiente de aprobación';
-export const REQUEST_TIPO = 'Solicitud de Cotización';
+export const REQUISITION_STATUS = Object.freeze({
+  PENDING: 'Pendiente de aprobación',
+  APPROVED: 'Aprobada',
+  REJECTED: 'Rechazada'
+});
 
-export function isRequestDocument(doc){
-  if(!doc) return false;
-  const tipo = String(doc.tipoDocumento || '').trim();
-  return tipo === REQUEST_TIPO || justificacionRequired(tipo);
-}
+export const DEPARTMENT_BUDGETS = Object.freeze({
+  Operaciones: 100000,
+  Compras: 150000,
+  TI: 80000,
+  General: 50000
+});
 
-export function loadEntities(){
+export const DEPARTMENTS = Object.freeze(Object.keys(DEPARTMENT_BUDGETS));
+
+const RECEPTION_ORDER_STATUSES = Object.freeze(['aprobado', 'recibido parcialmente']);
+const FINAL_ORDER_STATUSES = Object.freeze(['recibido', 'facturado', 'cancelado']);
+
+function readJson(key, fallback){
   try{
-    const raw = localStorage.getItem(ENTITIES_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
   }catch(e){
-    console.error('Failed to parse entities from storage', e);
-    return [];
+    console.error(`Failed to parse ${key} from storage`, e);
+    return fallback;
   }
 }
 
-export function saveEntities(entities){
-  localStorage.setItem(ENTITIES_KEY, JSON.stringify(entities));
+function writeJson(key, value){
+  localStorage.setItem(key, JSON.stringify(value));
 }
 
-export function loadDocuments(){
-  try{
-    const raw = localStorage.getItem(DOCUMENTS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  }catch(e){
-    console.error('Failed to parse documents from storage', e);
-    return [];
-  }
-}
+export function loadEntities(){ return readJson(ENTITIES_KEY, []); }
+export function saveEntities(entities){ writeJson(ENTITIES_KEY, entities); }
 
-export function saveDocuments(documents){
-  localStorage.setItem(DOCUMENTS_KEY, JSON.stringify(documents));
-}
+export function loadDocuments(){ return readJson(DOCUMENTS_KEY, []); }
+export function saveDocuments(documents){ writeJson(DOCUMENTS_KEY, documents); }
+
+export function loadUsers(){ return readJson(USERS_KEY, []); }
+export function saveUsers(users){ writeJson(USERS_KEY, users); }
+
+export function loadRequisitions(){ return readJson(REQUISITIONS_KEY, []); }
+export function saveRequisitions(requisitions){ writeJson(REQUISITIONS_KEY, requisitions); }
+
+export function loadReceptions(){ return readJson(RECEPTIONS_KEY, []); }
+export function saveReceptions(receptions){ writeJson(RECEPTIONS_KEY, receptions); }
 
 function generateId(){
   return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
@@ -49,83 +60,6 @@ function generateId(){
 
 function declaredFields(target){
   return getConfig().customFields.filter(f => f.target === target);
-}
-
-function declaredLineaExtraFields(){
-  const cfg = getConfig().lineasDetalle || {};
-  return Array.isArray(cfg.camposExtra) ? cfg.camposExtra : [];
-}
-
-function justificacionRequired(tipoDocumento){
-  const cfg = getConfig().justificacion;
-  if(!cfg || !Array.isArray(cfg.requiredFor)) return false;
-  return cfg.requiredFor.includes(String(tipoDocumento || '').trim());
-}
-
-function validateLineasDetalle(lineas, errors){
-  if(lineas === undefined || lineas === null) return;
-  if(!Array.isArray(lineas)){
-    errors.lineasDetalle = 'Las líneas de detalle deben ser un arreglo';
-    return;
-  }
-  const maxPct = Number(getConfig().lineasDetalle && getConfig().lineasDetalle.maxPorcentajeDescuento);
-  const limite = Number.isFinite(maxPct) ? maxPct : 100;
-  lineas.forEach((linea, index) => {
-    const where = `Línea ${index + 1}`;
-    if(!linea || typeof linea !== 'object'){
-      errors.lineasDetalle = `${where}: debe ser un objeto`;
-      return;
-    }
-    if(isEmpty(linea.producto_id)) errors.lineasDetalle = `${where}: el producto es obligatorio`;
-    if(isEmpty(linea.descripcion)) errors.lineasDetalle = `${where}: la descripción es obligatoria`;
-    if(isEmpty(linea.unidadMedida)) errors.lineasDetalle = `${where}: la unidad de medida es obligatoria`;
-    const cantidad = Number(linea.cantidad);
-    if(!Number.isFinite(cantidad) || cantidad <= 0){
-      errors.lineasDetalle = `${where}: la cantidad debe ser un número estrictamente positivo`;
-    }
-    const precio = Number(linea.precioUnitario);
-    if(!Number.isFinite(precio) || precio < 0){
-      errors.lineasDetalle = `${where}: el precio unitario debe ser un número no negativo`;
-    }
-    if(!isEmpty(linea.porcentajeDescuentoLinea)){
-      const pct = Number(linea.porcentajeDescuentoLinea);
-      if(!Number.isFinite(pct) || pct < 0 || pct > limite){
-        errors.lineasDetalle = `${where}: el descuento debe estar entre 0 y ${limite}`;
-      }
-    }
-  });
-}
-
-function normalizeLinea(linea, documentoId){
-  const extra = {};
-  for(const field of declaredLineaExtraFields()){
-    const value = linea[field.key];
-    if(value === undefined || value === null || value === '') continue;
-    extra[field.key] = field.type === 'number' ? Number(value) : String(value).trim();
-  }
-  const normalized = {
-    id: linea.id || generateId(),
-    documento_id: documentoId !== undefined ? documentoId : linea.documento_id,
-    producto_id: String(linea.producto_id || '').trim(),
-    descripcion: String(linea.descripcion || '').trim(),
-    cantidad: Number(linea.cantidad),
-    unidadMedida: String(linea.unidadMedida || '').trim(),
-    precioUnitario: Number(linea.precioUnitario),
-    porcentajeDescuentoLinea: isEmpty(linea.porcentajeDescuentoLinea) ? 0 : Number(linea.porcentajeDescuentoLinea),
-    ...extra
-  };
-  normalized.subtotalLinea = computeSubtotalLinea(normalized);
-  return normalized;
-}
-
-function normalizeLineas(lineas, documentoId){
-  if(!Array.isArray(lineas)) return undefined;
-  return lineas.map(linea => normalizeLinea(linea, documentoId));
-}
-
-function shouldComputeTotals(payload){
-  return payload.recomputeTotals === true
-    || (Array.isArray(payload.lineasDetalle) && payload.lineasDetalle.length > 0);
 }
 
 export function isValidDate(value){
@@ -161,7 +95,6 @@ function collectCustomErrors(target, data){
 function validateLifecycleStatus(status, currentStatus, errors){
   const lc = getConfig().statusLifecycle;
   if(!lc) return;
-  if(currentStatus === PENDING_STATUS && ['aprobado', 'cancelado'].includes(status)) return;
   if(currentStatus === undefined || currentStatus === null){
     if(!isEmpty(status) && !lc.statuses.includes(status)){
       errors.status = `El estado debe ser uno de: ${lc.statuses.join(', ')}`;
@@ -178,6 +111,86 @@ function validateLifecycleStatus(status, currentStatus, errors){
 function isValidEmail(value){
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
 }
+
+// ---------------------------------------------------------------------------
+// Usuarios y permisos (HU1)
+// ---------------------------------------------------------------------------
+
+export function validateUser(payload, existingId){
+  const errors = {};
+  const username = String(payload.username || '').trim();
+  const name = String(payload.name || '').trim();
+  const role = String(payload.role || '').trim();
+  if(!username) errors.username = 'El usuario es obligatorio';
+  else {
+    const dup = loadUsers().some(u => u.id !== existingId && String(u.username).toLowerCase() === username.toLowerCase());
+    if(dup) errors.username = 'El nombre de usuario ya existe';
+  }
+  if(!name) errors.name = 'El nombre es obligatorio';
+  if(!ROLE_KEYS.includes(role)) errors.role = `El rol debe ser uno de: ${ROLE_KEYS.join(', ')}`;
+  return { valid: Object.keys(errors).length === 0, errors };
+}
+
+export function addUser(payload){
+  const check = validateUser(payload);
+  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
+  const now = new Date().toISOString();
+  const user = {
+    id: generateId(),
+    username: String(payload.username).trim(),
+    name: String(payload.name).trim(),
+    role: String(payload.role).trim(),
+    active: payload.active !== false,
+    createdAt: now,
+    updatedAt: now
+  };
+  const list = loadUsers();
+  list.push(user);
+  saveUsers(list);
+  return user;
+}
+
+export function updateUser(id, updates){
+  const list = loadUsers();
+  const idx = list.findIndex(u => u.id === id);
+  if(idx === -1) throw new Error('Usuario no encontrado');
+  const merged = { ...list[idx], ...updates };
+  const check = validateUser(merged, id);
+  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
+  list[idx] = {
+    ...list[idx],
+    username: String(merged.username).trim(),
+    name: String(merged.name).trim(),
+    role: String(merged.role).trim(),
+    active: merged.active !== false,
+    updatedAt: new Date().toISOString()
+  };
+  saveUsers(list);
+  return list[idx];
+}
+
+export function usersWithPendingWork(userId){
+  const requisitions = loadRequisitions().filter(r => r.requesterId === userId && !['Rechazada'].includes(r.status) && r.status !== 'Concluida');
+  const documents = loadDocuments().filter(d => d.createdBy === userId && !FINAL_ORDER_STATUSES.includes(d.status));
+  return { requisitions: requisitions.length, documents: documents.length };
+}
+
+export function deactivateUser(id){
+  const list = loadUsers();
+  const idx = list.findIndex(u => u.id === id);
+  if(idx === -1) throw new Error('Usuario no encontrado');
+  const pending = usersWithPendingWork(id);
+  if(pending.requisitions > 0 || pending.documents > 0){
+    throw new Error('No se puede desactivar el usuario: tiene solicitudes u órdenes pendientes en su flujo. Reasigna o concluye esos trámites primero.');
+  }
+  list[idx] = { ...list[idx], active: false, updatedAt: new Date().toISOString() };
+  saveUsers(list);
+  return list[idx];
+}
+
+// ---------------------------------------------------------------------------
+// Entidades (proveedores)
+// ---------------------------------------------------------------------------
 
 export function validateEntity({name, code, email, targetDate, creditLimit, ...rest}){
   const errors = {};
@@ -262,6 +275,61 @@ export function deleteEntity(id){
   return newList;
 }
 
+// ---------------------------------------------------------------------------
+// Líneas de detalle (HU2 / HU3 / HU6)
+// ---------------------------------------------------------------------------
+
+export function validateLineasDetalle(lineas){
+  const errors = {};
+  if(!Array.isArray(lineas) || lineas.length === 0){
+    errors.lineas = 'Añade al menos una línea de detalle';
+    return { valid: false, errors, lineas: [] };
+  }
+  const maxPct = Number(getConfig().lineasDetalle.maxPorcentajeDescuento);
+  const clean = [];
+  lineas.forEach((l, i) => {
+    const n = i + 1;
+    const producto_id = String(l.producto_id || '').trim();
+    const descripcion = String(l.descripcion || '').trim();
+    const cantidad = Number(l.cantidad);
+    const precioUnitario = Number(l.precioUnitario);
+    const pctRaw = l.porcentajeDescuentoLinea === undefined || l.porcentajeDescuentoLinea === null || l.porcentajeDescuentoLinea === ''
+      ? 0
+      : Number(l.porcentajeDescuentoLinea);
+    const unidadMedida = String(l.unidadMedida || '').trim();
+    if(!producto_id) errors[`linea-${i}-producto_id`] = `Línea ${n}: el producto es obligatorio`;
+    if(!descripcion) errors[`linea-${i}-descripcion`] = `Línea ${n}: la descripción es obligatoria`;
+    if(!Number.isFinite(cantidad) || cantidad <= 0) errors[`linea-${i}-cantidad`] = `Línea ${n}: la cantidad debe ser mayor que cero`;
+    if(!unidadMedida) errors[`linea-${i}-unidadMedida`] = `Línea ${n}: la unidad de medida es obligatoria`;
+    if(!Number.isFinite(precioUnitario) || precioUnitario < 0) errors[`linea-${i}-precioUnitario`] = `Línea ${n}: el precio unitario debe ser un número no negativo`;
+    if(!Number.isFinite(pctRaw) || pctRaw < 0 || pctRaw > maxPct) errors[`linea-${i}-porcentajeDescuentoLinea`] = `Línea ${n}: el descuento debe estar entre 0 y ${maxPct}`;
+    clean.push({
+      producto_id,
+      descripcion,
+      cantidad,
+      unidadMedida,
+      precioUnitario,
+      porcentajeDescuentoLinea: Number.isFinite(pctRaw) ? pctRaw : 0
+    });
+  });
+  return { valid: Object.keys(errors).length === 0, errors, lineas: clean };
+}
+
+function prepareLineas(lineas, documentoId){
+  const check = validateLineasDetalle(lineas);
+  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
+  return check.lineas.map(l => ({
+    id: generateId(),
+    documento_id: documentoId,
+    ...l,
+    subtotalLinea: computeSubtotalLinea(l)
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Documentos (órdenes de compra)
+// ---------------------------------------------------------------------------
+
 export function validateDocument(payload, currentStatus){
   const {entityId, series, folio, startDate, endDate, quantity, subtotal, discount, taxAmount, totalAmount, status} = payload;
   const errors = {};
@@ -297,37 +365,19 @@ export function validateDocument(payload, currentStatus){
     && Number(discount) > Number(subtotal)){
     errors.discount = 'El descuento no puede superar el subtotal';
   }
-  const normalizedStatus = (status||'').trim();
-  const skippingLifecycle = normalizedStatus === PENDING_STATUS && isRequestDocument(payload);
-  if(!skippingLifecycle){
-    validateLifecycleStatus(normalizedStatus, currentStatus, errors);
+  validateLifecycleStatus((status||'').trim(), currentStatus, errors);
+  if(Array.isArray(payload.lineasDetalle) && payload.lineasDetalle.length > 0){
+    const lineCheck = validateLineasDetalle(payload.lineasDetalle);
+    if(!lineCheck.valid) Object.assign(errors, lineCheck.errors);
   }
-  if(justificacionRequired(payload.tipoDocumento) && isEmpty(payload.justificacion)){
-    errors.justificacion = 'La justificación es obligatoria para solicitudes de cotización';
-  }
-  if(isRequestDocument(payload)){
-    const deptField = getConfig().customFields.some(f => f.target === 'document' && f.key === 'departamento');
-    if(deptField && isEmpty(payload.departamento)){
-      errors.departamento = 'El departamento es obligatorio para las solicitudes';
-    }
-    if(!isEmpty(payload.presupuestoDisponible) && !isEmpty(payload.totalAmount)
-      && Number(payload.totalAmount) > Number(payload.presupuestoDisponible)){
-      errors.presupuestoDisponible = 'El monto solicitado supera el presupuesto disponible del departamento';
-    }
-  }
-  validateLineasDetalle(payload.lineasDetalle, errors);
   Object.assign(errors, collectCustomErrors('document', payload));
   return { valid: Object.keys(errors).length === 0, errors };
 }
 
-export function addDocument(payload){
-  const now = new Date().toISOString();
-  const check = validateDocument(payload);
-  if(!check.valid){
-    throw new Error(Object.values(check.errors)[0]);
-  }
-  let document = {
-    id: generateId(),
+function baseDocumentFields(payload, id, now){
+  const user = currentUser();
+  return {
+    id,
     entity_id: payload.entityId,
     series: (payload.series||'').trim() || undefined,
     folio: Number(payload.folio),
@@ -342,22 +392,25 @@ export function addDocument(payload){
     paymentTerms: (payload.paymentTerms||'').trim() || undefined,
     notes: (payload.notes||'').trim() || undefined,
     status: (payload.status||'').trim() || undefined,
-    justificacion: (payload.justificacion||'').trim() || undefined,
-    solicitante_id: payload.solicitante_id || undefined,
-    aprobador_id: payload.aprobador_id || undefined,
-    receptor_id: payload.receptor_id || undefined,
+    createdBy: user ? user.id : undefined,
+    createdByName: user ? user.name : undefined,
     ...pickCustomFields('document', payload),
     createdAt: now,
     updatedAt: now
   };
-  const lineasDetalle = normalizeLineas(payload.lineasDetalle, document.id);
-  if(lineasDetalle){
-    lineasDetalle.forEach(linea => { linea.documento_id = document.id; });
-    document.lineasDetalle = lineasDetalle;
+}
+
+export function addDocument(payload){
+  const now = new Date().toISOString();
+  const check = validateDocument(payload);
+  if(!check.valid){
+    throw new Error(Object.values(check.errors)[0]);
   }
-  if(shouldComputeTotals(payload)){
-    const tasa = payload.tasaImpuesto !== undefined ? payload.tasaImpuesto : getConfig().tasaImpuesto;
-    document = applyTotalesToCabecera(document, tasa);
+  const id = generateId();
+  const document = baseDocumentFields(payload, id, now);
+  if(Array.isArray(payload.lineasDetalle) && payload.lineasDetalle.length > 0){
+    document.lineasDetalle = prepareLineas(payload.lineasDetalle, id);
+    Object.assign(document, applyTotalesToCabecera(document, DEFAULT_TAX_RATE));
   }
   const list = loadDocuments();
   list.push(document);
@@ -383,16 +436,12 @@ export function updateDocument(id, updates){
     taxAmount: merged.taxAmount,
     totalAmount: merged.totalAmount,
     status: updates.status !== undefined ? (updates.status||'').trim() : merged.status,
-    tipoDocumento: merged.tipoDocumento,
-    justificacion: updates.justificacion !== undefined ? updates.justificacion : merged.justificacion,
-    departamento: merged.departamento,
-    presupuestoDisponible: merged.presupuestoDisponible,
-    lineasDetalle: updates.lineasDetalle !== undefined ? updates.lineasDetalle : merged.lineasDetalle
+    lineasDetalle: updates.lineasDetalle !== undefined ? updates.lineasDetalle : prev.lineasDetalle
   }, prev.status);
   if(!check.valid){
     throw new Error(Object.values(check.errors)[0]);
   }
-  let next = {
+  const next = {
     ...prev,
     series: (merged.series||'').trim() || undefined,
     folio: Number(merged.folio),
@@ -407,33 +456,18 @@ export function updateDocument(id, updates){
     paymentTerms: (merged.paymentTerms||'').trim() || undefined,
     notes: (merged.notes||'').trim() || undefined,
     status: updates.status !== undefined ? (updates.status||'').trim() : merged.status,
-    justificacion: (merged.justificacion||'').trim() || undefined,
-    solicitante_id: merged.solicitante_id || undefined,
-    aprobador_id: merged.aprobador_id || undefined,
-    receptor_id: merged.receptor_id || undefined,
     ...pickCustomFields('document', { ...prev, ...updates }),
     updatedAt: new Date().toISOString()
   };
   if(updates.lineasDetalle !== undefined){
-    next.lineasDetalle = normalizeLineas(updates.lineasDetalle, id);
-  } else if(prev.lineasDetalle){
-    next.lineasDetalle = prev.lineasDetalle;
-  }
-  if(updates.recomputeTotals === true
-    || (Array.isArray(updates.lineasDetalle) && updates.lineasDetalle.length > 0)){
-    const tasa = updates.tasaImpuesto !== undefined ? updates.tasaImpuesto : getConfig().tasaImpuesto;
-    next = applyTotalesToCabecera(next, tasa);
+    if(Array.isArray(updates.lineasDetalle) && updates.lineasDetalle.length > 0){
+      next.lineasDetalle = prepareLineas(updates.lineasDetalle, id);
+      Object.assign(next, applyTotalesToCabecera(next, DEFAULT_TAX_RATE));
+    } else {
+      delete next.lineasDetalle;
+    }
   }
   list[idx] = next;
-  saveDocuments(list);
-  return next;
-}
-
-export function patchDocument(id, patch){
-  const list = loadDocuments();
-  const idx = list.findIndex(d => d.id === id);
-  if(idx === -1) throw new Error('Documento no encontrado');
-  list[idx] = { ...list[idx], ...patch, updatedAt: new Date().toISOString() };
   saveDocuments(list);
   return list[idx];
 }
@@ -452,229 +486,304 @@ export function deleteDocumentsForEntity(entityId){
   return newList;
 }
 
+// ---------------------------------------------------------------------------
+// Aprobación y ciclo de vida de la Orden de Compra (HU3)
+// ---------------------------------------------------------------------------
+
+export function nextFolio(series){
+  const nums = loadDocuments()
+    .filter(d => (d.series || '') === series)
+    .map(d => Number(d.folio))
+    .filter(n => Number.isFinite(n));
+  return nums.length ? Math.max(...nums) + 1 : 1001;
+}
+
+export function approveDocument(id){
+  const docs = loadDocuments();
+  const idx = docs.findIndex(d => d.id === id);
+  if(idx === -1) throw new Error('Documento no encontrado');
+  const doc = docs[idx];
+  const entity = loadEntities().find(e => e.entity_id === doc.entity_id);
+  if(!entity) throw new Error('El proveedor del documento no existe');
+  const missing = [];
+  if(isEmpty(entity.taxId)) missing.push('taxId');
+  if(isEmpty(entity.categoriaProveedor)) missing.push('categoriaProveedor');
+  if(isEmpty(entity.paymentTerms)) missing.push('paymentTerms');
+  if(entity.creditLimit === undefined || entity.creditLimit === null) missing.push('creditLimit');
+  if(missing.length > 0){
+    throw new Error(`Faltan datos comerciales del proveedor: ${missing.join(', ')}`);
+  }
+  const total = Number(doc.totalAmount !== undefined ? doc.totalAmount : doc.subtotal || 0);
+  if(Number(total) > Number(entity.creditLimit)){
+    throw new Error('El monto total excede el límite de crédito del proveedor');
+  }
+  docs[idx] = {
+    ...doc,
+    status: 'aprobado',
+    series: 'OC',
+    folio: nextFolio('OC'),
+    approvedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  saveDocuments(docs);
+  return docs[idx];
+}
+
+export function cancelDocument(id){
+  const docs = loadDocuments();
+  const idx = docs.findIndex(d => d.id === id);
+  if(idx === -1) throw new Error('Documento no encontrado');
+  const doc = docs[idx];
+  if(['recibido', 'facturado', 'cancelado'].includes(doc.status)){
+    throw new Error(`No se puede cancelar un documento en estado "${doc.status}"`);
+  }
+  docs[idx] = { ...doc, status: 'cancelado', cancelledAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  saveDocuments(docs);
+  return docs[idx];
+}
+
+// ---------------------------------------------------------------------------
+// Solicitudes de compra (HU7 / HU4)
+// ---------------------------------------------------------------------------
+
+function normalizeRequisitionLines(lineas){
+  if(!Array.isArray(lineas)) return [];
+  return lineas.map(l => ({
+    producto_id: String(l.producto_id || '').trim(),
+    descripcion: String(l.descripcion || '').trim(),
+    cantidad: Number(l.cantidad),
+    unidadMedida: String(l.unidadMedida || 'unidades').trim() || 'unidades',
+    precioEstimado: l.precioEstimado === undefined || l.precioEstimado === '' ? 0 : Number(l.precioEstimado)
+  }));
+}
+
+export function validateRequisition(payload){
+  const errors = {};
+  if(isEmpty(payload.department)) errors.department = 'El departamento es obligatorio';
+  if(isEmpty(payload.justification)) errors.justification = 'La justificación de la compra es obligatoria';
+  const lineas = normalizeRequisitionLines(payload.lineasDetalle);
+  if(lineas.length === 0) errors.lineasDetalle = 'Añade al menos un producto o servicio';
+  lineas.forEach((l, i) => {
+    const n = i + 1;
+    if(!l.descripcion) errors[`linea-${i}-descripcion`] = `Línea ${n}: la descripción es obligatoria`;
+    if(!Number.isFinite(l.cantidad) || l.cantidad <= 0) errors[`linea-${i}-cantidad`] = `Línea ${n}: la cantidad debe ser mayor que cero`;
+    if(!Number.isFinite(l.precioEstimado) || l.precioEstimado < 0) errors[`linea-${i}-precioEstimado`] = `Línea ${n}: el precio estimado debe ser un número no negativo`;
+  });
+  return { valid: Object.keys(errors).length === 0, errors };
+}
+
+function nextRequisitionFolio(){
+  const nums = loadRequisitions()
+    .map(r => Number(String(r.folio || '').replace(/^SOL-/, '')))
+    .filter(n => Number.isFinite(n));
+  const n = nums.length ? Math.max(...nums) + 1 : 1001;
+  return `SOL-${n}`;
+}
+
+export function requisitionTotal(requisition){
+  const lineas = Array.isArray(requisition.lineasDetalle) ? requisition.lineasDetalle : [];
+  return lineas.reduce((acc, l) => {
+    const c = Number(l.cantidad);
+    const p = Number(l.precioEstimado);
+    return acc + (Number.isFinite(c) && Number.isFinite(p) ? c * p : 0);
+  }, 0);
+}
+
+export function addRequisition(payload){
+  const check = validateRequisition(payload);
+  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
+  const user = currentUser();
+  const now = new Date().toISOString();
+  const requisition = {
+    id: generateId(),
+    folio: nextRequisitionFolio(),
+    requesterId: user ? user.id : undefined,
+    requesterName: (payload.requesterName || (user ? user.name : '')).trim(),
+    department: String(payload.department).trim(),
+    budgetLine: (payload.budgetLine || '').trim() || undefined,
+    justification: String(payload.justification).trim(),
+    lineasDetalle: normalizeRequisitionLines(payload.lineasDetalle),
+    status: REQUISITION_STATUS.PENDING,
+    rejectionReason: undefined,
+    createdAt: now,
+    updatedAt: now
+  };
+  const list = loadRequisitions();
+  list.push(requisition);
+  saveRequisitions(list);
+  return requisition;
+}
+
+export function approveRequisition(id){
+  const list = loadRequisitions();
+  const idx = list.findIndex(r => r.id === id);
+  if(idx === -1) throw new Error('Solicitud no encontrada');
+  if(list[idx].status !== REQUISITION_STATUS.PENDING){
+    throw new Error(`Solo se pueden aprobar solicitudes pendientes (estado actual: ${list[idx].status})`);
+  }
+  list[idx] = {
+    ...list[idx],
+    status: REQUISITION_STATUS.APPROVED,
+    approvedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  saveRequisitions(list);
+  return list[idx];
+}
+
+export function rejectRequisition(id, reason){
+  if(isEmpty(reason)) throw new Error('El motivo de rechazo es obligatorio');
+  const list = loadRequisitions();
+  const idx = list.findIndex(r => r.id === id);
+  if(idx === -1) throw new Error('Solicitud no encontrada');
+  if(list[idx].status !== REQUISITION_STATUS.PENDING){
+    throw new Error(`Solo se pueden rechazar solicitudes pendientes (estado actual: ${list[idx].status})`);
+  }
+  list[idx] = {
+    ...list[idx],
+    status: REQUISITION_STATUS.REJECTED,
+    rejectionReason: String(reason).trim(),
+    rejectedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  saveRequisitions(list);
+  return list[idx];
+}
+
+export function pendingRequisitionsForDepartment(department){
+  return loadRequisitions().filter(r =>
+    r.status === REQUISITION_STATUS.PENDING && (!department || r.department === department)
+  );
+}
+
+export function budgetForDepartment(department){
+  const total = Number(DEPARTMENT_BUDGETS[department] || 0);
+  const used = loadRequisitions()
+    .filter(r => r.department === department && [REQUISITION_STATUS.PENDING, REQUISITION_STATUS.APPROVED].includes(r.status))
+    .reduce((acc, r) => acc + requisitionTotal(r), 0);
+  return { total, used, available: Math.max(total - used, 0) };
+}
+
+// ---------------------------------------------------------------------------
+// Recepción de productos (HU6)
+// ---------------------------------------------------------------------------
+
+export function ordersPendingReception(){
+  return loadDocuments().filter(d => RECEPTION_ORDER_STATUSES.includes(d.status));
+}
+
+export function receivedQuantityForLine(orderId, lineIndex){
+  return loadReceptions()
+    .filter(r => r.orderId === orderId)
+    .reduce((acc, r) => {
+      const line = (r.lineas || []).find(l => l.ordenLineaIndex === lineIndex);
+      const q = line ? Number(line.cantidadRecibida) : 0;
+      return acc + (Number.isFinite(q) ? q : 0);
+    }, 0);
+}
+
+export function pendingQuantityForLine(order, lineIndex){
+  const line = (order.lineasDetalle || [])[lineIndex];
+  if(!line) return 0;
+  const requested = Number(line.cantidad) || 0;
+  return Math.max(requested - receivedQuantityForLine(order.id, lineIndex), 0);
+}
+
+export function validateReception(payload){
+  const errors = {};
+  if(!can(PERMISSIONS.RECEPTIONS_MANAGE)) errors.role = 'Tu rol no permite registrar recepciones';
+  const docs = loadDocuments();
+  const order = docs.find(d => d.id === payload.orderId);
+  if(!order) errors.orderId = 'La Orden de Compra no existe';
+  else if(!RECEPTION_ORDER_STATUSES.includes(order.status)){
+    errors.orderId = 'Solo se pueden recibir órdenes emitidas o parcialmente recibidas';
+  }
+  if(order && (!Array.isArray(payload.lineas) || payload.lineas.length === 0)){
+    errors.lineas = 'Registra al menos una línea de recepción';
+  }
+  const lineas = Array.isArray(payload.lineas) ? payload.lineas : [];
+  let hasMovement = false;
+  lineas.forEach((l, i) => {
+    const n = i + 1;
+    const ordenLineaIndex = Number(l.ordenLineaIndex);
+    const line = order && Array.isArray(order.lineasDetalle) ? order.lineasDetalle[ordenLineaIndex] : undefined;
+    if(!line){ errors[`linea-${i}-ordenLineaIndex`] = `Línea ${n}: referencia inválida a la orden`; return; }
+    const recibida = Number(l.cantidadRecibida);
+    const rechazada = Number(l.cantidadRechazada === undefined || l.cantidadRechazada === '' ? 0 : l.cantidadRechazada);
+    const pendiente = pendingQuantityForLine(order, ordenLineaIndex);
+    if(!Number.isFinite(recibida) || recibida < 0) errors[`linea-${i}-cantidadRecibida`] = `Línea ${n}: la cantidad recibida debe ser un número no negativo`;
+    else if(recibida > pendiente) errors[`linea-${i}-cantidadRecibida`] = `Línea ${n}: la cantidad recibida (${recibida}) supera la pendiente (${pendiente})`;
+    if(!Number.isFinite(rechazada) || rechazada < 0) errors[`linea-${i}-cantidadRechazada`] = `Línea ${n}: la cantidad rechazada debe ser un número no negativo`;
+    else if(Number.isFinite(recibida) && recibida + rechazada > Number(line.cantidad)) errors[`linea-${i}-cantidadRechazada`] = `Línea ${n}: recibida + rechazada supera la cantidad solicitada`;
+    if(rechazada > 0 && isEmpty(l.motivoRechazo)) errors[`linea-${i}-motivoRechazo`] = `Línea ${n}: el motivo del rechazo es obligatorio`;
+    if((Number.isFinite(recibida) && recibida > 0) || (Number.isFinite(rechazada) && rechazada > 0)) hasMovement = true;
+  });
+  if(!errors.lineas && !hasMovement) errors.lineas = 'Registra al menos una cantidad recibida o rechazada';
+  return { valid: Object.keys(errors).length === 0, errors, order };
+}
+
+export function addReception(payload){
+  const check = validateReception(payload);
+  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
+  const order = check.order;
+  const user = currentUser();
+  const now = new Date().toISOString();
+  const lineas = payload.lineas.map(l => {
+    const idx = Number(l.ordenLineaIndex);
+    const orderLine = order.lineasDetalle[idx];
+    const recibida = Number(l.cantidadRecibida === undefined || l.cantidadRecibida === '' ? 0 : l.cantidadRecibida);
+    const rechazada = Number(l.cantidadRechazada === undefined || l.cantidadRechazada === '' ? 0 : l.cantidadRechazada);
+    return {
+      ordenLineaIndex: idx,
+      producto_id: orderLine.producto_id,
+      descripcion: orderLine.descripcion,
+      cantidadSolicitada: Number(orderLine.cantidad),
+      cantidadRecibida: Number.isFinite(recibida) ? recibida : 0,
+      cantidadRechazada: Number.isFinite(rechazada) ? rechazada : 0,
+      motivoRechazo: rechazada > 0 ? String(l.motivoRechazo).trim() : undefined
+    };
+  });
+  const reception = {
+    id: generateId(),
+    orderId: order.id,
+    orderFolio: `${order.series ? `${order.series}-` : ''}${order.folio}`,
+    fechaRecepcion: now,
+    responsable: (payload.responsable || (user ? user.name : '')).trim(),
+    observaciones: (payload.observaciones || '').trim() || undefined,
+    estado: 'parcial',
+    lineas,
+    createdAt: now
+  };
+  const list = loadReceptions();
+  list.push(reception);
+  saveReceptions(list);
+  updateOrderReceptionStatus(order.id);
+  return loadReceptions().find(r => r.id === reception.id);
+}
+
+export function updateOrderReceptionStatus(orderId){
+  const docs = loadDocuments();
+  const idx = docs.findIndex(d => d.id === orderId);
+  if(idx === -1) return;
+  const order = docs[idx];
+  const lineas = Array.isArray(order.lineasDetalle) ? order.lineasDetalle : [];
+  if(lineas.length === 0) return;
+  const complete = lineas.every((_, i) => pendingQuantityForLine(order, i) <= 0);
+  docs[idx] = {
+    ...order,
+    status: complete ? 'recibido' : 'recibido parcialmente',
+    recepcionEstado: complete ? 'completa' : 'parcial',
+    updatedAt: new Date().toISOString()
+  };
+  saveDocuments(docs);
+}
+
 export function clearAll(){
   saveEntities([]);
   saveDocuments([]);
   saveUsers([]);
-  saveRecepciones([]);
-}
-
-export function loadUsers(){
-  try{
-    const raw = localStorage.getItem(USERS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  }catch(e){
-    return [];
-  }
-}
-
-export function saveUsers(users){
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-export function validateUser({username, name, role, active = true}, { excludeId } = {}){
-  const errors = {};
-  if(isEmpty(username)) errors.username = 'El usuario es obligatorio';
-  if(isEmpty(name)) errors.name = 'El nombre es obligatorio';
-  if(isEmpty(role)) errors.role = 'El rol es obligatorio';
-  else if(!ROLE_KEYS.includes(role)) errors.role = `El rol debe ser uno de: ${ROLE_KEYS.join(', ')}`;
-  if(!isEmpty(username)){
-    const duplicated = loadUsers().some(u => u.id !== excludeId
-      && String(u.username).toLowerCase() === String(username).trim().toLowerCase());
-    if(duplicated) errors.username = 'Ya existe un usuario con ese identificador';
-  }
-  return { valid: Object.keys(errors).length === 0, errors, active: active !== false };
-}
-
-export function addUser(payload){
-  const check = validateUser(payload);
-  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
-  const now = new Date().toISOString();
-  const user = {
-    id: generateId(),
-    username: String(payload.username).trim(),
-    name: String(payload.name).trim(),
-    role: payload.role,
-    departamento: String(payload.departamento || '').trim() || undefined,
-    active: payload.active !== false,
-    createdAt: now,
-    updatedAt: now
-  };
-  const list = loadUsers();
-  list.push(user);
-  saveUsers(list);
-  return user;
-}
-
-export function updateUser(id, updates){
-  const list = loadUsers();
-  const idx = list.findIndex(u => u.id === id);
-  if(idx === -1) throw new Error('Usuario no encontrado');
-  const merged = { ...list[idx], ...updates };
-  const check = validateUser(merged, { excludeId: id });
-  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
-  list[idx] = {
-    ...list[idx],
-    username: String(merged.username).trim(),
-    name: String(merged.name).trim(),
-    role: merged.role,
-    departamento: String(merged.departamento || '').trim() || undefined,
-    active: merged.active !== false,
-    updatedAt: new Date().toISOString()
-  };
-  saveUsers(list);
-  return list[idx];
-}
-
-export function deleteUser(id){
-  const list = loadUsers();
-  const newList = list.filter(u => u.id !== id);
-  saveUsers(newList);
-  return newList;
-}
-
-export function hasPendingWorkForUser(userId){
-  return loadDocuments().some(doc => {
-    if(['recibido', 'facturado', 'cancelado'].includes(doc.status)) return false;
-    return doc.solicitante_id === userId || doc.aprobador_id === userId || doc.receptor_id === userId;
-  });
-}
-
-export function deactivateUser(id){
-  if(hasPendingWorkForUser(id)){
-    throw new Error('El usuario tiene documentos pendientes asignados y no puede desactivarse');
-  }
-  return updateUser(id, { active: false });
-}
-
-export function pendingApprovalDocuments(){
-  return loadDocuments().filter(doc => isRequestDocument(doc) && doc.status === PENDING_STATUS);
-}
-
-export function decideApproval(id, decision, { userId, comment } = {}){
-  const list = loadDocuments();
-  const idx = list.findIndex(d => d.id === id);
-  if(idx === -1) throw new Error('Documento no encontrado');
-  const doc = list[idx];
-  if(!isRequestDocument(doc) || doc.status !== PENDING_STATUS){
-    throw new Error('El documento no está pendiente de aprobación');
-  }
-  if(!['aprobado', 'cancelado'].includes(decision)){
-    throw new Error('Decisión de aprobación inválida');
-  }
-  const now = new Date().toISOString();
-  list[idx] = {
-    ...doc,
-    status: decision,
-    aprobaciones: [
-      ...(doc.aprobaciones || []),
-      { decision, userId: userId || null, comment: (comment || '').trim() || undefined, fecha: now }
-    ],
-    updatedAt: now
-  };
-  saveDocuments(list);
-  return list[idx];
-}
-
-export function loadRecepciones(){
-  try{
-    const raw = localStorage.getItem(RECEPTIONS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  }catch(e){
-    return [];
-  }
-}
-
-export function saveRecepciones(recepciones){
-  localStorage.setItem(RECEPTIONS_KEY, JSON.stringify(recepciones));
-}
-
-export function recepcionesForDocument(documentoId){
-  return loadRecepciones().filter(r => r.documento_id === documentoId);
-}
-
-export function receivedQuantityForLine(documentoId, lineaId){
-  return recepcionesForDocument(documentoId)
-    .flatMap(r => r.lineas || [])
-    .filter(l => l.linea_id === lineaId)
-    .reduce((sum, l) => sum + Number(l.cantidadRecibida || 0), 0);
-}
-
-export function pendingQuantityForLine(documentoId, lineaId){
-  const doc = loadDocuments().find(d => d.id === documentoId);
-  if(!doc) return 0;
-  const linea = (doc.lineasDetalle || []).find(l => l.id === lineaId);
-  if(!linea) return 0;
-  return Math.max(Number(linea.cantidad) - receivedQuantityForLine(documentoId, lineaId), 0);
-}
-
-export function validateRecepcion({documentoId, lineas, fechaRecepcion}){
-  const errors = {};
-  const doc = loadDocuments().find(d => d.id === documentoId);
-  if(!doc) errors.documentoId = 'Selecciona una orden de compra válida';
-  else if(!['aprobado', 'recibido'].includes(doc.status)){
-    errors.documentoId = 'Solo se pueden recibir órdenes aprobadas';
-  }
-  if(!fechaRecepcion) errors.fechaRecepcion = 'La fecha de recepción es obligatoria';
-  else if(!isValidDate(fechaRecepcion)) errors.fechaRecepcion = 'La fecha de recepción debe ser válida (YYYY-MM-DD)';
-  if(!Array.isArray(lineas) || lineas.length === 0){
-    errors.lineas = 'Agrega al menos una línea a la recepción';
-  } else {
-    lineas.forEach((linea, index) => {
-      const where = `Línea ${index + 1}`;
-      const original = doc ? (doc.lineasDetalle || []).find(l => l.id === linea.linea_id) : null;
-      if(!original){ errors.lineas = `${where}: no pertenece a la orden`; return; }
-      const cantidad = Number(linea.cantidadRecibida);
-      if(!Number.isFinite(cantidad) || cantidad <= 0){
-        errors.lineas = `${where}: la cantidad recibida debe ser mayor que cero`;
-        return;
-      }
-      const pendiente = pendingQuantityForLine(documentoId, linea.linea_id);
-      if(cantidad > pendiente){
-        errors.lineas = `${where}: la cantidad recibida supera lo pendiente (${pendiente})`;
-      }
-    });
-  }
-  return { valid: Object.keys(errors).length === 0, errors };
-}
-
-export function addRecepcion(payload){
-  const check = validateRecepcion(payload);
-  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
-  const now = new Date().toISOString();
-  const recepcion = {
-    id: generateId(),
-    documento_id: payload.documentoId,
-    fechaRecepcion: payload.fechaRecepcion,
-    notas: (payload.notas || '').trim() || undefined,
-    lineas: payload.lineas.map(linea => ({
-      linea_id: linea.linea_id,
-      cantidadRecibida: Number(linea.cantidadRecibida)
-    })),
-    createdAt: now
-  };
-  const list = loadRecepciones();
-  list.push(recepcion);
-  saveRecepciones(list);
-
-  const doc = loadDocuments().find(d => d.id === payload.documentoId);
-  if(doc){
-    const complete = (doc.lineasDetalle || []).length > 0
-      && (doc.lineasDetalle || []).every(linea => pendingQuantityForLine(doc.id, linea.id) <= 0);
-    const nextStatus = complete ? 'recibido' : doc.status;
-    patchDocument(doc.id, { status: nextStatus });
-  }
-  return recepcion;
-}
-
-export function searchDocuments(term){
-  const q = (term||'').trim().toLowerCase();
-  if(!q) return loadDocuments();
-  const fields = ['series', 'folio', 'status', 'currency', 'paymentTerms', 'notes', 'justificacion',
-    ...declaredFields('document').map(f => f.key)];
-  return loadDocuments().filter(doc => fields.some(field => String(doc[field] ?? '').toLowerCase().includes(q))
-    || (doc.lineasDetalle || []).some(linea => String(linea.producto_id || '').toLowerCase().includes(q)
-      || String(linea.descripcion || '').toLowerCase().includes(q)));
+  saveRequisitions([]);
+  saveReceptions([]);
 }
 
 export function searchEntities(term){

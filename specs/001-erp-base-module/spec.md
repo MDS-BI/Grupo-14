@@ -43,6 +43,8 @@ Como Encargado de Compras, quiero generar un documento de Orden de Compra vincul
 2. **Dada** la generación de un nuevo documento transaccional, cuando se asignan los datos, el sistema debe guardar correctamente la persistencia del ID del proveedor asignado y de los artículos comprados.
 3. **Dada** una orden formalizada y vinculada a la configuración del módulo, cuando el proceso operativo avanza, el documento debe transicionar correctamente por los estados de su ciclo de vida (Emitida, Recibida, Pagada).
 
+---
+
 ### Historia de Usuario 3 - Aprobación y Gestión del Ciclo de Vida de Órdenes de Compra (Prioridad: P1)
 Como Encargado de Adquisiciones, quiero revisar y cambiar el estado de las solicitudes de cotización a "Aprobado" o "Cancelado" para poder autorizar formalmente las compras a proveedores validando sus condiciones comerciales y límites de crédito.
 

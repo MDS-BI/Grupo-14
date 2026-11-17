@@ -1,5 +1,5 @@
 import { renderCustomFields, collectCustomFields, showCustomFieldErrors, clearCustomFieldErrors } from './custom-fields.js';
-import { renderLineasDetalle, collectLineasDetalle, clearLineasErrors } from './detail-lines.js';
+import { renderDetailLines, collectDetailLines, addDetailLine, showDetailLineErrors, clearDetailLineErrors } from './detail-lines.js';
 import { getConfig } from '../module-config.js';
 
 function qs(id){ return document.getElementById(id); }
@@ -70,16 +70,26 @@ export function clearDocumentForm(){
   qs('currency').value = '';
   qs('docPaymentTerms').value = '';
   qs('notes').value = '';
-  qs('justificacion').value = '';
   clearDocumentErrors();
   renderCustomFields(qs('document-custom-fields'), 'document');
-  renderLineasDetalle(qs('document-lineas'), []);
   renderStatusControl('');
+  renderDetailLines(qs('document-detail-lines'), []);
   qs('document-cancel-edit').hidden = true;
   qs('document-submit-button').textContent = 'Guardar Documento';
+  toggleOrderActions(null);
 }
 
-const DOCUMENT_ERROR_FIELDS = ['entityId', 'folio', 'startDate', 'endDate', 'quantity', 'subtotal', 'discount', 'taxAmount', 'totalAmount', 'status', 'justificacion', 'lineasDetalle'];
+export function toggleOrderActions(doc){
+  const approve = qs('document-approve');
+  const cancel = qs('document-cancel');
+  const status = doc ? doc.status : '';
+  const canApprove = Boolean(doc) && status === 'cotización';
+  const canCancel = Boolean(doc) && !['recibido', 'facturado', 'cancelado'].includes(status);
+  if(approve) approve.hidden = !canApprove;
+  if(cancel) cancel.hidden = !canCancel;
+}
+
+const DOCUMENT_ERROR_FIELDS = ['entityId', 'folio', 'startDate', 'endDate', 'quantity', 'subtotal', 'discount', 'taxAmount', 'totalAmount', 'status'];
 
 export function clearDocumentErrors(){
   DOCUMENT_ERROR_FIELDS.forEach(f => {
@@ -88,11 +98,12 @@ export function clearDocumentErrors(){
     if(el) el.textContent = '';
   });
   clearCustomFieldErrors(qs('document-custom-fields'));
-  clearLineasErrors(qs('document-lineas'));
+  clearDetailLineErrors(qs('document-detail-lines'));
 }
 
 export function startDocumentEdit(doc){
   renderCustomFields(qs('document-custom-fields'), 'document', doc);
+  renderDetailLines(qs('document-detail-lines'), doc.lineasDetalle || []);
   qs('document-id').value = doc.id;
   qs('document-entity-id').value = doc.entity_id;
   qs('document-entity').value = doc.entity_id;
@@ -108,13 +119,12 @@ export function startDocumentEdit(doc){
   qs('currency').value = doc.currency || '';
   qs('docPaymentTerms').value = doc.paymentTerms || '';
   qs('notes').value = doc.notes || '';
-  qs('justificacion').value = doc.justificacion || '';
-  renderLineasDetalle(qs('document-lineas'), doc.lineasDetalle || []);
   renderStatusControl(doc.status);
   setStatusValue(doc.status);
   clearDocumentErrors();
   qs('document-cancel-edit').hidden = false;
   qs('document-submit-button').textContent = 'Actualizar Documento';
+  toggleOrderActions(doc);
 }
 
 function setStatusValue(value){
@@ -137,11 +147,14 @@ export function collectDocumentPayload(){
     currency: qs('currency').value,
     paymentTerms: qs('docPaymentTerms').value,
     notes: qs('notes').value,
-    justificacion: qs('justificacion') ? qs('justificacion').value : '',
     status: qs('status') ? qs('status').value : '',
-    lineasDetalle: collectLineasDetalle(qs('document-lineas')),
+    lineasDetalle: collectDetailLines(qs('document-detail-lines')),
     ...collectCustomFields(qs('document-custom-fields'), 'document')
   };
+}
+
+export function addDocumentDetailLine(){
+  addDetailLine(qs('document-detail-lines'), {});
 }
 
 export function showDocumentErrors(errors){
@@ -151,4 +164,5 @@ export function showDocumentErrors(errors){
     if(el) el.textContent = errors[f] || '';
   }
   showCustomFieldErrors(qs('document-custom-fields'), 'document', errors);
+  showDetailLineErrors(qs('document-detail-lines'), errors);
 }

@@ -1,32 +1,27 @@
 import { loadModuleConfig, normalizeConfig, setActiveConfig, labelFor } from './module-config.js';
 import {
   loadEntities, addEntity, updateEntity, deleteEntity, validateEntity, searchEntities,
-  loadDocuments, addDocument, updateDocument, deleteDocument, validateDocument, searchDocuments,
+  loadDocuments, addDocument, updateDocument, deleteDocument, validateDocument,
   loadUsers, addUser, updateUser, deactivateUser, validateUser,
-  loadRecepciones, addRecepcion, pendingQuantityForLine, receivedQuantityForLine,
-  pendingApprovalDocuments, isRequestDocument, PENDING_STATUS
+  loadRequisitions, addRequisition, validateRequisition, approveRequisition, rejectRequisition,
+  pendingRequisitionsForDepartment, budgetForDepartment,
+  ordersPendingReception, addReception, validateReception,
+  approveDocument, cancelDocument
 } from './storage.js';
-import { can, availableModules, getCurrentUser, listProfiles, login } from './auth.js';
+import { can, setSession, resetSession, getSession, PERMISSIONS, roleLabel } from './auth.js';
 import { clearEntityForm, startEntityEdit, collectEntityPayload, showEntityErrors } from './components/entity-form.js';
 import { createEntityItem } from './components/entity-list.js';
-import { clearDocumentForm, startDocumentEdit, collectDocumentPayload, showDocumentErrors } from './components/document-form.js';
-import { folioLabel, createDocumentItem } from './components/document-list.js';
+import { clearDocumentForm, startDocumentEdit, collectDocumentPayload, showDocumentErrors, addDocumentDetailLine, toggleOrderActions } from './components/document-form.js';
+import { folioLabel } from './components/document-list.js';
 import { renderLogo, applyShellLabels, setActiveModule } from './components/shell.js';
 import { renderDashboard } from './components/dashboard.js';
 import { setupSearchBar, renderSearchResults } from './components/search-bar.js';
-import { renderApprovalQueue } from './components/approval-inbox.js';
-import {
-  renderReceptionDocumentSelect, renderReceptionHistory
-} from './components/reception-list.js';
-import { renderReceptionLines, collectReceptionLines } from './components/reception-form.js';
-import {
-  renderUserRoleOptions, clearUserForm, startUserEdit, collectUserPayload, showUserErrors
-} from './components/user-form.js';
-import { renderUserList } from './components/user-list.js';
-import {
-  renderProfileSwitcher, renderProfileSnapshot, renderRoleCatalog
-} from './components/user-profile.js';
-import { approveRequest, rejectRequest } from './approval.js';
+import { populateRoleSelect, clearUserForm, startUserEdit, collectUserPayload, showUserErrors, clearUserErrors, renderUsers } from './components/user-management.js';
+import { populateDepartmentSelect, clearRequisitionForm, collectRequisitionPayload, showRequisitionErrors, renderRequisitionLines, addRequisitionLine } from './components/requisition-form.js';
+import { renderRequisitionList } from './components/requisition-list.js';
+import { renderApprovalInbox, renderApprovalDetail, showApprovalError } from './components/approval-inbox.js';
+import { renderReceptionInbox } from './components/reception-list.js';
+import { renderReceptionDetail, collectReceptionPayload, showReceptionErrors } from './components/reception-form.js';
 
 function qs(id){ return document.getElementById(id); }
 
@@ -39,48 +34,37 @@ const articulo = (word) => esFemenina(word) ? 'la' : 'el';
 const demostrativo = (word) => esFemenina(word) ? 'esta' : 'este';
 const seleccionada = (word) => esFemenina(word) ? 'seleccionada' : 'seleccionado';
 
-const MODULES = ['dashboard', 'entities', 'documents', 'search'];
-const EXTRA_MODULES = ['approvals', 'reception', 'users', 'profile'];
-const ALL_MODULES = [...MODULES, ...EXTRA_MODULES];
+const MODULES = ['dashboard', 'entities', 'documents', 'search', 'requisitions', 'approvals', 'receptions', 'users'];
 const VIEWS = {
   dashboard: 'view-dashboard',
   entities: 'view-entities',
   documents: 'view-documents',
   search: 'view-search',
+  requisitions: 'view-requisitions',
   approvals: 'view-approvals',
-  reception: 'view-reception',
-  users: 'view-users',
-  profile: 'view-profile'
-};
-
-const MODULE_PERMISSIONS = {
-  dashboard: 'dashboard:view',
-  entities: 'entity:view',
-  documents: 'document:view',
-  search: 'search:use',
-  approvals: 'request:approve',
-  reception: 'reception:view',
-  users: 'users:manage',
-  profile: 'dashboard:view'
+  receptions: 'view-receptions',
+  users: 'view-users'
 };
 
 let wired = false;
+let selectedApprovalId = null;
+let selectedReceptionOrderId = null;
 
-function moduleAllowed(name){
-  const permission = MODULE_PERMISSIONS[name];
-  if(!permission) return false;
-  if(can(permission)) return true;
-  if(name === 'approvals') return can('document:approve');
-  return false;
-}
+const MODULE_PERMISSIONS = {
+  dashboard: PERMISSIONS.DASHBOARD_VIEW,
+  entities: PERMISSIONS.ENTITIES_MANAGE,
+  documents: PERMISSIONS.DOCUMENTS_MANAGE,
+  search: PERMISSIONS.SEARCH_VIEW,
+  requisitions: PERMISSIONS.REQUISITIONS_CREATE,
+  approvals: PERMISSIONS.REQUISITIONS_APPROVE,
+  receptions: PERMISSIONS.RECEPTIONS_MANAGE,
+  users: PERMISSIONS.USERS_MANAGE
+};
 
 function showModule(name, opts = {}){
-  if(!ALL_MODULES.includes(name)) name = 'dashboard';
-  if(!moduleAllowed(name)) name = 'dashboard';
-  ALL_MODULES.forEach(m => {
-    const view = qs(VIEWS[m]);
-    if(view) view.hidden = m !== name;
-  });
+  if(!MODULES.includes(name)) name = 'dashboard';
+  if(!can(MODULE_PERMISSIONS[name])) name = 'dashboard';
+  MODULES.forEach(m => { qs(VIEWS[m]).hidden = m !== name; });
   setActiveModule(name);
   if(name === 'dashboard'){
     renderDashboard();
@@ -99,21 +83,23 @@ function showModule(name, opts = {}){
   }
   if(name === 'search'){
     refreshSearch();
-    refreshDocumentSearch();
     if(opts.focusSearch) qs('search-input').focus();
+  }
+  if(name === 'requisitions'){
+    populateDepartmentSelect(qs('requisition-department'));
+    if(opts.newRecord) clearRequisitionForm();
+    refreshRequisitions();
   }
   if(name === 'approvals'){
     refreshApprovals();
   }
-  if(name === 'reception'){
-    refreshReception();
+  if(name === 'receptions'){
+    refreshReceptions();
   }
   if(name === 'users'){
-    refreshUsers();
+    populateRoleSelect(qs('user-role'));
     if(opts.newRecord) clearUserForm();
-  }
-  if(name === 'profile'){
-    refreshProfile();
+    refreshUsers();
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -172,227 +158,6 @@ function refreshSearch(){
   renderSearchResults(qs('search-results-list'), qs('search-empty'), searchEntities(qs('search-input').value), (e) => createEntityItem(e));
 }
 
-function entityNameForEntityId(entityId){
-  const entity = loadEntities().find(e => e.entity_id === entityId);
-  return entity ? entity.name : 'Entidad desconocida';
-}
-
-function refreshDocumentSearch(){
-  const input = qs('doc-search-input');
-  if(!input) return;
-  const list = qs('doc-search-results-list');
-  const empty = qs('doc-search-empty');
-  const results = searchDocuments(input.value);
-  list.innerHTML = '';
-  if(results.length === 0){
-    empty.hidden = false;
-    return;
-  }
-  empty.hidden = true;
-  results.forEach(doc => list.appendChild(createDocumentItem(doc, entityNameForEntityId(doc.entity_id))));
-}
-
-function approvalDocumentsForCurrentUser(){
-  const user = getCurrentUser();
-  const documents = pendingApprovalDocuments();
-  if(user && user.departamento){
-    return documents.filter(doc => !doc.departamento || doc.departamento === user.departamento);
-  }
-  return documents;
-}
-
-function refreshApprovals(){
-  renderApprovalQueue(
-    qs('approval-list'),
-    qs('approval-empty'),
-    approvalDocumentsForCurrentUser(),
-    doc => entityNameForEntityId(doc.entity_id),
-    {
-      onApprove: doc => decideSelectedApproval(doc, 'aprobado'),
-      onReject: doc => decideSelectedApproval(doc, 'cancelado')
-    }
-  );
-}
-
-function decideSelectedApproval(doc, decision){
-  const rejecting = decision !== 'aprobado';
-  if(!confirm(`¿${rejecting ? 'Rechazar' : 'Aprobar'} ${folioLabel(doc)}?`)) return;
-  const promptText = rejecting ? 'Motivo del rechazo (obligatorio)' : 'Comentario de aprobación (opcional)';
-  const comment = globalThis.prompt ? globalThis.prompt(promptText, '') : '';
-  if(rejecting && !String(comment || '').trim()){
-    qs('error-approval').textContent = 'Debes indicar el motivo del rechazo';
-    return;
-  }
-  try{
-    if(rejecting) rejectRequest(doc.id, { userId: getActorId(), comment });
-    else approveRequest(doc.id, { userId: getActorId(), comment });
-    qs('error-approval').textContent = '';
-  }catch(e){
-    qs('error-approval').textContent = e.message;
-    return;
-  }
-  refreshApprovals();
-  renderDashboard();
-  populateEditDocumentSelect();
-}
-
-function getActorId(){
-  const user = getCurrentUser();
-  return user ? user.id : null;
-}
-
-function receptionCandidates(){
-  return loadDocuments().filter(doc => doc.status === 'aprobado' && Array.isArray(doc.lineasDetalle) && doc.lineasDetalle.length > 0);
-}
-
-function refreshReception(){
-  const select = qs('reception-document');
-  const previous = select.value;
-  renderReceptionDocumentSelect(select, receptionCandidates(), previous);
-  if(!qs('reception-date').value){
-    qs('reception-date').value = new Date().toISOString().slice(0, 10);
-  }
-  renderSelectedReceptionDocument();
-  renderReceptionHistory(
-    qs('reception-history'),
-    qs('reception-history-empty'),
-    loadRecepciones(),
-    recepcion => {
-      const doc = loadDocuments().find(d => d.id === recepcion.documento_id);
-      return doc ? folioLabel(doc) : 'Orden desconocida';
-    }
-  );
-}
-
-function selectedReceptionDocument(){
-  const id = qs('reception-document').value;
-  return loadDocuments().find(d => d.id === id);
-}
-
-function renderSelectedReceptionDocument(){
-  const doc = selectedReceptionDocument();
-  renderReceptionLines(
-    qs('reception-lines'),
-    doc,
-    lineaId => pendingQuantityForLine(doc.id, lineaId),
-    lineaId => receivedQuantityForLine(doc.id, lineaId)
-  );
-}
-
-function handleReceptionSubmit(){
-  const doc = selectedReceptionDocument();
-  const payload = {
-    documentoId: doc ? doc.id : '',
-    fechaRecepcion: qs('reception-date').value,
-    notas: qs('reception-notes').value,
-    lineas: collectReceptionLines(qs('reception-lines'))
-  };
-  qs('error-reception').textContent = '';
-  qs('error-reception-document').textContent = '';
-  qs('error-reception-date').textContent = '';
-  try{
-    addRecepcion(payload);
-    qs('reception-notes').value = '';
-    refreshReception();
-    renderDashboard();
-    populateEditDocumentSelect();
-  }catch(e){
-    qs('error-reception').textContent = e.message;
-  }
-}
-
-function refreshUsers(){
-  renderUserRoleOptions(qs('user-role'));
-  renderUserList(qs('user-list'), qs('user-empty'), loadUsers(), {
-    onEdit: user => startUserEdit(user),
-    onDelete: toggleUserActive
-  });
-  refreshProfile();
-  applyPermissions();
-}
-
-function refreshProfile(){
-  const user = getCurrentUser();
-  const profiles = listProfiles();
-  renderProfileSwitcher(qs('active-profile-select'), profiles, user);
-  renderProfileSwitcher(qs('profile-view-select'), profiles, user);
-  renderProfileSnapshot(qs('profile-current'), user);
-  renderRoleCatalog(qs('profile-role-list'), user ? user.role : null);
-}
-
-function activeModule(){
-  return ALL_MODULES.find(name => {
-    const view = qs(VIEWS[name]);
-    return view && !view.hidden;
-  }) || 'dashboard';
-}
-
-function applyProfile(profileId){
-  if(!profileId) return;
-  login(profileId);
-  applyPermissions();
-  refreshProfile();
-  const current = activeModule();
-  showModule(moduleAllowed(current) ? current : 'dashboard');
-}
-
-function toggleUserActive(user){
-  if(user.active === false){
-    updateUser(user.id, { active: true });
-  } else {
-    if(!confirm(`¿Desactivar a ${user.name}?`)) return;
-    try{
-      deactivateUser(user.id);
-      qs('error-user-list').textContent = '';
-    }catch(e){
-      qs('error-user-list').textContent = e.message;
-      return;
-    }
-  }
-  refreshUsers();
-}
-
-function handleUserSubmit(ev){
-  ev.preventDefault();
-  const id = qs('user-id').value;
-  const payload = collectUserPayload();
-  const { valid, errors } = validateUser(payload, { excludeId: id || undefined });
-  showUserErrors(errors);
-  if(!valid) return;
-  try{
-    if(id) updateUser(id, payload);
-    else addUser(payload);
-    clearUserForm();
-    refreshUsers();
-  }catch(e){
-    showUserErrors({ username: e.message });
-  }
-}
-
-function applyPermissions(){
-  const access = availableModules();
-  const mapping = {
-    approvals: access.approvals,
-    reception: access.reception,
-    users: access.users
-  };
-  Object.entries(mapping).forEach(([module, allowed]) => {
-    const btn = qs(`nav-${module}`);
-    if(btn) btn.hidden = !allowed;
-  });
-
-  const quickActions = {
-    'action-new-entity': can('entity:manage'),
-    'action-new-document': can('document:manage') || can('request:create'),
-    'action-open-entities': can('entity:view'),
-    'action-find': can('search:use')
-  };
-  Object.entries(quickActions).forEach(([id, allowed]) => {
-    const card = qs(id);
-    if(card) card.hidden = !allowed;
-  });
-}
-
 function onEditEntityChange(){
   const id = qs('edit-entity').value;
   if(!id){ clearEntityForm(); return; }
@@ -416,7 +181,10 @@ function onEditDocumentChange(){
   const id = qs('edit-document').value;
   if(!id){ clearDocumentForm(); return; }
   const doc = loadDocuments().find(d => d.id === id);
-  if(doc) startDocumentEdit(doc);
+  if(doc){
+    startDocumentEdit(doc);
+    applyOrderActionPermissions();
+  }
 }
 
 function handleDeleteSelectedDocument(){
@@ -427,6 +195,315 @@ function handleDeleteSelectedDocument(){
   qs('error-edit-document').textContent = '';
   clearDocumentForm();
   populateEditDocumentSelect();
+}
+
+function populateSessionSelect(){
+  const select = qs('session-user');
+  if(!select) return;
+  const current = getSession();
+  const users = loadUsers().filter(u => u.active !== false);
+  select.innerHTML = '';
+  const system = document.createElement('option');
+  system.value = 'system-admin';
+  system.textContent = 'Administrador del sistema';
+  select.appendChild(system);
+  for(const user of users){
+    const opt = document.createElement('option');
+    opt.value = user.id;
+    opt.textContent = `${user.name} · ${roleLabel(user.role)}`;
+    select.appendChild(opt);
+  }
+  if(current && current.id !== 'system-admin' && !users.some(u => u.id === current.id)){
+    const opt = document.createElement('option');
+    opt.value = current.id;
+    opt.textContent = `${current.name} · ${roleLabel(current.role)}`;
+    select.appendChild(opt);
+  }
+  select.value = current && current.id ? current.id : 'system-admin';
+}
+
+function applyPermissions(){
+  const navIds = {
+    dashboard: 'nav-dashboard',
+    entities: 'nav-entities',
+    documents: 'nav-documents',
+    search: 'nav-search',
+    requisitions: 'nav-requisitions',
+    approvals: 'nav-approvals',
+    receptions: 'nav-receptions',
+    users: 'nav-users'
+  };
+  Object.entries(navIds).forEach(([module, id]) => {
+    const el = qs(id);
+    if(el) el.hidden = !can(MODULE_PERMISSIONS[module]);
+  });
+  const actions = {
+    'action-new-entity': PERMISSIONS.ENTITIES_MANAGE,
+    'action-open-entities': PERMISSIONS.ENTITIES_MANAGE,
+    'action-new-document': PERMISSIONS.DOCUMENTS_MANAGE,
+    'action-find': PERMISSIONS.SEARCH_VIEW,
+    'action-new-requisition': PERMISSIONS.REQUISITIONS_CREATE,
+    'action-open-approvals': PERMISSIONS.REQUISITIONS_APPROVE,
+    'action-open-receptions': PERMISSIONS.RECEPTIONS_MANAGE,
+    'action-open-users': PERMISSIONS.USERS_MANAGE
+  };
+  Object.entries(actions).forEach(([id, permission]) => {
+    const el = qs(id);
+    if(el) el.hidden = !can(permission);
+  });
+  const requisitionForm = qs('requisition-form');
+  if(requisitionForm) requisitionForm.hidden = !can(PERMISSIONS.REQUISITIONS_CREATE);
+  const userForm = qs('user-form');
+  if(userForm) userForm.hidden = !can(PERMISSIONS.USERS_MANAGE);
+  const receptionButton = qs('reception-submit-button');
+  if(receptionButton) receptionButton.hidden = !can(PERMISSIONS.RECEPTIONS_MANAGE);
+  const approveButton = qs('document-approve');
+  if(approveButton && !can(PERMISSIONS.ORDERS_APPROVE)) approveButton.hidden = true;
+}
+
+function onSessionChange(){
+  const id = qs('session-user').value;
+  if(!id || id === 'system-admin'){
+    resetSession();
+  } else {
+    const user = loadUsers().find(u => u.id === id);
+    if(user) setSession(user);
+    else resetSession();
+  }
+  applyPermissions();
+  showModule('dashboard');
+}
+
+export function applySession(user){
+  if(user) setSession(user);
+  else resetSession();
+  populateSessionSelect();
+  applyPermissions();
+  showModule('dashboard');
+}
+
+function refreshUsers(){
+  const users = loadUsers();
+  const empty = qs('users-empty');
+  if(empty) empty.hidden = users.length > 0;
+  renderUsers(qs('users-list'), users, {
+    onEdit: (user) => { startUserEdit(user); qs('user-name').focus(); },
+    onDeactivate: handleDeactivateUser
+  });
+}
+
+function handleUserSubmit(ev){
+  ev.preventDefault();
+  const id = qs('user-id').value;
+  const payload = collectUserPayload();
+  const { valid, errors } = validateUser(payload, id || undefined);
+  showUserErrors(errors);
+  if(!valid) return;
+  try{
+    if(id) updateUser(id, payload);
+    else addUser(payload);
+    clearUserForm();
+    refreshUsers();
+    populateSessionSelect();
+  }catch(e){
+    showUserErrors({ role: e.message });
+  }
+}
+
+function handleDeactivateUser(user){
+  if(!can(PERMISSIONS.USERS_MANAGE)){
+    const message = qs('users-message');
+    message.hidden = false;
+    message.textContent = 'Tu rol no permite administrar usuarios.';
+    return;
+  }
+  if(!confirm(`¿Desactivar a ${user.name}?`)) return;
+  try{
+    deactivateUser(user.id);
+    const message = qs('users-message');
+    message.hidden = true;
+    message.textContent = '';
+    refreshUsers();
+    populateSessionSelect();
+  }catch(e){
+    const message = qs('users-message');
+    message.hidden = false;
+    message.textContent = e.message;
+  }
+}
+
+function refreshRequisitions(){
+  const list = loadRequisitions().slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  renderRequisitionList(qs('requisitions-list'), qs('requisitions-empty'), list);
+}
+
+function handleRequisitionSubmit(ev){
+  ev.preventDefault();
+  if(!can(PERMISSIONS.REQUISITIONS_CREATE)){
+    showRequisitionErrors({ department: 'Tu rol no permite crear solicitudes' });
+    return;
+  }
+  const payload = collectRequisitionPayload();
+  const { valid, errors } = validateRequisition(payload);
+  showRequisitionErrors(errors);
+  if(!valid) return;
+  try{
+    addRequisition(payload);
+    clearRequisitionForm();
+    refreshRequisitions();
+    renderDashboard();
+  }catch(e){
+    showRequisitionErrors({ justification: e.message });
+  }
+}
+
+function refreshApprovals(){
+  const pending = pendingRequisitionsForDepartment();
+  if(selectedApprovalId && !pending.some(r => r.id === selectedApprovalId)){
+    selectedApprovalId = null;
+    qs('approval-detail').innerHTML = '<p class="muted">Selecciona una solicitud pendiente.</p>';
+  }
+  renderApprovalInbox(qs('approvals-list'), qs('approvals-empty'), pending, handleApprovalSelect);
+  if(selectedApprovalId){
+    const selected = pending.find(r => r.id === selectedApprovalId);
+    if(selected) renderApprovalDetail(qs('approval-detail'), selected, budgetForDepartment(selected.department));
+  }
+}
+
+function handleApprovalSelect(requisition){
+  selectedApprovalId = requisition.id;
+  showApprovalError('');
+  renderApprovalDetail(qs('approval-detail'), requisition, budgetForDepartment(requisition.department));
+  const approve = qs('approve-requisition');
+  const reject = qs('reject-requisition');
+  if(approve) approve.addEventListener('click', handleApproveRequisition);
+  if(reject) reject.addEventListener('click', handleRejectRequisition);
+}
+
+function handleApproveRequisition(){
+  if(!can(PERMISSIONS.REQUISITIONS_APPROVE)){
+    showApprovalError('Tu rol no permite aprobar solicitudes.');
+    return;
+  }
+  if(!selectedApprovalId) return;
+  try{
+    approveRequisition(selectedApprovalId);
+    selectedApprovalId = null;
+    qs('approval-detail').innerHTML = '<p class="muted">Selecciona una solicitud pendiente.</p>';
+    showApprovalError('');
+    refreshApprovals();
+    renderDashboard();
+  }catch(e){
+    showApprovalError(e.message);
+  }
+}
+
+function handleRejectRequisition(){
+  if(!can(PERMISSIONS.REQUISITIONS_APPROVE)){
+    showApprovalError('Tu rol no permite rechazar solicitudes.');
+    return;
+  }
+  if(!selectedApprovalId) return;
+  const reason = qs('rejection-reason') ? qs('rejection-reason').value : '';
+  try{
+    rejectRequisition(selectedApprovalId, reason);
+    selectedApprovalId = null;
+    qs('approval-detail').innerHTML = '<p class="muted">Selecciona una solicitud pendiente.</p>';
+    showApprovalError('');
+    refreshApprovals();
+    renderDashboard();
+  }catch(e){
+    showApprovalError(e.message);
+  }
+}
+
+function refreshReceptions(){
+  const orders = ordersPendingReception();
+  if(selectedReceptionOrderId && !orders.some(o => o.id === selectedReceptionOrderId)){
+    selectedReceptionOrderId = null;
+    qs('reception-order-id').value = '';
+    qs('reception-detail').innerHTML = '<p class="muted">Selecciona una orden por recibir.</p>';
+  }
+  renderReceptionInbox(qs('receptions-list'), qs('receptions-empty'), orders, handleReceptionSelect);
+  if(selectedReceptionOrderId){
+    const selected = orders.find(o => o.id === selectedReceptionOrderId);
+    if(selected) renderReceptionDetail(qs('reception-detail'), selected);
+  }
+}
+
+function handleReceptionSelect(order){
+  selectedReceptionOrderId = order.id;
+  qs('reception-order-id').value = order.id;
+  showReceptionErrors({});
+  renderReceptionDetail(qs('reception-detail'), order);
+}
+
+function handleReceptionSubmit(){
+  if(!can(PERMISSIONS.RECEPTIONS_MANAGE)){
+    showReceptionErrors({ role: 'Tu rol no permite registrar recepciones.' });
+    return;
+  }
+  const payload = collectReceptionPayload();
+  payload.orderId = qs('reception-order-id').value;
+  const { valid, errors } = validateReception(payload);
+  showReceptionErrors(errors);
+  if(!valid) return;
+  try{
+    addReception(payload);
+    selectedReceptionOrderId = null;
+    qs('reception-order-id').value = '';
+    qs('reception-observaciones').value = '';
+    qs('reception-detail').innerHTML = '<p class="muted">Selecciona una orden por recibir.</p>';
+    showReceptionErrors({});
+    refreshReceptions();
+    renderDashboard();
+  }catch(e){
+    showReceptionErrors({ lineas: e.message });
+  }
+}
+
+function applyOrderActionPermissions(){
+  const approve = qs('document-approve');
+  const cancel = qs('document-cancel');
+  if(approve && !can(PERMISSIONS.ORDERS_APPROVE)) approve.hidden = true;
+  if(cancel && !can(PERMISSIONS.DOCUMENTS_MANAGE)) cancel.hidden = true;
+}
+
+function handleApproveDocument(){
+  const id = qs('document-id').value;
+  if(!id) return;
+  if(!can(PERMISSIONS.ORDERS_APPROVE)){
+    qs('error-status').textContent = 'Tu rol no permite aprobar órdenes.';
+    return;
+  }
+  try{
+    const doc = approveDocument(id);
+    startDocumentEdit(doc);
+    applyOrderActionPermissions();
+    populateEditDocumentSelect();
+    renderDashboard();
+  }catch(e){
+    qs('error-status').textContent = e.message;
+  }
+}
+
+function handleCancelDocument(){
+  const id = qs('document-id').value;
+  if(!id) return;
+  if(!can(PERMISSIONS.DOCUMENTS_MANAGE)){
+    qs('error-status').textContent = 'Tu rol no permite cancelar órdenes.';
+    return;
+  }
+  if(!confirm('¿Cancelar la orden seleccionada?')) return;
+  try{
+    const doc = cancelDocument(id);
+    startDocumentEdit(doc);
+    applyOrderActionPermissions();
+    populateEditDocumentSelect();
+    renderDashboard();
+  }catch(e){
+    qs('error-status').textContent = e.message;
+  }
 }
 
 function afterSaveRefresh(){
@@ -458,9 +535,6 @@ function handleDocumentSubmit(ev){
   ev.preventDefault();
   const id = qs('document-id').value;
   const payload = collectDocumentPayload();
-  if(!id && isRequestDocument(payload) && !payload.status){
-    payload.status = PENDING_STATUS;
-  }
   const existing = id ? loadDocuments().find(d => d.id === id) : undefined;
   const { valid, errors } = validateDocument(payload, existing ? existing.status : undefined);
   showDocumentErrors(errors);
@@ -535,30 +609,35 @@ function showConfigErrors(errors){
 function wireEvents(){
   if(wired) return;
   wired = true;
-  document.querySelectorAll('.nav-module, .nav-extra').forEach(btn => {
+  document.querySelectorAll('.nav-module, .nav-module-extra').forEach(btn => {
     btn.addEventListener('click', () => showModule(btn.dataset.module));
   });
   qs('action-new-entity').addEventListener('click', () => showModule('entities', { newRecord: true, focusForm: true }));
   qs('action-new-document').addEventListener('click', () => showModule('documents', { newRecord: true, focusForm: true }));
   qs('action-open-entities').addEventListener('click', () => showModule('entities'));
   qs('action-find').addEventListener('click', () => showModule('search', { focusSearch: true }));
+  qs('action-new-requisition').addEventListener('click', () => showModule('requisitions', { newRecord: true }));
+  qs('action-open-approvals').addEventListener('click', () => showModule('approvals'));
+  qs('action-open-receptions').addEventListener('click', () => showModule('receptions'));
+  qs('action-open-users').addEventListener('click', () => showModule('users', { newRecord: true }));
   qs('entity-form').addEventListener('submit', handleEntitySubmit);
   qs('cancel-edit').addEventListener('click', clearEntityForm);
   qs('document-form').addEventListener('submit', handleDocumentSubmit);
   qs('document-cancel-edit').addEventListener('click', clearDocumentForm);
+  qs('add-detail-line').addEventListener('click', addDocumentDetailLine);
+  qs('document-approve').addEventListener('click', handleApproveDocument);
+  qs('document-cancel').addEventListener('click', handleCancelDocument);
+  qs('user-form').addEventListener('submit', handleUserSubmit);
+  qs('user-cancel-edit').addEventListener('click', clearUserForm);
+  qs('requisition-form').addEventListener('submit', handleRequisitionSubmit);
+  qs('add-requisition-line').addEventListener('click', () => addRequisitionLine(qs('requisition-lines'), {}));
+  qs('reception-submit-button').addEventListener('click', handleReceptionSubmit);
+  qs('session-user').addEventListener('change', onSessionChange);
   setupSearchBar(qs('search-input'), () => refreshSearch());
-  setupSearchBar(qs('doc-search-input'), () => refreshDocumentSearch());
   qs('edit-entity').addEventListener('change', onEditEntityChange);
   qs('edit-document').addEventListener('change', onEditDocumentChange);
   qs('delete-entity').addEventListener('click', handleDeleteSelectedEntity);
   qs('delete-document').addEventListener('click', handleDeleteSelectedDocument);
-  qs('reception-document').addEventListener('change', renderSelectedReceptionDocument);
-  qs('reception-submit').addEventListener('click', handleReceptionSubmit);
-  qs('user-form').addEventListener('submit', handleUserSubmit);
-  qs('user-cancel').addEventListener('click', clearUserForm);
-  qs('active-profile-select').addEventListener('change', ev => applyProfile(ev.target.value));
-  qs('profile-view-select').addEventListener('change', ev => applyProfile(ev.target.value));
-  qs('open-profile').addEventListener('click', () => showModule('profile'));
 }
 
 export function initApp(resolved){
@@ -570,8 +649,11 @@ export function initApp(resolved){
   wireEvents();
   clearEntityForm();
   clearDocumentForm();
+  populateRoleSelect(qs('user-role'));
   clearUserForm();
-  refreshProfile();
+  populateDepartmentSelect(qs('requisition-department'));
+  clearRequisitionForm();
+  populateSessionSelect();
   applyPermissions();
   showModule('dashboard');
 }
