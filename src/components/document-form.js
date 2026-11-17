@@ -1,7 +1,7 @@
 import { renderCustomFields, collectCustomFields, showCustomFieldErrors, clearCustomFieldErrors } from './custom-fields.js';
 import { renderDetailLines, collectDetailLines, addDetailLine, showDetailLineErrors, clearDetailLineErrors } from './detail-lines.js';
 import { getConfig } from '../module-config.js';
-import { RECEPTION_DERIVED_STATUSES } from '../storage.js';
+import { DOCUMENT_STATUS, NON_CANCELLABLE_ORDER_STATUSES, RECEPTION_DERIVED_STATUSES } from '../storage.js';
 
 function qs(id){ return document.getElementById(id); }
 
@@ -87,8 +87,8 @@ export function toggleOrderActions(doc){
   const approve = qs('document-approve');
   const cancel = qs('document-cancel');
   const status = doc ? doc.status : '';
-  const canApprove = Boolean(doc) && status === 'cotización';
-  const canCancel = Boolean(doc) && !['recibido parcialmente', 'recibido', 'facturado', 'cancelado'].includes(status);
+  const canApprove = Boolean(doc) && status === DOCUMENT_STATUS.APPROVED;
+  const canCancel = Boolean(doc) && !NON_CANCELLABLE_ORDER_STATUSES.includes(status);
   if(approve) approve.hidden = !canApprove;
   if(cancel) cancel.hidden = !canCancel;
 }

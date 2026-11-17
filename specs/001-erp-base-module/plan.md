@@ -129,23 +129,19 @@ El área de negocio concreta sobre la que se valida la base es **Adquisiciones y
 
   |---|---| 
 
-  | borrador | cotización, cancelado | 
+  | Aprobada | Emitida, Rechazada | 
 
-  | cotización | aprobado, cancelado | 
+  | Emitida | Recibida parcialmente, Recibida, Rechazada | 
 
-  | aprobado | recibido parcialmente, recibido, cancelado | 
+  | Recibida parcialmente | Recibida | 
 
-  | recibido parcialmente | recibido | 
+  | Recibida | *(fin)* | 
 
-  | recibido | facturado | 
-
-  | facturado | *(fin)* | 
-
-  | cancelado | *(fin)* | 
+  | Rechazada | *(fin)* | 
 
  
 
-  El flujo avanza solicitud de cotización (cotización) → orden de compra aprobada/emitida (aprobado) → recepción parcial (recibido parcialmente) → recepción de mercancía completa (recibido) → factura de proveedor registrada (facturado); la aprobación solo parte de cotización, los estados recibido parcialmente y recibido solo los asigna el registro de recepciones (FR-045), y la cancelación queda permitida mientras no se haya confirmado ninguna recepción. 
+  El flujo avanza solicitud de cotización aprobada (Aprobada) → orden de compra emitida con folio OC (Emitida) → recepción parcial (Recibida parcialmente) → recepción de mercancía completa (Recibida); la emisión solo parte de Aprobada, los estados Recibida parcialmente y Recibida solo los asigna el registro de recepciones (FR-045), y el rechazo queda permitido mientras no se haya confirmado ninguna recepción. 
 
 - **Líneas de Detalle (Items)** — relación 1 a N con el Documento: 
 

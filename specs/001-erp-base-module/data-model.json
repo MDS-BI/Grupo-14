@@ -254,7 +254,7 @@
           "campoCodigo": "status",
           "tipo": "select",
           "obligatorio": false,
-          "mer": "borrador, cotización, aprobado, recibido parcialmente, recibido, facturado, cancelado",
+          "mer": "Aprobada, Emitida, Recibida parcialmente, Rechazada, Recibida",
           "descripcion": "Estado del documento dentro del ciclo de vida configurado.",
           "validacion": "Uno de los estados de statusLifecycle; solo transiciones permitidas."
         },
@@ -813,38 +813,29 @@
     "entidad": "ordenCompra",
     "atributo": "estado",
     "estados": [
-      "borrador",
-      "cotización",
-      "aprobado",
-      "recibido parcialmente",
-      "recibido",
-      "facturado",
-      "cancelado"
+      "Aprobada",
+      "Emitida",
+      "Recibida parcialmente",
+      "Rechazada",
+      "Recibida"
     ],
     "transiciones": {
-      "borrador": [
-        "cotización",
-        "cancelado"
+      "Aprobada": [
+        "Emitida",
+        "Rechazada"
       ],
-      "cotización": [
-        "aprobado",
-        "cancelado"
+      "Emitida": [
+        "Recibida parcialmente",
+        "Recibida",
+        "Rechazada"
       ],
-      "aprobado": [
-        "recibido parcialmente",
-        "recibido",
-        "cancelado"
+      "Recibida parcialmente": [
+        "Recibida"
       ],
-      "recibido parcialmente": [
-        "recibido"
-      ],
-      "recibido": [
-        "facturado"
-      ],
-      "facturado": [],
-      "cancelado": []
+      "Rechazada": [],
+      "Recibida": []
     },
-    "nota": "El flujo avanza solicitud de cotización (cotización) → orden emitida/aprobada (aprobado) → recepción parcial (recibido parcialmente) → recepción completa (recibido) → factura de proveedor registrada (facturado). La aprobación solo parte de cotización; recibido parcialmente y recibido solo se asignan al registrar recepciones (FR-045, SC-013). La cancelación se permite mientras no se haya confirmado ninguna recepción."
+    "nota": "El flujo avanza solicitud de cotización aprobada (Aprobada) → orden de compra emitida con folio OC (Emitida) → recepción parcial (Recibida parcialmente) → recepción completa (Recibida). La emisión solo parte de Aprobada; Recibida parcialmente y Recibida solo se asignan al registrar recepciones (FR-045, SC-013). El rechazo se permite mientras no se haya confirmado ninguna recepción."
   },
   "formulas": [
     {
@@ -964,7 +955,7 @@
     },
     {
       "tema": "Estados en spec.md",
-      "detalle": "spec.md (HU2/HU6) menciona estados Emitida, Recibida parcialmente, Recibida y Pagada, que se mapean al ciclo de vida de plan.md/module-config.js así: Emitida = aprobado, Recibida parcialmente = recibido parcialmente, Recibida = recibido, Pagada = facturado. Por FR-045 «recibido parcialmente» es un estado de la orden (además de Estado_Recepcion = parcial) y, junto con recibido, solo lo asigna el registro de recepciones."
+      "detalle": "spec.md (HU2/HU6) menciona estados Emitida, Recibida parcialmente, Recibida y Pagada, El ciclo de vida implementado (module-config.js) usa directamente esos nombres: Aprobada → Emitida → Recibida parcialmente → Recibida, más Rechazada. Por FR-045 «Recibida parcialmente» es un estado de la orden (además de Estado_Recepcion = parcial) y, junto con Recibida, solo lo asigna el registro de recepciones. Pagada aún no está implementada."
     },
     {
       "tema": "Nombre de la tabla intermedia",

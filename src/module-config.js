@@ -26,8 +26,8 @@
 //     { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
 //   ],
 //   statusLifecycle: {
-//     statuses: ['borrador', 'cotización', 'aprobado', 'recibido', 'facturado', 'cancelado'],
-//     transitions: { borrador: ['cotización', 'cancelado'], cotización: ['aprobado', 'cancelado'], aprobado: ['recibido', 'cancelado'], recibido: ['facturado'], facturado: [], cancelado: [] }
+//     statuses: ['Aprobada', 'Emitida', 'Recibida parcialmente', 'Rechazada', 'Recibida'],
+//     transitions: { Aprobada: ['Emitida', 'Rechazada'], Emitida: ['Recibida parcialmente', 'Recibida', 'Rechazada'], 'Recibida parcialmente': ['Recibida'], Rechazada: [], Recibida: [] }
 //   },
 //   lineasDetalle: {
 //     // Etiqueta de la sección en la UI (opcional; por defecto "Líneas de detalle").
@@ -63,16 +63,14 @@ export const userConfig = {
     { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
   ],
   statusLifecycle: {
-    statuses: ['borrador', 'cotización', 'aprobado', 'recibido parcialmente', 'recibido', 'facturado', 'cancelado'],
+    statuses: ['Aprobada', 'Emitida', 'Recibida parcialmente', 'Rechazada', 'Recibida'],
     transitions: {
-      borrador: ['cotización', 'cancelado'],
-      cotización: ['aprobado', 'cancelado'],
-      // recibido parcialmente / recibido solo se asignan al registrar recepciones (FR-045)
-      aprobado: ['recibido parcialmente', 'recibido', 'cancelado'],
-      'recibido parcialmente': ['recibido'],
-      recibido: ['facturado'],
-      facturado: [],
-      cancelado: []
+      Aprobada: ['Emitida', 'Rechazada'],
+      // Recibida parcialmente / Recibida solo se asignan al registrar recepciones (FR-045)
+      Emitida: ['Recibida parcialmente', 'Recibida', 'Rechazada'],
+      'Recibida parcialmente': ['Recibida'],
+      Rechazada: [],
+      Recibida: []
     }
   },
   lineasDetalle: {

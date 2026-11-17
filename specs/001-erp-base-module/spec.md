@@ -31,7 +31,8 @@ Como administrador del sistema, quiero gestionar los usuarios, roles y permisos 
 
 ---
 
-### Historia de Usuario 2 - Encargado de Compras (Prioridad: P1)
+### Historia de Usuario 2 - Generar Orden de Compra vinculada a un proveedor con totales calculados (Prioridad: P1)
+
 Como Encargado de Compras, quiero generar un documento de Orden de Compra vinculado a un proveedor específico, calculando los subtotales, impuestos y el total, para formalizar la transacción de los insumos solicitados. 
 
 **Por qué esta prioridad**: Esta función es el núcleo del módulo, ya que formaliza legal y financieramente la adquisición de insumos con los proveedores externos, resolviendo problemas críticos como las compras duplicadas por falta de comunicación y el nulo control sobre los gastos. Además, garantiza que el sistema registre los campos obligatorios de una transacción ERP (serie, folio, subtotal, descuento, impuesto y total) para saber exactamente cuánto se gasta y a quién se le debe.
@@ -45,7 +46,7 @@ Como Encargado de Compras, quiero generar un documento de Orden de Compra vincul
 
 ---
 
-### Historia de Usuario 3 - Aprobación y Gestión del Ciclo de Vida de Órdenes de Compra (Prioridad: P1)
+### Historia de Usuario 3 - Aprobar o cancelar solicitudes de cotización (Prioridad: P1)
 Como Encargado de Adquisiciones, quiero revisar y cambiar el estado de las solicitudes de cotización a "Aprobado" o "Cancelado" para poder autorizar formalmente las compras a proveedores validando sus condiciones comerciales y límites de crédito.
 
 **Por qué esta prioridad**: Este es el valor central del módulo de Adquisiciones y Compras porque, sin aprobar las órdenes, el flujo transaccional se paraliza y no es posible avanzar a las etapas de recepción en bodega ni facturación.
@@ -59,7 +60,7 @@ Como Encargado de Adquisiciones, quiero revisar y cambiar el estado de las solic
 
 ---
 
-### Historia de Usuario 4 - Revisar y autorizar solicitudes de compra del departamento (Prioridad: P1)
+### Historia de Usuario 4 - Revisar, autorizar o rechazar solicitudes de compra del departamento (Prioridad: P1)
 
 Como aprobador o jefe de área, quiero revisar, autorizar o rechazar las solicitudes de compra generadas por los miembros de mi departamento, para asegurar el cumplimiento de las políticas de la empresa y controlar el uso del presupuesto asignado.
 
@@ -81,8 +82,25 @@ Como aprobador o jefe de área, quiero revisar, autorizar o rechazar las solicit
 
 
 ---
+### Historia de Usuario 5 - Gestionar solicitudes autorizadas y generar la solicitud de cotización al proveedor (Prioridad: P1)
 
-### Historia de Usuario 6 - Verificar y registrar la recepción de productos (Prioridad: P1)
+Como Encargado de Compras, quiero revisar las solicitudes de compra autorizadas por los jefes de área y generar a partir de ellas una solicitud de cotización dirigida a un proveedor, para obtener las condiciones comerciales y los precios que se evaluarán antes de formalizar la compra.
+
+**Por qué esta prioridad**: Es el puente entre la autorización del departamento (Historia de Usuario 4) y la aprobación de la cotización (Historia de Usuario 3). Sin ella, las solicitudes autorizadas quedan sin atender y la aprobación no tiene un documento que revisar. Depende del rol de encargado de compras definido por el administrador (Historia de Usuario 1) y de la existencia de proveedores registrados.
+
+**Prueba Independiente**: Un encargado de compras ingresa a la bandeja de solicitudes autorizadas, abre una de ellas, selecciona un proveedor activo, registra los precios unitarios cotizados de cada línea y genera la solicitud de cotización. Comprueba que el documento queda en estado “En cotización”, vinculado a la solicitud original, y que esta deja de aparecer como pendiente de atender.
+
+**Escenarios de Aceptación**:
+
+1. **Dado** que el encargado de compras ingresa a la bandeja de solicitudes autorizadas, **cuando** consulta el listado, **entonces** el sistema despliega solo las solicitudes en estado Aprobada que aún no tienen cotización, con su folio, área solicitante, fecha de autorización y motivo de compra.
+2. **Dado** que el encargado selecciona una solicitud autorizada, **cuando** abre su detalle, **entonces** el sistema muestra los productos o servicios solicitados con sus cantidades, la justificación original y la decisión de autorización del jefe de área.
+3. **Dado** que el encargado asigna un proveedor activo y registra el precio unitario de cada línea, **cuando** confirma la generación de la cotización, **entonces** el sistema crea la solicitud de cotización en estado “En cotización”, calcula subtotal, impuestos y total, la vincula a la solicitud de compra original y muestra esta última como “En cotización”.
+4. **Dado** que el encargado intenta generar la cotización sin proveedor, con un proveedor inactivo o con datos comerciales incompletos, o con una línea sin precio, con precio negativo o no numérico, cuando confirma la acción, **entonces** el sistema impide guardar e indica qué dato debe corregirse.
+5. **Dado** que un usuario sin rol de encargado de compras intenta generar una cotización, **cuando** accede a la acción, **entonces** el sistema la bloquea según los permisos de su rol.
+
+---
+
+### Historia de Usuario 6 - Verificar y registrar la recepción de productos contra la Orden de Compra (Prioridad: P1)
 
 Como encargado de bodega o recepción, quiero verificar los productos que llegan del proveedor contra la Orden de Compra emitida y registrar las cantidades efectivamente entregadas, para dejar constancia de lo recibido, detectar faltantes o productos dañados y permitir que la orden avance en su ciclo de vida solo con información confirmada.
 
@@ -170,6 +188,9 @@ Como usuario de negocio, quiero buscar mis entidades por detalles clave para enc
 - ¿Qué ocurre si se intenta registrar una recepción sobre una Orden de Compra que ya está Recibida por completo, anulada o aún no emitida?
 - ¿Qué ocurre cuando una entrega llega en varias partes en días distintos?
 - ¿Qué ocurre si dos encargados intentan registrar la recepción de la misma orden al mismo tiempo?
+- ¿Qué ocurre si una solicitud ya tiene una cotización generada y otro usuario intenta cotizarla de nuevo?
+- ¿Qué ocurre si dos encargados abren la misma solicitud autorizada al mismo tiempo?
+- ¿Qué ocurre si la solicitud es modificada, anulada o devuelta después de abrirla pero antes de generar la cotización?
 
 ## Requisitos *(obligatorio)*
 

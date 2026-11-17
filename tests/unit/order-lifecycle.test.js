@@ -1,10 +1,10 @@
-// Ciclo de vida de la Orden de Compra: Emitida (aprobado) → Recibida parcialmente
-// → Recibida (recibido) → Pagada (facturado), sin saltos (spec FR-045, SC-013).
+// Ciclo de vida de la Orden de Compra: Aprobada → Emitida → Recibida parcialmente
+// → Recibida (+ Rechazada), sin saltos (spec FR-045, SC-013).
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   addEntity, addDocument, approveDocument, cancelDocument, updateDocument,
   addReception, loadDocuments, saveDocuments, saveRequisitions, saveReceptions,
-  REQUISITION_STATUS
+  REQUISITION_STATUS, DOCUMENT_STATUS
 } from '../../src/storage.js';
 import { setActiveConfig, userConfig, getConfig } from '../../src/module-config.js';
 import { setSession, resetSession } from '../../src/auth.js';
@@ -18,22 +18,22 @@ globalThis.localStorage = {
   clear: () => store.clear()
 };
 
+const { APPROVED, ISSUED, PARTIALLY_RECEIVED, RECEIVED, REJECTED } = DOCUMENT_STATUS;
 const RECEPTION_USER = { id: 'rec', username: 'rec', name: 'Recepción', role: 'encargado_recepcion', active: true };
+// La interfaz envía siempre los campos personalizados obligatorios al editar.
+const FORM_FIELDS = { tipoDocumento: 'Orden de Compra', fechaEmision: '2026-01-01' };
 
-function order(status = 'cotización', cantidad = 10){
+function order(status = APPROVED, cantidad = 10){
   const entity = addEntity({
     name: 'Proveedor', code: `PR-${store.size}`, taxId: 'RFC123456789',
     categoriaProveedor: 'Servicios', paymentTerms: 'neto 30', creditLimit: 100000
   });
   return addDocument({
     entityId: entity.entity_id, folio: 1001, startDate: '2026-01-01', endDate: '2026-01-10',
-    status, tipoDocumento: 'Orden de Compra', fechaEmision: '2026-01-01',
+    status, ...FORM_FIELDS,
     lineasDetalle: [{ producto_id: 'SKU-1', descripcion: 'Caja', cantidad, unidadMedida: 'cajas', precioUnitario: 10 }]
   });
 }
-
-// La interfaz envía siempre los campos personalizados obligatorios al editar.
-const FORM_FIELDS = { tipoDocumento: 'Orden de Compra', fechaEmision: '2026-01-01' };
 
 function forceStatus(id, status){
   saveDocuments(loadDocuments().map(d => (d.id === id ? { ...d, status } : d)));
@@ -54,93 +54,92 @@ beforeEach(() => {
 afterEach(() => resetSession());
 
 describe('statusLifecycle configurado', () => {
-  it('incluye el estado intermedio "recibido parcialmente" entre aprobado y recibido', () => {
+  it('incluye "Recibida parcialmente" entre Emitida y Recibida', () => {
     const lc = getConfig().statusLifecycle;
-    expect(lc.statuses).toContain('recibido parcialmente');
-    expect(lc.transitions.aprobado).toEqual(expect.arrayContaining(['recibido parcialmente', 'recibido', 'cancelado']));
-    expect(lc.transitions['recibido parcialmente']).toEqual(['recibido']);
+    expect(lc.statuses).toContain(PARTIALLY_RECEIVED);
+    expect(lc.transitions[ISSUED]).toEqual(expect.arrayContaining([PARTIALLY_RECEIVED, RECEIVED, REJECTED]));
+    expect(lc.transitions[PARTIALLY_RECEIVED]).toEqual([RECEIVED]);
   });
 });
 
-describe('aprobación (Emitida) sin saltar estados', () => {
-  it('aprueba desde cotización', () => {
-    const doc = order('cotización');
-    expect(approveDocument(doc.id).status).toBe('aprobado');
+describe('emisión (Emitida) sin saltar estados', () => {
+  it('emite desde Aprobada', () => {
+    const doc = order(APPROVED);
+    expect(approveDocument(doc.id).status).toBe(ISSUED);
   });
 
-  it.each(['borrador', 'cancelado', 'recibido', 'facturado', 'aprobado'])(
-    'impide aprobar un documento en estado "%s"', (status) => {
-      const doc = order('cotización');
+  it.each([REJECTED, RECEIVED, PARTIALLY_RECEIVED, ISSUED, ''])(
+    'impide emitir un documento en estado "%s"', (status) => {
+      const doc = order(APPROVED);
       forceStatus(doc.id, status);
-      expect(() => approveDocument(doc.id)).toThrow(/cotización/);
+      expect(() => approveDocument(doc.id)).toThrow(/Aprobada/);
       expect(loadDocuments()[0].status).toBe(status);
     }
   );
 });
 
 describe('recepción (Recibida) solo a través de recepciones registradas', () => {
-  it('impide marcar manualmente una orden emitida como recibida', () => {
-    const doc = order('cotización');
+  it('impide marcar manualmente una orden emitida como Recibida', () => {
+    const doc = order(APPROVED);
     approveDocument(doc.id);
-    expect(() => updateDocument(doc.id, { ...FORM_FIELDS, status: 'recibido' })).toThrow(/recepci/i);
-    expect(loadDocuments()[0].status).toBe('aprobado');
+    expect(() => updateDocument(doc.id, { ...FORM_FIELDS, status: RECEIVED })).toThrow(/recepci/i);
+    expect(loadDocuments()[0].status).toBe(ISSUED);
   });
 
-  it('impide marcar manualmente una orden como recibida parcialmente', () => {
-    const doc = order('cotización');
+  it('impide marcar manualmente una orden como Recibida parcialmente', () => {
+    const doc = order(APPROVED);
     approveDocument(doc.id);
-    expect(() => updateDocument(doc.id, { ...FORM_FIELDS, status: 'recibido parcialmente' })).toThrow(/recepci/i);
+    expect(() => updateDocument(doc.id, { ...FORM_FIELDS, status: PARTIALLY_RECEIVED })).toThrow(/recepci/i);
   });
 
-  it('impide pasar a recibido una orden que nunca fue emitida', () => {
-    const doc = order('cotización');
-    expect(() => updateDocument(doc.id, { ...FORM_FIELDS, status: 'recibido' })).toThrow();
-    expect(loadDocuments()[0].status).toBe('cotización');
+  it('impide pasar a Recibida una orden que nunca fue emitida', () => {
+    const doc = order(APPROVED);
+    expect(() => updateDocument(doc.id, { ...FORM_FIELDS, status: RECEIVED })).toThrow();
+    expect(loadDocuments()[0].status).toBe(APPROVED);
   });
 
-  it('avanza aprobado → recibido parcialmente → recibido registrando recepciones', () => {
-    const doc = order('cotización', 10);
+  it('impide crear una orden directamente en Recibida', () => {
+    expect(() => order(RECEIVED)).toThrow(/recepci/i);
+  });
+
+  it('avanza Emitida → Recibida parcialmente → Recibida registrando recepciones', () => {
+    const doc = order(APPROVED, 10);
     approveDocument(doc.id);
     receive(doc.id, 4);
-    expect(loadDocuments()[0].status).toBe('recibido parcialmente');
+    expect(loadDocuments()[0].status).toBe(PARTIALLY_RECEIVED);
+    expect(loadDocuments()[0].recepcionEstado).toBe('parcial');
     receive(doc.id, 6);
-    expect(loadDocuments()[0].status).toBe('recibido');
+    expect(loadDocuments()[0].status).toBe(RECEIVED);
+    expect(loadDocuments()[0].recepcionEstado).toBe('completa');
   });
 
   it('permite editar otros campos de una orden recibida parcialmente sin cambiar su estado', () => {
-    const doc = order('cotización', 10);
+    const doc = order(APPROVED, 10);
     approveDocument(doc.id);
     receive(doc.id, 4);
-    expect(updateDocument(doc.id, { ...FORM_FIELDS, notes: 'Seguimiento' }).status).toBe('recibido parcialmente');
-  });
-
-  it('permite facturar (Pagada) una orden recibida por completo', () => {
-    const doc = order('cotización', 2);
-    approveDocument(doc.id);
-    receive(doc.id, 2);
-    expect(updateDocument(doc.id, { ...FORM_FIELDS, status: 'facturado' }).status).toBe('facturado');
+    expect(updateDocument(doc.id, { ...FORM_FIELDS, notes: 'Seguimiento' }).status).toBe(PARTIALLY_RECEIVED);
   });
 });
 
-describe('cancelación', () => {
-  it('permite cancelar una orden emitida sin recepciones', () => {
-    const doc = order('cotización');
+describe('rechazo/cancelación', () => {
+  it('permite rechazar una orden emitida sin recepciones', () => {
+    const doc = order(APPROVED);
     approveDocument(doc.id);
-    expect(cancelDocument(doc.id).status).toBe('cancelado');
+    expect(cancelDocument(doc.id).status).toBe(REJECTED);
   });
 
-  it('impide cancelar una orden con una recepción parcial confirmada', () => {
-    const doc = order('cotización', 10);
+  it('impide rechazar una orden con una recepción parcial confirmada', () => {
+    const doc = order(APPROVED, 10);
     approveDocument(doc.id);
     receive(doc.id, 4);
-    expect(() => cancelDocument(doc.id)).toThrow();
-    expect(loadDocuments()[0].status).toBe('recibido parcialmente');
+    expect(() => cancelDocument(doc.id)).toThrow(/No se puede rechazar/);
+    expect(loadDocuments()[0].status).toBe(PARTIALLY_RECEIVED);
   });
 });
 
 describe('contadores del panel', () => {
-  it('cuenta órdenes emitidas (alguna vez emitidas y no canceladas), solicitudes pendientes y recepciones', () => {
-    const statuses = ['borrador', 'cotización', 'aprobado', 'recibido parcialmente', 'recibido', 'facturado', 'cancelado'];
+  it('cuenta órdenes emitidas (alguna vez emitidas y no rechazadas), solicitudes pendientes y recepciones', () => {
+    const statuses = [APPROVED, ISSUED, PARTIALLY_RECEIVED, RECEIVED, REJECTED];
     saveDocuments(statuses.map((status, i) => ({ id: `d${i}`, status })));
     saveRequisitions([
       { id: 'r1', status: REQUISITION_STATUS.PENDING },
@@ -150,7 +149,7 @@ describe('contadores del panel', () => {
     ]);
     saveReceptions([{ id: 'x1' }, { id: 'x2' }, { id: 'x3' }]);
     const counts = recordCounts();
-    expect(counts.orders).toBe(4);
+    expect(counts.orders).toBe(3);
     expect(counts.requisitions).toBe(2);
     expect(counts.receptions).toBe(3);
     expect(counts.documents).toBe(statuses.length);

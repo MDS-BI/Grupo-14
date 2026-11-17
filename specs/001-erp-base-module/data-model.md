@@ -29,7 +29,7 @@ erDiagram
     string ID_OrdenCompra PK
     string series_folio "Ej. OC-2045, SC-1001"
     select tipoDocumento "Solicitud de Cotización / Orden de Compra / Recepción / Factura de Proveedor"
-    select estado "borrador, cotización, aprobado, recibido parcialmente, recibido, facturado, cancelado"
+    select estado "Aprobada, Emitida, Recibida parcialmente, Rechazada, Recibida"
     select prioridad "Normal / Urgente"
     date fechaEmision "YYYY-MM-DD (obligatoria)"
     string currency "Moneda (MXN, USD, EUR…)"
@@ -108,7 +108,7 @@ Documento transaccional del flujo de compras (solicitud de cotización, orden de
 | `ID_OrdenCompra` | `id` | string | Sí | PK | Identificador único del documento. | Generado automáticamente. | ✓ |
 | `series / folio` | `series + folio` | string + integer | Sí |  | Numeración oficial: la serie agrupa folios consecutivos y se combina con el folio. Ej./valores: Ej. OC-2045, SC-1001 | series opcional; folio obligatorio, entero positivo. | ✓ |
 | `tipoDocumento` | `tipoDocumento` | select | Sí |  | Etapa del flujo de compras que representa el documento (campo personalizado). Ej./valores: Solicitud de Cotización / Orden de Compra / Recepción / Factura de Proveedor | Obligatorio; uno de: Solicitud de Cotización, Orden de Compra, Recepción, Factura de Proveedor. | ✓ |
-| `estado` | `status` | select | No |  | Estado del documento dentro del ciclo de vida configurado. Ej./valores: borrador, cotización, aprobado, recibido parcialmente, recibido, facturado, cancelado | Uno de los estados de statusLifecycle; solo transiciones permitidas. | ✓ |
+| `estado` | `status` | select | No |  | Estado del documento dentro del ciclo de vida configurado. Ej./valores: Aprobada, Emitida, Recibida parcialmente, Rechazada, Recibida | Uno de los estados de statusLifecycle; solo transiciones permitidas. | ✓ |
 | `prioridad` | `prioridad` | select | No |  | Prioridad de la compra (campo personalizado). Ej./valores: Normal / Urgente | Opcional; Normal o Urgente. | ✓ |
 | `fechaEmision` | `fechaEmision` | date | Sí |  | Día en que se creó el documento y se fijó el tipo de cambio. Ej./valores: YYYY-MM-DD (obligatoria) | Obligatoria; fecha de calendario válida YYYY-MM-DD. | ✓ |
 | `currency` | `currency` | string | No |  | Código de moneda de los importes del documento. Ej./valores: Moneda (MXN, USD, EUR…) | Opcional. | ✓ |
@@ -189,31 +189,26 @@ Integridad referencial: al eliminar un PROVEEDOR se eliminan los documentos que 
 
 | Estado actual | Transiciones permitidas |
 |---|---|
-| borrador | cotización, cancelado |
-| cotización | aprobado, cancelado |
-| aprobado | recibido parcialmente, recibido, cancelado |
-| recibido parcialmente | recibido |
-| recibido | facturado |
-| facturado | *(fin)* |
-| cancelado | *(fin)* |
+| Aprobada | Emitida, Rechazada |
+| Emitida | Recibida parcialmente, Recibida, Rechazada |
+| Recibida parcialmente | Recibida |
+| Rechazada | *(fin)* |
+| Recibida | *(fin)* |
 
 ```mermaid
 stateDiagram-v2
-  [*] --> borrador
-  borrador --> cotizacion
-  borrador --> cancelado
-  cotizacion --> aprobado
-  cotizacion --> cancelado
-  aprobado --> recibido_parcialmente
-  aprobado --> recibido
-  aprobado --> cancelado
-  recibido_parcialmente --> recibido
-  recibido --> facturado
-  facturado --> [*]
-  cancelado --> [*]
+  [*] --> Aprobada
+  Aprobada --> Emitida
+  Aprobada --> Rechazada
+  Emitida --> Recibida_parcialmente
+  Emitida --> Recibida
+  Emitida --> Rechazada
+  Recibida_parcialmente --> Recibida
+  Rechazada --> [*]
+  Recibida --> [*]
 ```
 
-El flujo avanza solicitud de cotización (cotización) → orden emitida/aprobada (aprobado) → recepción parcial (recibido parcialmente) → recepción completa (recibido) → factura de proveedor registrada (facturado). La aprobación solo parte de cotización; recibido parcialmente y recibido solo se asignan al registrar recepciones (FR-045, SC-013). La cancelación se permite mientras no se haya confirmado ninguna recepción.
+El flujo avanza solicitud de cotización aprobada (Aprobada) → orden de compra emitida con folio OC (Emitida) → recepción parcial (Recibida parcialmente) → recepción completa (Recibida). La emisión solo parte de Aprobada; Recibida parcialmente y Recibida solo se asignan al registrar recepciones (FR-045, SC-013). El rechazo se permite mientras no se haya confirmado ninguna recepción.
 
 ## Fórmulas de totales
 
@@ -258,6 +253,6 @@ Objeto ModuleConfig (`userConfig` en src/module-config.js) cargado al arrancar q
 9. **PRODUCTO sin catálogo implementado.** plan.md solo define producto_id como «referencia al catálogo de bienes/servicios (id o SKU)», de tipo texto y sin validación referencial. PRODUCTO y sus atributos (SKU / Código, Nombre_Producto, Unidad_Medida, Precio_Referencia) son el catálogo conceptual al que apunta esa referencia; la FK producto_id → ID_Producto es lógica y el storage todavía no la valida.
 10. **lineasDetalle no está activo en userConfig.** El bloque lineasDetalle solo aparece en el comentario de ejemplo de module-config.js; el perfil activo no lo declara, por lo que se usan los valores por defecto (sin unidadesMedida, maxPorcentajeDescuento = 100) y unidadMedida se captura como texto.
 11. **Fechas base del Documento.** El storage actual sigue exigiendo startDate y endDate (endDate ≥ startDate) además de fechaEmision. Se documentan como obligatorias, pero no se muestran en el MER.
-12. **Estados en spec.md.** spec.md (HU2/HU6) menciona estados Emitida, Recibida parcialmente, Recibida y Pagada, que se mapean al ciclo de vida de plan.md/module-config.js así: Emitida = aprobado, Recibida parcialmente = recibido parcialmente, Recibida = recibido, Pagada = facturado. Por FR-045 «recibido parcialmente» es un estado de la orden (además de Estado_Recepcion = parcial) y, junto con recibido, solo lo asigna el registro de recepciones.
+12. **Estados en spec.md.** spec.md (HU2/HU6) menciona estados Emitida, Recibida parcialmente, Recibida y Pagada, El ciclo de vida implementado (module-config.js) usa directamente esos nombres: Aprobada → Emitida → Recibida parcialmente → Recibida, más Rechazada. Por FR-045 «Recibida parcialmente» es un estado de la orden (además de Estado_Recepcion = parcial) y, junto con Recibida, solo lo asigna el registro de recepciones. Pagada aún no está implementada.
 13. **Nombre de la tabla intermedia.** spec.md (HU2) llama Detalle_Orden a la tabla intermedia; en el modelo se llama LÍNEA DE DETALLE, como en plan.md y LINEA_DETALLE_FIELDS.
 14. **Línea de Recepción.** spec.md describe una Línea de Recepción (cantidad conforme, rechazada y motivo). Queda fuera de este MER, que se limita a las entidades pedidas; es la siguiente extensión natural de RECEPCIÓN (1:N).

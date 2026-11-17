@@ -324,7 +324,7 @@ Task: "Marcado de la vista de usuarios en index.html"
 - `[P]` indica tareas en archivos distintos y sin dependencias entre sí
 - `[Historia]` mapea cada tarea a la historia de usuario de `spec.md` para trazabilidad
 - No existe HU5 en `spec.md`; la secuencia de etiquetas es US1, US2, US3, US4, US6, US7, US8
-- El ciclo de vida implementado sigue `plan.md` (`borrador → cotización → aprobado → recibido parcialmente → recibido → facturado`, con `cancelado` hasta la primera recepción); los estados Emitida/Recibida parcialmente/Recibida/Pagada de `spec.md` se mapean a `aprobado`/`recibido parcialmente`/`recibido`/`facturado` según `data-model.md` (nota 12)
+- El ciclo de vida implementado sigue `plan.md` (`Aprobada → Emitida → Recibida parcialmente → Recibida`, con `Rechazada` hasta la primera recepción) y usa los nombres de estado de `spec.md`; Pagada aún no está implementada (ver `data-model.md`, nota 12)
 - `data-model.md` define RECEPCIÓN como entidad propia; las tareas de US6 la implementan como colección separada, no como `tipoDocumento`
 - Verificar que las pruebas fallen antes de implementar
 - Confirmar después de cada tarea o grupo lógico

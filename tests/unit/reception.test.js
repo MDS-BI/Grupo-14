@@ -31,7 +31,7 @@ function approvedOrder(cantidad = 10){
     folio: 1001,
     startDate: '2026-01-01',
     endDate: '2026-01-10',
-    status: 'cotización',
+    status: 'Aprobada',
     tipoDocumento: 'Orden de Compra',
     fechaEmision: '2026-01-01',
     lineasDetalle: [{ producto_id: 'SKU-1', descripcion: 'Caja', cantidad, unidadMedida: 'cajas', precioUnitario: 10 }]
@@ -83,7 +83,7 @@ describe('reception validation', () => {
   it('refuses orders that are not approved or partially received', () => {
     const order = approvedOrder();
     const docs = loadDocuments();
-    docs[0] = { ...docs[0], status: 'cancelado' };
+    docs[0] = { ...docs[0], status: 'Rechazada' };
     localStorage.setItem('erp_base_module:documents', JSON.stringify(docs));
     const result = validateReception({ orderId: order.id, lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 1 }] });
     expect(result.errors.orderId).toContain('emitidas');
@@ -104,7 +104,7 @@ describe('reception storage', () => {
     expect(reception.responsable).toBe('Raúl');
     expect(reception.lineas[0].cantidadRecibida).toBe(4);
     expect(reception.lineas[0].cantidadRechazada).toBe(1);
-    expect(loadDocuments()[0].status).toBe('recibido parcialmente');
+    expect(loadDocuments()[0].status).toBe('Recibida parcialmente');
     expect(receivedQuantityForLine(order.id, 0)).toBe(4);
     expect(pendingQuantityForLine(loadDocuments()[0], 0)).toBe(6);
   });
@@ -122,7 +122,7 @@ describe('reception storage', () => {
     const order = approvedOrder(10);
     addReception({ orderId: order.id, lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 4 }] });
     addReception({ orderId: order.id, lineas: [{ ordenLineaIndex: 0, cantidadRecibida: 6 }] });
-    expect(loadDocuments()[0].status).toBe('recibido');
+    expect(loadDocuments()[0].status).toBe('Recibida');
     expect(ordersPendingReception()).toHaveLength(0);
   });
 

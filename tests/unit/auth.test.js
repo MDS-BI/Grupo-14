@@ -91,7 +91,7 @@ describe('user management', () => {
       folio: 1001,
       startDate: '2026-01-01',
       endDate: '2026-01-05',
-      status: 'borrador'
+      status: 'Aprobada'
     });
     expect(() => deactivateUser(user.id)).toThrow(/pendientes/);
   });

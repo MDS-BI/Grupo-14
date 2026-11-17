@@ -437,7 +437,8 @@ function clearApprovalSelection(){
 }
 
 function refreshApprovals(){
-  // T039: bandeja limitada al departamento del aprobador (todos si es administrador).
+  // T039: bandeja limitada al departamento del aprobador (todos si es administrador;
+  // ninguno si el aprobador no tiene departamento).
   const pending = pendingRequisitionsForApprover();
   const session = getSession();
   const missingDepartment = can(PERMISSIONS.REQUISITIONS_APPROVE) && !isAdmin() && !(session && session.department);
