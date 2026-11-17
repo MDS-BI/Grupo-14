@@ -257,6 +257,46 @@
             </div>
           </header>
 
+          <section class="card card-entity-table" aria-labelledby="entity-table-heading">
+            <div class="panel-head">
+              <h2 id="entity-table-heading">Proveedores registrados</h2>
+              <span id="entity-table-count" class="muted"></span>
+            </div>
+            <div class="table-toolbar">
+              <div class="search-field">
+                <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                <input id="entity-table-search" type="search" autocomplete="off" placeholder="Buscar por nombre o RUT..." aria-label="Buscar proveedores por nombre o RUT" />
+              </div>
+              <label class="filter-field" for="entity-status-filter">
+                <span>Estado</span>
+                <select id="entity-status-filter">
+                  <option value="">Todos</option>
+                  <option value="Activo">Activo</option>
+                  <option value="Inactivo">Inactivo</option>
+                </select>
+              </label>
+            </div>
+            <div class="table-responsive">
+              <table id="entity-table" class="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Nombre</th>
+                    <th scope="col">RUT</th>
+                    <th scope="col">Rubro</th>
+                    <th scope="col">Contacto</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Pago</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="entity-table-body"></tbody>
+              </table>
+            </div>
+            <div id="entity-table-empty" class="empty" hidden>No hay proveedores que coincidan con la búsqueda.</div>
+            <div id="entity-detail" class="detail-pane entity-detail" hidden></div>
+          </section>
+
           <div class="view-grid layout-main-aside">
             <section class="card" aria-labelledby="entity-form-heading">
               <h2 id="entity-form-heading">Agregar / Editar Entidad</h2>
@@ -308,6 +348,13 @@
                     <div>
                       <label for="category">Categoría</label>
                       <input id="category" name="category" />
+                    </div>
+                    <div>
+                      <label for="estado">Estado</label>
+                      <select id="estado" name="estado">
+                        <option value="Activo">Activo</option>
+                        <option value="Inactivo">Inactivo</option>
+                      </select>
                     </div>
                     <div class="span-full">
                       <label for="description">Descripción</label>

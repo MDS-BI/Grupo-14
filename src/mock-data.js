@@ -11,7 +11,7 @@ import { DEFAULT_TAX_RATE, applyTotalesToCabecera, computeSubtotalLinea } from '
 
 const RUT_WEIGHTS = [2, 3, 4, 5, 6, 7];
 const SEED_VERSION_KEY = 'erp_base_module:mockSeedVersion';
-const SEED_VERSION = '2026-11-v2';
+const SEED_VERSION = '2026-11-v3';
 
 export const MOCK_COUNTS = Object.freeze({
   entities: 7,
@@ -24,13 +24,55 @@ export const MOCK_COUNTS = Object.freeze({
 const ISSUED_STATUSES = ['aprobado', 'recibido parcialmente', 'recibido', 'facturado'];
 
 const ENTITY_SEEDS = [
-  ['Ferretería Los Andes SpA', 'PROV-001', 61234567, 'Equipos', 'Ferretería industrial', 'Ricardo Fuentes', 'contacto@ferreterialosandes.cl', '+56 2 2456 7810', 'Av. Libertador Bernardo O Higgins 1234, Santiago', 'Herramientas y materiales industriales', '2026-12-15', 12000000, 'neto 30'],
-  ['Distribuidora Costanera Ltda.', 'PROV-002', 76543210, 'Materias primas', 'Distribución', 'María José Ríos', 'ventas@distribuidoracostanera.cl', '+56 2 2789 4512', 'Av. Costanera Norte 890, Recoleta', 'Insumos y materias primas para producción', '2026-12-20', 18000000, 'neto 45'],
-  ['Servicios Industriales Maipo SpA', 'PROV-003', 84567012, 'Servicios', 'Mantenimiento', 'Andrés Morales', 'contacto@serviciosmaipo.cl', '+56 2 2634 1190', 'Calle Maipo 1450, San Bernardo', 'Mantenimiento preventivo de planta', '2027-01-10', 9000000, 'neto 30'],
-  ['Tecnología Andina S.A.', 'PROV-004', 91234567, 'Equipos', 'Tecnología', 'Paula Rojas', 'ventas@tecnologiaandina.cl', '+56 2 2410 7788', 'Av. Providencia 2100, Providencia', 'Equipos cómputo y soluciones tecnológicas', '2026-12-05', 22000000, 'neto 30'],
-  ['Agrícola Valle Central Ltda.', 'PROV-005', 10345678, 'Materias primas', 'Agricultura', 'Cristián Álvarez', 'comercial@valledecentral.cl', '+56 72 245 1120', 'Ruta 5 Sur Km 78, Rancagua', 'Insumos agrícolas y lubricantes', '2027-02-01', 18000000, 'neto 45'],
-  ['Constructora Bío Bío S.A.', 'PROV-006', 11223344, 'General', 'Construcción', 'Lorena Pizarro', 'licitaciones@constructorabiobio.cl', '+56 45 265 4300', 'Av. Alemania 0450, Temuco', 'Materiales y servicios de construcción', '2027-01-25', 15000000, 'neto 60'],
-  ['Papelería y Suministros Ñuñoa', 'PROV-007', 12349765, 'General', 'Oficina', 'Sofía Carrasco', 'ventas@papelerianunoa.cl', '+56 2 2478 3390', 'Calle Manuel Rodríguez 620, Ñuñoa', 'Papelería, útiles y suministros de oficina', '2026-12-12', 12000000, 'contado']
+  {
+    name: 'Insumos Industriales Biobío SpA', code: 'PROV-001', taxId: '76.432.890-K',
+    categoriaProveedor: 'Ferretería y seguridad industrial', category: 'Ferretería y seguridad industrial',
+    vendedorContacto: 'Carlos Mendoza', email: 'cmendoza@insumosbiobio.cl', paymentTerms: '30 días', estado: 'Activo',
+    phone: '+56 41 245 1200', address: 'Av. Coral 1200, Concepción',
+    description: 'Ferretería y seguridad industrial', targetDate: '2026-12-15', creditLimit: 12000000
+  },
+  {
+    name: 'Logística y Transportes del Sur Ltda.', code: 'PROV-002', taxId: '77.120.456-7',
+    categoriaProveedor: 'Transporte de carga y embalaje', category: 'Transporte de carga y embalaje',
+    vendedorContacto: 'Valentina Rojas', email: 'vrojas@transportesdelsur.cl', paymentTerms: '45 días', estado: 'Activo',
+    phone: '+56 41 246 8810', address: 'Av. Colmo 750, Concepción',
+    description: 'Transporte de carga y embalaje', targetDate: '2026-12-20', creditLimit: 18000000
+  },
+  {
+    name: 'Tecnología y Redes Concepción S.A.', code: 'PROV-003', taxId: '96.854.120-5',
+    categoriaProveedor: 'Equipamiento TI y redes', category: 'Equipamiento TI y redes',
+    vendedorContacto: 'Felipe Herrera', email: 'fherrera@tecnoredconce.cl', paymentTerms: 'Contado', estado: 'Activo',
+    phone: '+56 41 223 4470', address: 'Av. Alemania 0520, Concepción',
+    description: 'Equipamiento TI y redes', targetDate: '2027-01-10', creditLimit: 9000000
+  },
+  {
+    name: 'Papelería y Suministros Oficina Chile Ltda.', code: 'PROV-004', taxId: '76.981.234-2',
+    categoriaProveedor: 'Artículos de escritorio e impresión', category: 'Artículos de escritorio e impresión',
+    vendedorContacto: 'Daniela Castro', email: 'dcastro@suministrosofichile.cl', paymentTerms: '30 días', estado: 'Activo',
+    phone: '+56 2 2478 3390', address: 'Calle Manuel Rodríguez 620, Ñuñoa',
+    description: 'Artículos de escritorio e impresión', targetDate: '2026-12-05', creditLimit: 22000000
+  },
+  {
+    name: 'Maestranza y Aceros Talcahuano SpA', code: 'PROV-005', taxId: '77.543.210-1',
+    categoriaProveedor: 'Estructuras metálicas y repuestos', category: 'Estructuras metálicas y repuestos',
+    vendedorContacto: 'Rodrigo Silva', email: 'rsilva@acerostalcahuano.cl', paymentTerms: '60 días', estado: 'Activo',
+    phone: '+56 41 276 5530', address: 'Av. Cristóbal Colón 1850, Talcahuano',
+    description: 'Estructuras metálicas y repuestos', targetDate: '2027-02-01', creditLimit: 18000000
+  },
+  {
+    name: 'Envases y Embalajes Austral Ltda.', code: 'PROV-006', taxId: '76.219.876-5',
+    categoriaProveedor: 'Cartón corrugado y plásticos', category: 'Cartón corrugado y plásticos',
+    vendedorContacto: 'Camila Muñoz', email: 'cmunoz@envasesaustral.cl', paymentTerms: '30 días', estado: 'Activo',
+    phone: '+56 2 2789 4512', address: 'Av. Costanera Norte 890, Recoleta',
+    description: 'Cartón corrugado y plásticos', targetDate: '2027-01-25', creditLimit: 15000000
+  },
+  {
+    name: 'Servicios de Aseo y Mantención Integral SpA', code: 'PROV-007', taxId: '77.890.123-K',
+    categoriaProveedor: 'Insumos químicos y limpieza', category: 'Insumos químicos y limpieza',
+    vendedorContacto: 'Andrés Morales', email: 'amorales@mantencionintegral.cl', paymentTerms: '15 días', estado: 'Inactivo',
+    phone: '+56 2 2634 1190', address: 'Calle Maipo 1450, San Bernardo',
+    description: 'Insumos químicos y limpieza', targetDate: '2026-12-12', creditLimit: 12000000
+  }
 ];
 
 const USER_SEEDS = [
@@ -146,28 +188,13 @@ export function formatRut(base){
 }
 
 function buildEntities(){
-  return ENTITY_SEEDS.map((seed, index) => {
-    const [name, code, rutBase, categoriaProveedor, category, vendedorContacto, email, phone, address, description, targetDate, creditLimit, paymentTerms] = seed;
-    return {
-      id: `mock-entity-${pad(index + 1)}`,
-      entity_id: `mock-proveedor-${pad(index + 1)}`,
-      name,
-      code,
-      taxId: formatRut(rutBase),
-      email,
-      phone,
-      address,
-      category,
-      description,
-      targetDate,
-      creditLimit,
-      paymentTerms,
-      categoriaProveedor,
-      vendedorContacto,
-      createdAt: isoFromDate(`2026-07-${pad((index % 28) + 1)}`),
-      updatedAt: isoFromDate('2026-11-15')
-    };
-  });
+  return ENTITY_SEEDS.map((seed, index) => ({
+    id: `mock-entity-${pad(index + 1)}`,
+    entity_id: `mock-proveedor-${pad(index + 1)}`,
+    ...seed,
+    createdAt: isoFromDate(`2026-07-${pad((index % 28) + 1)}`),
+    updatedAt: isoFromDate('2026-11-15')
+  }));
 }
 
 function buildUsers(){

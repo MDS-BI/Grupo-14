@@ -11,7 +11,7 @@ import {
 import { can, setSession, resetSession, getSession, PERMISSIONS, roleLabel } from './auth.js';
 import { ensureMockData, injectMockData } from './mock-data.js';
 import { clearEntityForm, startEntityEdit, collectEntityPayload, showEntityErrors } from './components/entity-form.js';
-import { createEntityItem } from './components/entity-list.js';
+import { createEntityItem, filterEntities, renderEntityTable, renderEntityDetail } from './components/entity-list.js';
 import { clearDocumentForm, startDocumentEdit, collectDocumentPayload, showDocumentErrors, addDocumentDetailLine, toggleOrderActions } from './components/document-form.js';
 import { folioLabel } from './components/document-list.js';
 import { renderLogo, applyShellLabels, setActiveModule } from './components/shell.js';
@@ -50,6 +50,7 @@ const VIEWS = {
 let wired = false;
 let selectedApprovalId = null;
 let selectedReceptionOrderId = null;
+let selectedEntityId = null;
 
 const MODULE_PERMISSIONS = {
   dashboard: PERMISSIONS.DASHBOARD_VIEW,
@@ -73,6 +74,7 @@ function showModule(name, opts = {}){
   if(name === 'entities'){
     populateDocumentEntitySelect();
     populateEditEntitySelect();
+    refreshEntities();
     if(opts.newRecord) clearEntityForm();
     if(opts.focusForm) qs('name').focus();
   }
@@ -159,6 +161,34 @@ function refreshSearch(){
   renderSearchResults(qs('search-results-list'), qs('search-empty'), searchEntities(qs('search-input').value), (e) => createEntityItem(e));
 }
 
+function refreshEntities(){
+  const entities = loadEntities();
+  const visible = filterEntities(entities, qs('entity-table-search').value, qs('entity-status-filter').value);
+  renderEntityTable(qs('entity-table-body'), visible, {
+    onView: handleViewEntity,
+    onEdit: handleEditEntityFromTable
+  });
+  qs('entity-table-count').textContent = `${visible.length} de ${entities.length}`;
+  qs('entity-table').hidden = visible.length === 0;
+  qs('entity-table-empty').hidden = visible.length > 0;
+  const selected = visible.find(e => e.id === selectedEntityId);
+  selectedEntityId = selected ? selected.id : null;
+  renderEntityDetail(qs('entity-detail'), selected);
+}
+
+function handleViewEntity(entity){
+  selectedEntityId = entity.id;
+  renderEntityDetail(qs('entity-detail'), entity);
+  qs('entity-detail').scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+}
+
+function handleEditEntityFromTable(entity){
+  const select = qs('edit-entity');
+  if(select && [...select.options].some(o => o.value === entity.id)) select.value = entity.id;
+  startEntityEdit(entity);
+  qs('name').focus();
+}
+
 function onEditEntityChange(){
   const id = qs('edit-entity').value;
   if(!id){ clearEntityForm(); return; }
@@ -176,6 +206,7 @@ function handleDeleteSelectedEntity(){
   populateDocumentEntitySelect();
   populateEditEntitySelect();
   populateEditDocumentSelect();
+  refreshEntities();
 }
 
 function onEditDocumentChange(){
@@ -346,6 +377,7 @@ function handleLoadMockData(){
   const counts = injectMockData();
   selectedApprovalId = null;
   selectedReceptionOrderId = null;
+  selectedEntityId = null;
   resetSession();
   populateSessionSelect();
   applyPermissions();
@@ -531,6 +563,7 @@ function afterSaveRefresh(){
   populateDocumentEntitySelect();
   populateEditEntitySelect();
   populateEditDocumentSelect();
+  refreshEntities();
 }
 
 function handleEntitySubmit(ev){
@@ -644,6 +677,8 @@ function wireEvents(){
   qs('action-load-mock-data').addEventListener('click', handleLoadMockData);
   qs('entity-form').addEventListener('submit', handleEntitySubmit);
   qs('cancel-edit').addEventListener('click', clearEntityForm);
+  qs('entity-table-search').addEventListener('input', refreshEntities);
+  qs('entity-status-filter').addEventListener('change', refreshEntities);
   qs('document-form').addEventListener('submit', handleDocumentSubmit);
   qs('document-cancel-edit').addEventListener('click', clearDocumentForm);
   qs('add-detail-line').addEventListener('click', addDocumentDetailLine);

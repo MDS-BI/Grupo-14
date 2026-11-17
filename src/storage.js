@@ -231,6 +231,7 @@ export function addEntity(payload){
     targetDate: (payload.targetDate||'').trim() || undefined,
     creditLimit: isEmpty(payload.creditLimit) ? undefined : Number(payload.creditLimit),
     paymentTerms: (payload.paymentTerms||'').trim() || undefined,
+    estado: (payload.estado||'Activo').trim() || 'Activo',
     ...pickCustomFields('entity', payload),
     createdAt: now,
     updatedAt: now
@@ -259,6 +260,7 @@ export function updateEntity(id, updates){
     targetDate: (merged.targetDate||'').trim() || undefined,
     creditLimit: isEmpty(merged.creditLimit) ? undefined : Number(merged.creditLimit),
     paymentTerms: (merged.paymentTerms||'').trim() || undefined,
+    estado: (merged.estado||'Activo').trim() || 'Activo',
     ...pickCustomFields('entity', merged),
     updatedAt: new Date().toISOString()
   };

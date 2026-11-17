@@ -812,6 +812,48 @@ button.danger:hover { background: var(--red-soft); border-color: var(--red); }
 .detail-table td input { height: 36px; min-width: 64px; padding: 0 10px; }
 .detail-table td:last-child input { min-width: 120px; }
 
+/* Tabla de proveedores */
+.card-entity-table { margin-bottom: 24px; }
+.table-toolbar {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  margin: 14px 0 16px;
+}
+.table-toolbar .search-field { flex: 1 1 280px; max-width: 420px; }
+.table-toolbar .search-field input { height: 40px; padding-left: 42px; font-size: 0.9rem; border-radius: var(--r-sm); }
+.table-toolbar .search-field > svg.i { left: 14px; width: 18px; height: 18px; }
+.filter-field { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; font-weight: 550; color: var(--ink-2); }
+.filter-field select { height: 40px; min-width: 130px; padding: 0 10px; }
+.table-responsive { overflow-x: auto; }
+.data-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font-size: 0.86rem; border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden;
+}
+.data-table thead th {
+  padding: 11px 12px; background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.7rem; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); text-align: left; white-space: nowrap;
+}
+.data-table tbody td {
+  padding: 11px 12px; border-bottom: 1px solid var(--border);
+  color: var(--ink-2); vertical-align: middle;
+}
+.data-table tbody tr:last-child td { border-bottom: 0; }
+.data-table tbody tr:hover td { background: var(--surface-2); }
+.data-table tbody td:first-child { color: var(--ink); font-weight: 600; min-width: 210px; }
+.data-table tbody td:nth-child(2), .data-table tbody td:nth-child(5) { font-variant-numeric: tabular-nums; }
+.table-actions { white-space: nowrap; }
+.table-actions button { min-height: 32px; padding: 0 11px; font-size: 0.8rem; }
+.table-actions button + button { margin-left: 6px; }
+.status-badge {
+  display: inline-block; padding: 4px 10px; border-radius: 999px;
+  font-size: 0.76rem; font-weight: 600; white-space: nowrap;
+}
+.status-badge.is-active { background: color-mix(in srgb, var(--green) 10%, #fff); color: var(--green); }
+.status-badge.is-inactive { background: var(--surface-3); color: var(--slate); }
+.entity-detail { margin-top: 16px; }
+.entity-detail .detail-table { margin: 0; }
+
 /* BÃºsqueda */
 .card-search { padding: 24px 28px; }
 .card-search h2 { margin-bottom: 14px; }
@@ -964,7 +1006,7 @@ button.danger:hover { background: var(--red-soft); border-color: var(--red); }
 }
 
 /* ==========================================================================
-   Extensiones ERP: usuarios, aprobaciones, líneas y recepción
+   Extensiones ERP: usuarios, aprobaciones, lï¿½neas y recepciï¿½n
    ========================================================================== */
 .nav-extra {
   display: flex;
