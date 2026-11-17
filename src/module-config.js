@@ -26,8 +26,8 @@
 //     { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
 //   ],
 //   statusLifecycle: {
-//     statuses: ['borrador', 'cotización', 'aprobado', 'recibido', 'facturado', 'cancelado'],
-//     transitions: { borrador: ['cotización', 'cancelado'], cotización: ['aprobado', 'cancelado'], aprobado: ['recibido', 'cancelado'], recibido: ['facturado'], facturado: [], cancelado: [] }
+//     statuses: ['Aprobada', 'Emitida', 'Rechazada', 'Recibida'],
+//     transitions: { Aprobada: ['Emitida', 'Rechazada'], Emitida: ['Recibida', 'Rechazada'], Rechazada: [], Recibida: [] }
 //   },
 //   lineasDetalle: {
 //     // Etiqueta de la sección en la UI (opcional; por defecto "Líneas de detalle").
@@ -63,14 +63,12 @@ export const userConfig = {
     { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
   ],
   statusLifecycle: {
-    statuses: ['borrador', 'cotización', 'aprobado', 'recibido', 'facturado', 'cancelado'],
+    statuses: ['Aprobada', 'Emitida', 'Rechazada', 'Recibida'],
     transitions: {
-      borrador: ['cotización', 'cancelado'],
-      cotización: ['aprobado', 'cancelado'],
-      aprobado: ['recibido', 'cancelado'],
-      recibido: ['facturado'],
-      facturado: [],
-      cancelado: []
+      Aprobada: ['Emitida', 'Rechazada'],
+      Emitida: ['Recibida', 'Rechazada'],
+      Rechazada: [],
+      Recibida: []
     }
   },
   lineasDetalle: {

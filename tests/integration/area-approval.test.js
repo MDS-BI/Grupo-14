@@ -59,6 +59,17 @@ describe('User Story 4 - department approval', () => {
     expect(qs('approvals-empty').hidden).toBe(false);
   });
 
+  it('only shows pending requisitions from the active approver department', () => {
+    const own = addRequisition('TI');
+    addRequisition('Compras');
+    app.applySession({ ...ROLE_FIXTURES.aprobador, department: 'TI' });
+    qs('nav-approvals').click();
+
+    const buttons = qs('approvals-list').querySelectorAll('button');
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].textContent).toContain(own.folio);
+  });
+
   it('requires a rejection reason and keeps the request pending without it', () => {
     addRequisition('TI');
     app.applySession(ROLE_FIXTURES.aprobador);

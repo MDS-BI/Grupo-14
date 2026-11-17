@@ -41,10 +41,10 @@ function el(tag, className, text){
 // Tono de las etiquetas de estado
 // ---------------------------------------------------------------------------
 const TONES = [
-  [/pendiente|borrador|cotizaci/i, 'amber'],
-  [/rechaz|cancel|inactiv/i, 'red'],
+  [/pendiente/i, 'amber'],
+  [/rechaz|inactiv/i, 'red'],
   [/parcial/i, 'sky'],
-  [/aprob|recibid|factur|activo/i, 'green']
+  [/aprob|emitid|recibid|activo/i, 'green']
 ];
 
 export function toneFor(text){

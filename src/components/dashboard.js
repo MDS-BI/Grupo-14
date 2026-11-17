@@ -1,7 +1,5 @@
 import { getConfig } from '../module-config.js';
-import { loadEntities, loadDocuments, loadRequisitions, loadReceptions, REQUISITION_STATUS } from '../storage.js';
-
-const EMITTED_STATUSES = ['aprobado', 'recibido parcialmente', 'recibido', 'facturado'];
+import { loadEntities, loadDocuments, loadRequisitions, loadReceptions, REQUISITION_STATUS, ISSUED_ORDER_STATUSES } from '../storage.js';
 
 export function recordCounts(){
   const documents = loadDocuments();
@@ -9,7 +7,7 @@ export function recordCounts(){
     entities: loadEntities().length,
     documents: documents.length,
     requisitions: loadRequisitions().filter(r => r.status === REQUISITION_STATUS.PENDING).length,
-    orders: documents.filter(d => EMITTED_STATUSES.includes(d.status)).length,
+    orders: documents.filter(d => ISSUED_ORDER_STATUSES.includes(d.status)).length,
     receptions: loadReceptions().length
   };
 }

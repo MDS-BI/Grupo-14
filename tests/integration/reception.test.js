@@ -27,7 +27,7 @@ function addApprovedOrder(){
     folio: 2001,
     startDate: '2026-01-01',
     endDate: '2026-01-10',
-    status: 'aprobado',
+    status: 'Emitida',
     tipoDocumento: 'Orden de Compra',
     fechaEmision: '2026-01-01',
     lineasDetalle: [
@@ -87,7 +87,7 @@ describe('User Story 6 - reception', () => {
     expect(receptions[0].lineas[0].cantidadRecibida).toBe(4);
     expect(receptions[0].lineas[0].cantidadRechazada).toBe(1);
     expect(receptions[0].lineas[0].motivoRechazo).toBe('Dañada');
-    expect(storage.loadDocuments()[0].status).toBe('recibido parcialmente');
+    expect(storage.loadDocuments()[0].status).toBe('Emitida');
   });
 
   it('completes the order when the pending quantity is received', () => {
@@ -98,7 +98,7 @@ describe('User Story 6 - reception', () => {
     setReception({ cantidadRecibida: '10', cantidadRechazada: '0', motivoRechazo: '' });
     qs('reception-submit-button').click();
 
-    expect(storage.loadDocuments()[0].status).toBe('recibido');
+    expect(storage.loadDocuments()[0].status).toBe('Recibida');
     expect(qs('receptions-empty').hidden).toBe(false);
     expect(qs('stat-receptions').textContent).toBe('1');
   });

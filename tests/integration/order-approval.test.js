@@ -31,7 +31,7 @@ function addDraft(entity, overrides = {}){
     folio: 500,
     startDate: '2026-01-01',
     endDate: '2026-01-10',
-    status: 'cotización',
+    status: 'Aprobada',
     tipoDocumento: 'Solicitud de Cotización',
     fechaEmision: '2026-01-01',
     lineasDetalle: [
@@ -78,7 +78,7 @@ describe('User Story 3 - order approval lifecycle', () => {
     qs('document-approve').click();
 
     const approved = storage.loadDocuments()[0];
-    expect(approved.status).toBe('aprobado');
+    expect(approved.status).toBe('Emitida');
     expect(approved.series).toBe('OC');
     expect(Number(approved.folio)).toBeGreaterThan(0);
     expect(qs('stat-orders').textContent).toBe('1');
@@ -93,7 +93,7 @@ describe('User Story 3 - order approval lifecycle', () => {
 
     qs('document-approve').click();
 
-    expect(storage.loadDocuments()[0].status).toBe('cotización');
+    expect(storage.loadDocuments()[0].status).toBe('Aprobada');
     expect(qs('error-status').textContent).toContain('Faltan datos comerciales');
   });
 
@@ -105,7 +105,7 @@ describe('User Story 3 - order approval lifecycle', () => {
     selectDocument(draft.id);
 
     qs('document-cancel').click();
-    expect(storage.loadDocuments()[0].status).toBe('cancelado');
+    expect(storage.loadDocuments()[0].status).toBe('Rechazada');
 
     expect(() => storage.cancelDocument(draft.id)).toThrow();
   });

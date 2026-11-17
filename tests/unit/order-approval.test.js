@@ -32,7 +32,7 @@ const draftOrder = (entityId, overrides = {}) => addDocument({
   discount: 0,
   taxAmount: 80,
   totalAmount: 580,
-  status: 'cotización',
+  status: 'Aprobada',
   tipoDocumento: 'Orden de Compra',
   fechaEmision: '2026-01-01',
   ...overrides
@@ -57,14 +57,14 @@ describe('order approval', () => {
     const entity = commercialEntity({ creditLimit: 100 });
     const order = draftOrder(entity.entity_id, { totalAmount: 500, subtotal: 431 });
     expect(() => approveDocument(order.id)).toThrow(/límite de crédito/);
-    expect(loadDocuments()[0].status).toBe('cotización');
+    expect(loadDocuments()[0].status).toBe('Aprobada');
   });
 
   it('approves the order and assigns the official OC series and folio', () => {
     const entity = commercialEntity();
     const order = draftOrder(entity.entity_id);
     const approved = approveDocument(order.id);
-    expect(approved.status).toBe('aprobado');
+    expect(approved.status).toBe('Emitida');
     expect(approved.series).toBe('OC');
     expect(approved.folio).toBe(1001);
     expect(approved.approvedAt).toBeTruthy();
@@ -84,7 +84,7 @@ describe('order approval', () => {
     const entity = commercialEntity();
     const order = draftOrder(entity.entity_id);
     const cancelled = cancelDocument(order.id);
-    expect(cancelled.status).toBe('cancelado');
+    expect(cancelled.status).toBe('Rechazada');
     expect(cancelled.cancelledAt).toBeTruthy();
   });
 
@@ -92,8 +92,8 @@ describe('order approval', () => {
     const entity = commercialEntity();
     const order = draftOrder(entity.entity_id);
     cancelDocument(order.id);
-    expect(() => cancelDocument(order.id)).toThrow(/No se puede cancelar/);
-    const received = draftOrder(entity.entity_id, { folio: 1002, status: 'recibido' });
-    expect(() => cancelDocument(received.id)).toThrow(/No se puede cancelar/);
+    expect(() => cancelDocument(order.id)).toThrow(/No se puede rechazar/);
+    const received = draftOrder(entity.entity_id, { folio: 1002, status: 'Recibida' });
+    expect(() => cancelDocument(received.id)).toThrow(/No se puede rechazar/);
   });
 });

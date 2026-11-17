@@ -56,7 +56,7 @@ describe('User Story 2 - purchase order with detail lines', () => {
     qs('folio').value = '1001';
     qs('startDate').value = '2026-01-01';
     qs('endDate').value = '2026-01-10';
-    qs('status').value = 'borrador';
+    qs('status').value = 'Aprobada';
     qs('cf-tipoDocumento').value = 'Orden de Compra';
     qs('cf-fechaEmision').value = '2026-01-01';
 

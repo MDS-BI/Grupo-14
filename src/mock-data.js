@@ -1,4 +1,6 @@
 import {
+  DOCUMENT_STATUS,
+  ISSUED_ORDER_STATUSES,
   REQUISITION_STATUS,
   clearAll,
   saveDocuments,
@@ -24,7 +26,7 @@ export const MOCK_COUNTS = Object.freeze({
   receptions: 56
 });
 
-const ISSUED_STATUSES = ['aprobado', 'recibido parcialmente', 'recibido', 'facturado'];
+const PARTIAL_EMITTED_COUNT = 8;
 
 const ENTITY_SEEDS = [
   {
@@ -116,21 +118,17 @@ const PRODUCTS = [
 ];
 
 const STATUS_META = {
-  borrador: { label: 'Borrador', tipoDocumento: 'Solicitud de Cotización' },
-  cotización: { label: 'Pendiente de Aprobación', tipoDocumento: 'Solicitud de Cotización' },
-  aprobado: { label: 'Aprobado', tipoDocumento: 'Orden de Compra' },
-  'recibido parcialmente': { label: 'Recepcionado parcialmente', tipoDocumento: 'Orden de Compra' },
-  cancelado: { label: 'Rechazado', tipoDocumento: 'Orden de Compra' },
-  recibido: { label: 'Recepcionado', tipoDocumento: 'Orden de Compra' }
+  [DOCUMENT_STATUS.APPROVED]: { label: 'Aprobada', tipoDocumento: 'Solicitud de Cotización' },
+  [DOCUMENT_STATUS.ISSUED]: { label: 'Emitida', tipoDocumento: 'Orden de Compra' },
+  [DOCUMENT_STATUS.REJECTED]: { label: 'Rechazada', tipoDocumento: 'Orden de Compra' },
+  [DOCUMENT_STATUS.RECEIVED]: { label: 'Recibida', tipoDocumento: 'Orden de Compra' }
 };
 
 const DOCUMENT_STATUS_PLAN = [
-  ['aprobado', 30],
-  ['recibido parcialmente', 8],
-  ['recibido', 6],
-  ['borrador', 40],
-  ['cotización', 40],
-  ['cancelado', 26]
+  [DOCUMENT_STATUS.ISSUED, 38],
+  [DOCUMENT_STATUS.RECEIVED, 6],
+  [DOCUMENT_STATUS.APPROVED, 80],
+  [DOCUMENT_STATUS.REJECTED, 26]
 ];
 
 const CENTROS_COSTO = ['CC-TI', 'CC-OPERACIONES', 'CC-PLANTA', 'CC-ADMIN', 'CC-MANTENCION'];
@@ -209,7 +207,8 @@ function buildDocuments(entities, users){
     const id = `mock-document-${pad(index + 1)}`;
     const entity = entities[index % entities.length];
     const creator = users[(index * 3 + 4) % users.length];
-    const series = status === 'borrador' ? 'BOR' : status === 'cotización' ? 'SC' : 'OC';
+    const series = status === DOCUMENT_STATUS.APPROVED ? 'SC' : 'OC';
+    const partial = status === DOCUMENT_STATUS.ISSUED && index < PARTIAL_EMITTED_COUNT;
     folioCounters[series] += 1;
     const startDate = `2026-08-${pad((index % 20) + 1)}`;
     const endDate = addDays(startDate, 10 + (index % 5));
@@ -258,15 +257,15 @@ function buildDocuments(entities, users){
       createdAt: isoFromDate(startDate),
       updatedAt: isoFromDate(endDate)
     };
-    if(status === 'aprobado'){
+    if(status === DOCUMENT_STATUS.APPROVED){
       document.approvedAt = isoFromDate(endDate, '11:20:00.000Z');
     }
-    if(status === 'cancelado'){
+    if(status === DOCUMENT_STATUS.REJECTED){
       document.rejectionReason = 'El monto supera el presupuesto aprobado para el área.';
       document.rejectedAt = isoFromDate(endDate, '12:00:00.000Z');
     }
-    if(status === 'recibido' || status === 'recibido parcialmente'){
-      document.recepcionEstado = status === 'recibido' ? 'completa' : 'parcial';
+    if(status === DOCUMENT_STATUS.RECEIVED || partial){
+      document.recepcionEstado = status === DOCUMENT_STATUS.RECEIVED ? 'completa' : 'parcial';
       document.receivedAt = isoFromDate(addDays(endDate, 1), '10:30:00.000Z');
     }
     return applyTotalesToCabecera(document, DEFAULT_TAX_RATE);
@@ -289,8 +288,8 @@ function splitQuantity(total, partial){
 function buildReceptions(documents, users){
   const responsables = users.filter(user => user.role === 'encargado_recepcion');
   const receptions = [];
-  documents.filter(doc => ['recibido', 'recibido parcialmente'].includes(doc.status)).forEach(doc => {
-    const partial = doc.status === 'recibido parcialmente';
+  documents.filter(doc => doc.status === DOCUMENT_STATUS.RECEIVED || doc.recepcionEstado === 'parcial').forEach(doc => {
+    const partial = doc.recepcionEstado === 'parcial';
     const splits = doc.lineasDetalle.map(linea => splitQuantity(Number(linea.cantidad), partial));
     for(let receipt = 0; receipt < 4; receipt += 1){
       const fechaRecepcion = isoFromDate(addDays(doc.endDate, receipt + 1), '10:30:00.000Z');
@@ -374,7 +373,7 @@ export function injectMockData(){
     users: data.users.length,
     documents: data.documents.length,
     requisitions: data.requisitions.filter(r => r.status === REQUISITION_STATUS.PENDING).length,
-    issuedOrders: data.documents.filter(d => ISSUED_STATUSES.includes(d.status)).length,
+    issuedOrders: data.documents.filter(d => ISSUED_ORDER_STATUSES.includes(d.status)).length,
     receptions: data.receptions.length
   };
 }

@@ -70,7 +70,7 @@ describe('approval service', () => {
 
   it('rejects approval when the request is not pending', () => {
     const { doc } = seedRequest();
-    const check = validateApproval({ ...doc, status: 'borrador' });
+    const check = validateApproval({ ...doc, status: 'Aprobada' });
     expect(check.valid).toBe(false);
     expect(check.errors.status).toMatch(/pendiente/);
   });
@@ -78,7 +78,7 @@ describe('approval service', () => {
   it('approves a request and assigns the official OC folio', () => {
     const { doc } = seedRequest();
     const approved = approveRequest(doc.id, { userId: 'u1', comment: 'Autorizado' });
-    expect(approved.status).toBe('aprobado');
+    expect(approved.status).toBe('Emitida');
     expect(approved.series).toBe('OC');
     expect(approved.folio).toBe(1);
     expect(loadDocuments()[0].aprobaciones[0].comment).toBe('Autorizado');
@@ -88,6 +88,6 @@ describe('approval service', () => {
     const { doc } = seedRequest();
     expect(() => rejectRequest(doc.id, { userId: 'u1', comment: '' })).toThrow(/motivo/);
     const rejected = rejectRequest(doc.id, { userId: 'u1', comment: 'Sin presupuesto' });
-    expect(rejected.status).toBe('cancelado');
+    expect(rejected.status).toBe('Rechazada');
   });
 });

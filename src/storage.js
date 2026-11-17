@@ -14,6 +14,16 @@ export const REQUISITION_STATUS = Object.freeze({
   REJECTED: 'Rechazada'
 });
 
+export const DOCUMENT_STATUS = Object.freeze({
+  APPROVED: 'Aprobada',
+  ISSUED: 'Emitida',
+  REJECTED: 'Rechazada',
+  RECEIVED: 'Recibida'
+});
+
+export const ISSUED_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.ISSUED, DOCUMENT_STATUS.RECEIVED]);
+export const FINAL_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.RECEIVED, DOCUMENT_STATUS.REJECTED]);
+
 export const DEPARTMENT_BUDGETS = Object.freeze({
   Operaciones: 100000,
   Compras: 150000,
@@ -23,8 +33,7 @@ export const DEPARTMENT_BUDGETS = Object.freeze({
 
 export const DEPARTMENTS = Object.freeze(Object.keys(DEPARTMENT_BUDGETS));
 
-const RECEPTION_ORDER_STATUSES = Object.freeze(['aprobado', 'recibido parcialmente']);
-const FINAL_ORDER_STATUSES = Object.freeze(['recibido', 'facturado', 'cancelado']);
+const RECEPTION_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.ISSUED]);
 
 function readJson(key, fallback){
   try{
@@ -187,7 +196,9 @@ export function updateUser(id, updates){
 }
 
 export function usersWithPendingWork(userId){
-  const requisitions = loadRequisitions().filter(r => r.requesterId === userId && !['Rechazada'].includes(r.status) && r.status !== 'Concluida');
+  const requisitions = loadRequisitions().filter(r =>
+    r.requesterId === userId && r.status === REQUISITION_STATUS.PENDING
+  );
   const documents = loadDocuments().filter(d => d.createdBy === userId && !FINAL_ORDER_STATUSES.includes(d.status));
   return { requisitions: requisitions.length, documents: documents.length };
 }
@@ -544,6 +555,9 @@ export function approveDocument(id){
   const idx = docs.findIndex(d => d.id === id);
   if(idx === -1) throw new Error('Documento no encontrado');
   const doc = docs[idx];
+  if(doc.status && doc.status !== DOCUMENT_STATUS.APPROVED){
+    throw new Error(`Solo se pueden emitir órdenes en estado "${DOCUMENT_STATUS.APPROVED}"`);
+  }
   const entity = loadEntities().find(e => e.entity_id === doc.entity_id);
   if(!entity) throw new Error('El proveedor del documento no existe');
   const missing = [];
@@ -560,7 +574,7 @@ export function approveDocument(id){
   }
   docs[idx] = {
     ...doc,
-    status: 'aprobado',
+    status: DOCUMENT_STATUS.ISSUED,
     series: 'OC',
     folio: nextFolio('OC'),
     approvedAt: new Date().toISOString(),
@@ -575,10 +589,10 @@ export function cancelDocument(id){
   const idx = docs.findIndex(d => d.id === id);
   if(idx === -1) throw new Error('Documento no encontrado');
   const doc = docs[idx];
-  if(['recibido', 'facturado', 'cancelado'].includes(doc.status)){
-    throw new Error(`No se puede cancelar un documento en estado "${doc.status}"`);
+  if(FINAL_ORDER_STATUSES.includes(doc.status)){
+    throw new Error(`No se puede rechazar un documento en estado "${doc.status}"`);
   }
-  docs[idx] = { ...doc, status: 'cancelado', cancelledAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  docs[idx] = { ...doc, status: DOCUMENT_STATUS.REJECTED, cancelledAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
   saveDocuments(docs);
   return docs[idx];
 }
@@ -692,8 +706,10 @@ export function rejectRequisition(id, reason){
 }
 
 export function pendingRequisitionsForDepartment(department){
+  const user = currentUser();
+  const dept = String(department ?? (user && user.department) ?? '').trim();
   return loadRequisitions().filter(r =>
-    r.status === REQUISITION_STATUS.PENDING && (!department || r.department === department)
+    r.status === REQUISITION_STATUS.PENDING && (!dept || r.department === dept)
   );
 }
 
@@ -737,7 +753,7 @@ export function validateReception(payload){
   const order = docs.find(d => d.id === payload.orderId);
   if(!order) errors.orderId = 'La Orden de Compra no existe';
   else if(!RECEPTION_ORDER_STATUSES.includes(order.status)){
-    errors.orderId = 'Solo se pueden recibir órdenes emitidas o parcialmente recibidas';
+    errors.orderId = 'Solo se pueden recibir órdenes emitidas';
   }
   if(order && (!Array.isArray(payload.lineas) || payload.lineas.length === 0)){
     errors.lineas = 'Registra al menos una línea de recepción';
@@ -812,7 +828,7 @@ export function updateOrderReceptionStatus(orderId){
   const complete = lineas.every((_, i) => pendingQuantityForLine(order, i) <= 0);
   docs[idx] = {
     ...order,
-    status: complete ? 'recibido' : 'recibido parcialmente',
+    status: complete ? DOCUMENT_STATUS.RECEIVED : DOCUMENT_STATUS.ISSUED,
     recepcionEstado: complete ? 'completa' : 'parcial',
     updatedAt: new Date().toISOString()
   };
