@@ -298,6 +298,96 @@ Un usuario aplica un filtro de fechas o proveedor en Órdenes de Compra, presion
 
 ---
 
+### Historia de Usuario 15 - Iniciar sesión y gestionar la sesión activa (Prioridad: P1)
+
+Como usuario registrado del módulo de Adquisiciones y Compras, quiero iniciar sesión con mis credenciales y cerrarla cuando termine, para que el sistema sepa quién está operando, me muestre solo las funciones de mi rol y registre mis acciones a mi nombre.
+
+**Por qué esta prioridad**: La Historia de Usuario 1 supone la existencia de un inicio de sesión, pero ninguna historia lo define. Sin identificar al usuario activo no es posible aplicar los roles y permisos, garantizar la segregación de funciones (quien solicita no aprueba su propia solicitud) ni registrar el usuario responsable en la bitácora de auditoría (Historia de Usuario 12).
+
+**Prueba Independiente**: Un usuario abre la aplicación sin sesión y es dirigido a la pantalla de inicio de sesión; ingresa credenciales válidas y accede al panel con el menú filtrado según su rol y su nombre visible en la barra superior; luego cierra sesión y comprueba que al intentar volver a una pantalla interna el sistema lo redirige al inicio de sesión. Finalmente intenta ingresar con una contraseña incorrecta y con un usuario desactivado, y verifica que ambos accesos son rechazados.
+
+**Escenarios de Aceptación**:
+
+1. **Dado** que un usuario no tiene una sesión activa, **cuando** intenta abrir cualquier pantalla del módulo (incluso mediante enlace directo o recarga del navegador), **entonces** el sistema lo redirige a la pantalla de inicio de sesión y no muestra ningún dato del módulo.
+
+2. **Dado** que un usuario activo ingresa su nombre de usuario y contraseña correctos, **cuando** confirma el inicio de sesión, **entonces** el sistema crea la sesión, muestra su nombre y rol en la barra superior y habilita únicamente los módulos y acciones autorizados para su rol.
+
+3. **Dado** que un usuario ingresa credenciales incorrectas o corresponde a una cuenta desactivada, **cuando** intenta iniciar sesión, **entonces** el sistema rechaza el acceso y muestra un mensaje genérico que no revela cuál de los datos es incorrecto.
+
+4. **Dado** que un usuario tiene una sesión activa, **cuando** selecciona la opción Cerrar sesión, **entonces** el sistema elimina la sesión, lo devuelve a la pantalla de inicio de sesión y bloquea el acceso a las pantallas internas hasta que vuelva a autenticarse.
+
+5. **Dado** que un usuario con sesión activa ejecuta una acción (crear, aprobar, rechazar, cotizar, recepcionar o pagar), **cuando** el sistema guarda la operación, **entonces** registra automáticamente su identificador, nombre y rol como responsable en el documento y en la bitácora de auditoría.
+
+6. **Dado** que un usuario es solicitante de una solicitud de compra, **cuando** intenta autorizarla con su propia sesión aunque tenga también rol de aprobador, **entonces** el sistema bloquea la acción por segregación de funciones e indica que otro aprobador debe revisarla.
+
+---
+
+### Historia de Usuario 16 - Administrar departamentos y centros de costo (Prioridad: P1)
+
+Como administrador del sistema, quiero registrar los departamentos o centros de costo de la empresa, asignar a cada uno su jefe de área aprobador y vincular a cada usuario con el departamento al que pertenece, para que las solicitudes se dirijan al aprobador correcto y cada compra se descuente del presupuesto que corresponde.
+
+**Por qué esta prioridad**: La Historia de Usuario 4 necesita saber qué solicitudes pertenecen al área de cada jefe, y la Historia de Usuario 10 necesita saber de qué presupuesto descontar cada compra. Actualmente no existe ningún lugar donde se defina qué usuario pertenece a qué área ni quién la aprueba, por lo que ambas historias carecen de su dato de origen.
+
+**Prueba Independiente**: Un administrador crea el departamento "Operaciones" con código de centro de costo, le asigna un jefe de área con rol de aprobador y vincula a dos solicitantes; luego uno de esos solicitantes crea una solicitud de compra y se comprueba que la solicitud queda asociada a Operaciones, que aparece únicamente en la bandeja de pendientes de ese jefe y que su monto se compara contra el presupuesto de Operaciones.
+
+**Escenarios de Aceptación**:
+
+1. **Dado** que el administrador está en la gestión de departamentos, **cuando** registra un departamento con nombre, código de centro de costo único y jefe de área aprobador, **entonces** el sistema lo guarda en estado Activo y lo deja disponible para asignar usuarios y presupuestos.
+
+2. **Dado** que el administrador intenta guardar un departamento sin nombre, con un código de centro de costo duplicado o con un jefe que no tiene rol de aprobador, **cuando** confirma la acción, **entonces** el sistema impide el guardado e indica bajo el campo correspondiente qué dato debe corregirse.
+
+3. **Dado** que el administrador crea o edita un usuario, **cuando** le asigna un departamento, **entonces** el sistema guarda la pertenencia y toda solicitud de compra que ese usuario cree queda asociada automáticamente a ese departamento y a su centro de costo.
+
+4. **Dado** que una solicitud de compra pertenece a un departamento, **cuando** se envía a aprobación, **entonces** el sistema la dirige exclusivamente a la bandeja del jefe de área de ese departamento y descuenta el monto comprometido del presupuesto de ese mismo centro de costo.
+
+5. **Dado** que el administrador intenta desactivar o eliminar un departamento que tiene usuarios asignados, presupuesto comprometido o solicitudes en curso, **cuando** confirma la acción, **entonces** el sistema muestra una advertencia con los elementos asociados y bloquea la operación hasta que sean reasignados o concluidos.
+
+---
+
+### Historia de Usuario 17 - Gestionar el catálogo de productos y servicios (Prioridad: P1)
+
+Como Encargado de Compras, quiero mantener un catálogo de productos y servicios con código, descripción, unidad de medida, categoría y precio de referencia, para que los solicitantes elijan los insumos desde una lista oficial en lugar de escribirlos a mano y se puedan detectar compras duplicadas.
+
+**Por qué esta prioridad**: Las Historias de Usuario 2, 5 y 7 trabajan con "productos", pero ninguna define de dónde provienen. Sin catálogo, cada solicitante escribe los insumos a mano, se pierden los precios de referencia y no es posible detectar compras duplicadas, que es uno de los problemas que el módulo busca resolver.
+
+**Prueba Independiente**: Un Encargado de Compras registra el producto "Resma papel carta" con código, unidad "Caja", categoría "Oficina" y precio de referencia en CLP; luego un solicitante crea una solicitud de compra, busca el producto por nombre o código, lo agrega con su cantidad y comprueba que la unidad y el precio de referencia se completan automáticamente. Finalmente, se intenta registrar otro producto con el mismo código y se verifica que el sistema bloquea el guardado.
+
+**Escenarios de Aceptación**:
+
+1. **Dado** el formulario de registro de producto o servicio, **cuando** el Encargado de Compras ingresa código único, descripción, tipo (producto o servicio), unidad de medida, categoría y precio de referencia mayor o igual a cero en CLP, **entonces** el sistema guarda el ítem en estado Activo y lo habilita en los selectores de solicitudes, cotizaciones y órdenes de compra.
+
+2. **Dado** el ingreso de un código ya existente, una descripción vacía o un precio de referencia negativo o no numérico, **cuando** el usuario intenta guardar, **entonces** el sistema impide el registro y muestra un mensaje específico bajo el campo con error.
+
+3. **Dado** que un solicitante está creando una solicitud de compra, **cuando** busca un producto por código, descripción o categoría y lo selecciona, **entonces** el sistema agrega la línea con la unidad de medida y el precio de referencia del catálogo, y calcula el monto estimado de la solicitud a partir de las cantidades.
+
+4. **Dado** que ya existe una solicitud de compra en curso del mismo departamento que incluye el mismo producto, **cuando** un solicitante agrega ese producto a una nueva solicitud, **entonces** el sistema muestra una advertencia de posible compra duplicada con el folio de la solicitud existente antes de permitir el envío.
+
+5. **Dado** un producto o servicio en estado Inactivo, **cuando** un usuario crea una nueva solicitud, cotización u Orden de Compra, **entonces** el sistema lo excluye de las opciones seleccionables, manteniéndolo visible en los documentos históricos que ya lo incluían.
+
+---
+
+### Historia de Usuario 18 - Emitir la Orden de Compra con fecha de entrega y datos de despacho (Prioridad: P1)
+
+Como Encargado de Compras, quiero emitir la Orden de Compra a partir de la cotización aprobada indicando la fecha estimada de entrega, la dirección y las instrucciones de despacho, para que el proveedor sepa cuándo y dónde entregar y el equipo de recepción pueda controlar el cumplimiento de los plazos.
+
+**Por qué esta prioridad**: Sin una fecha comprometida de entrega no funcionan las alertas de atraso del panel de inicio (Historia de Usuario 13) ni es posible evaluar el cumplimiento de los proveedores. Además, esta historia conecta la aprobación de la cotización (Historia de Usuario 3) con la recepción de productos (Historia de Usuario 6), formalizando el paso a estado Emitida.
+
+**Prueba Independiente**: Un Encargado de Compras abre una cotización en estado Aprobado, ingresa una fecha estimada de entrega posterior a la fecha actual, la dirección de despacho y una instrucción para el proveedor, y confirma la emisión. Comprueba que la Orden de Compra pasa a estado Emitida con su fecha de emisión, que aparece en la bandeja del encargado de recepción y que, al simular el vencimiento de la fecha de entrega sin recepción completa, el folio figura en las alertas operativas del panel.
+
+**Escenarios de Aceptación**:
+
+1. **Dado** que el Encargado de Compras abre una cotización en estado Aprobado, **cuando** ingresa la fecha estimada de entrega, la dirección de despacho y, opcionalmente, instrucciones o contacto de recepción, y confirma la emisión, **entonces** el sistema cambia la Orden de Compra a estado Emitida, registra la fecha de emisión y el responsable, y la habilita en la bandeja de órdenes por recibir.
+
+2. **Dado** que el Encargado de Compras intenta emitir la orden sin fecha estimada de entrega, con una fecha inválida o anterior a la fecha de emisión, o sin dirección de despacho, **cuando** confirma la acción, **entonces** el sistema impide la emisión e indica qué dato debe corregirse.
+
+3. **Dado** una Orden de Compra en estado Emitida o Recibida parcialmente, **cuando** su fecha estimada de entrega vence sin recepción completa, **entonces** el sistema la marca como atrasada y la incluye en las Alertas Operativas del panel de inicio con su folio y proveedor.
+
+4. **Dado** una Orden de Compra Emitida, **cuando** el encargado de recepción o el Encargado de Compras abre su detalle o su versión imprimible, **entonces** el sistema muestra la fecha estimada de entrega, la dirección y las instrucciones de despacho junto a los datos del proveedor y los ítems.
+
+5. **Dado** que se requiere modificar la fecha estimada de entrega de una orden Emitida por acuerdo con el proveedor, **cuando** el Encargado de Compras guarda la nueva fecha con un motivo obligatorio, **entonces** el sistema actualiza la fecha, conserva la fecha original y registra el cambio en la bitácora de auditoría.
+
+---
+
 
 
 ### Casos Límite
