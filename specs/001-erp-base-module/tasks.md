@@ -330,3 +330,19 @@ Task: "Marcado de la vista de usuarios en index.html"
 - Confirmar después de cada tarea o grupo lógico
 - Detenerse en cada punto de control para validar la historia de forma independiente
 - Evitar tareas vagas, conflictos en un mismo archivo y dependencias entre historias que rompan su independencia
+
+---
+
+## Phase 11: Convergence
+
+- [ ] T080 CRITICAL Reparar o retirar los módulos huérfanos `src/approval.js`, `src/components/approval-panel.js` y `src/components/user-profile.js` para que no importen ni reexporten APIs inexistentes y `tests/unit/approval.test.js` pueda cargarlos per Constitution II, T078 (contradicts)
+- [ ] T081 CRITICAL Reconciliar las 16 pruebas fallidas en 7 archivos (`tests/unit/approval.test.js`, `tests/unit/request.test.js`, `tests/unit/users.test.js`, `tests/integration/department-approvals.test.js`, `tests/integration/request-justification.test.js`, `tests/integration/search-entities.test.js`, `tests/integration/users-permissions.test.js`) con las APIs e IDs del DOM vigentes y ejecutar `npx vitest run` hasta que pasen todas per Constitution II, T078 (contradicts)
+- [ ] T082 Implementar el modelo y la persistencia de las solicitudes de cotización: estado `En cotización`, vinculación con la solicitud de compra original, proveedor activo con datos comerciales completos, precios por línea, cálculo de subtotal/impuesto/total y bloqueo de cotizaciones duplicadas en `src/storage.js` y `src/module-config.js` per US5/AC1, US5/AC3, US5/AC4 (missing)
+- [ ] T083 Implementar la bandeja de solicitudes autorizadas y el formulario de generación de cotización para el rol `encargado_compras`, mostrando cantidades, justificación y decisión de autorización, actualizando la solicitud a `En cotización` y conectando navegación y permisos en `src/app.js`, `index.html` y `src/components/` per US5/AC1, US5/AC2, US5/AC3, US5/AC5, US4/AC3 (missing)
+- [ ] T084 Añadir pruebas unitarias y de integración de la US5 (bandeja, validaciones, cotización vinculada, cambio de estado y permisos) en `tests/unit/` y `tests/integration/` per US5/AC1-5, Constitution II (missing)
+- [ ] T085 Añadir el estado `Pagada` y su transición permitida al ciclo de vida de la Orden de Compra en `src/module-config.js`, `src/storage.js` y la interfaz, con cobertura de pruebas per US2/AC3 (missing)
+- [ ] T086 Aplicar la guarda de desactivación de usuarios con trámites pendientes también a `updateUser()` en `src/storage.js`, impidiendo `active:false` y mostrando la advertencia per US1/AC4 (partial)
+- [ ] T087 Validar que la cantidad rechazada por línea no supere la cantidad pendiente (no solo la solicitada) en `validateReception()` de `src/storage.js`, indicando la línea a corregir per FR-043, US6/AC6 (partial)
+- [ ] T088 Revisar y justificar o eliminar la siembra automática de datos de demostración de `src/mock-data.js` ejecutada al arrancar desde `src/app.js`, conservando únicamente las semillas de pruebas autorizadas en `tests/setup/roles.js` per plan: storage decision, T012 (unrequested)
+- [ ] T089 Completar la validación manual de extremo a extremo de cada historia, incluida la nueva US5, según `specs/001-erp-base-module/quickstart.md` per T079 (partial)
+- [ ] T090 Alinear `theme.accentColor` de `userConfig` en `src/module-config.js` con el valor `#0f766e` decidido en el plan per plan: configuración de referencia (contradicts)
