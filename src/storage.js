@@ -1,5 +1,5 @@
 import { getConfig, computeSubtotalLinea, applyTotalesToCabecera, DEFAULT_TAX_RATE } from './module-config.js';
-import { can, currentUser, ROLE_KEYS, PERMISSIONS } from './auth.js';
+import { can, currentUser, isAdmin, ROLE_KEYS, PERMISSIONS } from './auth.js';
 import { cleanRut, validateRut } from './rut.js';
 
 const ENTITIES_KEY = 'erp_base_module:entities';
@@ -17,12 +17,16 @@ export const REQUISITION_STATUS = Object.freeze({
 export const DOCUMENT_STATUS = Object.freeze({
   APPROVED: 'Aprobada',
   ISSUED: 'Emitida',
+  PARTIALLY_RECEIVED: 'Recibida parcialmente',
   REJECTED: 'Rechazada',
   RECEIVED: 'Recibida'
 });
 
-export const ISSUED_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.ISSUED, DOCUMENT_STATUS.RECEIVED]);
+// "Órdenes emitidas" del panel: toda orden que llegó a emitirse y no fue rechazada.
+export const ISSUED_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.ISSUED, DOCUMENT_STATUS.PARTIALLY_RECEIVED, DOCUMENT_STATUS.RECEIVED]);
 export const FINAL_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.RECEIVED, DOCUMENT_STATUS.REJECTED]);
+// Una orden con alguna recepción confirmada ya no puede rechazarse/cancelarse.
+export const NON_CANCELLABLE_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.PARTIALLY_RECEIVED, ...FINAL_ORDER_STATUSES]);
 
 export const DEPARTMENT_BUDGETS = Object.freeze({
   Operaciones: 100000,
@@ -33,7 +37,9 @@ export const DEPARTMENT_BUDGETS = Object.freeze({
 
 export const DEPARTMENTS = Object.freeze(Object.keys(DEPARTMENT_BUDGETS));
 
-const RECEPTION_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.ISSUED]);
+const RECEPTION_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.ISSUED, DOCUMENT_STATUS.PARTIALLY_RECEIVED]);
+// Estados que solo se alcanzan registrando recepciones (FR-045, SC-013).
+export const RECEPTION_DERIVED_STATUSES = Object.freeze([DOCUMENT_STATUS.PARTIALLY_RECEIVED, DOCUMENT_STATUS.RECEIVED]);
 
 function readJson(key, fallback){
   try{
@@ -454,6 +460,10 @@ function baseDocumentFields(payload, id, now){
 
 export function addDocument(payload){
   const now = new Date().toISOString();
+  const initialStatus = (payload.status || '').trim();
+  if(RECEPTION_DERIVED_STATUSES.includes(initialStatus)){
+    throw new Error(`El estado "${initialStatus}" solo se asigna al registrar recepciones de la orden`);
+  }
   const check = validateDocument(payload);
   if(!check.valid){
     throw new Error(Object.values(check.errors)[0]);
@@ -476,7 +486,12 @@ export function updateDocument(id, updates){
   if(idx === -1) throw new Error('Documento no encontrado');
   const prev = list[idx];
   const merged = { ...prev, ...updates };
+  const nextStatus = updates.status !== undefined ? (updates.status||'').trim() : merged.status;
+  if(nextStatus !== prev.status && RECEPTION_DERIVED_STATUSES.includes(nextStatus)){
+    throw new Error(`El estado "${nextStatus}" solo se asigna al registrar recepciones de la orden`);
+  }
   const check = validateDocument({
+    ...merged,
     entityId: merged.entity_id,
     series: merged.series,
     folio: merged.folio,
@@ -555,8 +570,9 @@ export function approveDocument(id){
   const idx = docs.findIndex(d => d.id === id);
   if(idx === -1) throw new Error('Documento no encontrado');
   const doc = docs[idx];
-  if(doc.status && doc.status !== DOCUMENT_STATUS.APPROVED){
-    throw new Error(`Solo se pueden emitir órdenes en estado "${DOCUMENT_STATUS.APPROVED}"`);
+  // Solo se emite desde "Aprobada"; un documento sin estado tampoco puede saltarse ese paso.
+  if(doc.status !== DOCUMENT_STATUS.APPROVED){
+    throw new Error(`Solo se pueden emitir órdenes en estado "${DOCUMENT_STATUS.APPROVED}" (estado actual: "${doc.status || 'sin estado'}")`);
   }
   const entity = loadEntities().find(e => e.entity_id === doc.entity_id);
   if(!entity) throw new Error('El proveedor del documento no existe');
@@ -589,7 +605,7 @@ export function cancelDocument(id){
   const idx = docs.findIndex(d => d.id === id);
   if(idx === -1) throw new Error('Documento no encontrado');
   const doc = docs[idx];
-  if(FINAL_ORDER_STATUSES.includes(doc.status)){
+  if(NON_CANCELLABLE_ORDER_STATUSES.includes(doc.status)){
     throw new Error(`No se puede rechazar un documento en estado "${doc.status}"`);
   }
   docs[idx] = { ...doc, status: DOCUMENT_STATUS.REJECTED, cancelledAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
@@ -669,10 +685,23 @@ export function addRequisition(payload){
   return requisition;
 }
 
+// T039: el aprobador solo decide sobre solicitudes de su departamento; el
+// administrador puede decidir sobre cualquiera. Se valida aquí, no solo en la UI.
+function assertCanDecideRequisition(requisition){
+  if(!can(PERMISSIONS.REQUISITIONS_APPROVE)) throw new Error('Tu rol no permite aprobar o rechazar solicitudes');
+  if(isAdmin()) return;
+  const department = String((currentUser() || {}).department || '').trim();
+  if(!department) throw new Error('Tu usuario no tiene un departamento asignado');
+  if(requisition.department !== department){
+    throw new Error('Solo puedes aprobar o rechazar solicitudes de tu departamento');
+  }
+}
+
 export function approveRequisition(id){
   const list = loadRequisitions();
   const idx = list.findIndex(r => r.id === id);
   if(idx === -1) throw new Error('Solicitud no encontrada');
+  assertCanDecideRequisition(list[idx]);
   if(list[idx].status !== REQUISITION_STATUS.PENDING){
     throw new Error(`Solo se pueden aprobar solicitudes pendientes (estado actual: ${list[idx].status})`);
   }
@@ -691,6 +720,7 @@ export function rejectRequisition(id, reason){
   const list = loadRequisitions();
   const idx = list.findIndex(r => r.id === id);
   if(idx === -1) throw new Error('Solicitud no encontrada');
+  assertCanDecideRequisition(list[idx]);
   if(list[idx].status !== REQUISITION_STATUS.PENDING){
     throw new Error(`Solo se pueden rechazar solicitudes pendientes (estado actual: ${list[idx].status})`);
   }
@@ -711,6 +741,15 @@ export function pendingRequisitionsForDepartment(department){
   return loadRequisitions().filter(r =>
     r.status === REQUISITION_STATUS.PENDING && (!dept || r.department === dept)
   );
+}
+
+// Bandeja del aprobador de la sesión: su departamento; todos si es administrador;
+// ninguno si no tiene permiso o no tiene departamento asignado.
+export function pendingRequisitionsForApprover(){
+  if(!can(PERMISSIONS.REQUISITIONS_APPROVE)) return [];
+  if(isAdmin()) return pendingRequisitionsForDepartment();
+  const department = String((currentUser() || {}).department || '').trim();
+  return department ? pendingRequisitionsForDepartment(department) : [];
 }
 
 export function budgetForDepartment(department){
@@ -753,7 +792,7 @@ export function validateReception(payload){
   const order = docs.find(d => d.id === payload.orderId);
   if(!order) errors.orderId = 'La Orden de Compra no existe';
   else if(!RECEPTION_ORDER_STATUSES.includes(order.status)){
-    errors.orderId = 'Solo se pueden recibir órdenes emitidas';
+    errors.orderId = 'Solo se pueden recibir órdenes emitidas o recibidas parcialmente';
   }
   if(order && (!Array.isArray(payload.lineas) || payload.lineas.length === 0)){
     errors.lineas = 'Registra al menos una línea de recepción';
@@ -828,7 +867,7 @@ export function updateOrderReceptionStatus(orderId){
   const complete = lineas.every((_, i) => pendingQuantityForLine(order, i) <= 0);
   docs[idx] = {
     ...order,
-    status: complete ? DOCUMENT_STATUS.RECEIVED : DOCUMENT_STATUS.ISSUED,
+    status: complete ? DOCUMENT_STATUS.RECEIVED : DOCUMENT_STATUS.PARTIALLY_RECEIVED,
     recepcionEstado: complete ? 'completa' : 'parcial',
     updatedAt: new Date().toISOString()
   };

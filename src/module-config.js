@@ -26,8 +26,8 @@
 //     { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
 //   ],
 //   statusLifecycle: {
-//     statuses: ['Aprobada', 'Emitida', 'Rechazada', 'Recibida'],
-//     transitions: { Aprobada: ['Emitida', 'Rechazada'], Emitida: ['Recibida', 'Rechazada'], Rechazada: [], Recibida: [] }
+//     statuses: ['Aprobada', 'Emitida', 'Recibida parcialmente', 'Rechazada', 'Recibida'],
+//     transitions: { Aprobada: ['Emitida', 'Rechazada'], Emitida: ['Recibida parcialmente', 'Recibida', 'Rechazada'], 'Recibida parcialmente': ['Recibida'], Rechazada: [], Recibida: [] }
 //   },
 //   lineasDetalle: {
 //     // Etiqueta de la sección en la UI (opcional; por defecto "Líneas de detalle").
@@ -63,10 +63,12 @@ export const userConfig = {
     { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
   ],
   statusLifecycle: {
-    statuses: ['Aprobada', 'Emitida', 'Rechazada', 'Recibida'],
+    statuses: ['Aprobada', 'Emitida', 'Recibida parcialmente', 'Rechazada', 'Recibida'],
     transitions: {
       Aprobada: ['Emitida', 'Rechazada'],
-      Emitida: ['Recibida', 'Rechazada'],
+      // Recibida parcialmente / Recibida solo se asignan al registrar recepciones (FR-045)
+      Emitida: ['Recibida parcialmente', 'Recibida', 'Rechazada'],
+      'Recibida parcialmente': ['Recibida'],
       Rechazada: [],
       Recibida: []
     }

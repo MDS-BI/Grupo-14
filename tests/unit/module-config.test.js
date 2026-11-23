@@ -147,9 +147,10 @@ describe('module-config', () => {
     it('expone el ciclo de vida de estados del flujo de compras', async () => {
       const { config, errors } = await loadModuleConfig();
       expect(errors).toEqual([]);
-      expect(config.statusLifecycle.statuses).toEqual(['Aprobada', 'Emitida', 'Rechazada', 'Recibida']);
+      expect(config.statusLifecycle.statuses).toEqual(['Aprobada', 'Emitida', 'Recibida parcialmente', 'Rechazada', 'Recibida']);
       expect(config.statusLifecycle.transitions.Aprobada).toEqual(['Emitida', 'Rechazada']);
-      expect(config.statusLifecycle.transitions.Emitida).toEqual(['Recibida', 'Rechazada']);
+      expect(config.statusLifecycle.transitions.Emitida).toEqual(['Recibida parcialmente', 'Recibida', 'Rechazada']);
+      expect(config.statusLifecycle.transitions['Recibida parcialmente']).toEqual(['Recibida']);
     });
   });
 

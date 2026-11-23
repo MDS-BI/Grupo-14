@@ -87,7 +87,7 @@ describe('User Story 6 - reception', () => {
     expect(receptions[0].lineas[0].cantidadRecibida).toBe(4);
     expect(receptions[0].lineas[0].cantidadRechazada).toBe(1);
     expect(receptions[0].lineas[0].motivoRechazo).toBe('Dañada');
-    expect(storage.loadDocuments()[0].status).toBe('Emitida');
+    expect(storage.loadDocuments()[0].status).toBe('Recibida parcialmente');
   });
 
   it('completes the order when the pending quantity is received', () => {
@@ -135,11 +135,11 @@ describe('User Story 6 - reception', () => {
 
     qs('reception-search').value = '';
     qs('reception-search').dispatchEvent(new dom.window.Event('input'));
-    qs('reception-status-filter').value = 'recibido parcialmente';
+    qs('reception-status-filter').value = 'Recibida parcialmente';
     qs('reception-status-filter').dispatchEvent(new dom.window.Event('change'));
     expect(qs('receptions-list').querySelectorAll('button')).toHaveLength(0);
 
-    qs('reception-status-filter').value = 'aprobado';
+    qs('reception-status-filter').value = 'Emitida';
     qs('reception-status-filter').dispatchEvent(new dom.window.Event('change'));
     expect(qs('receptions-list').querySelectorAll('button')).toHaveLength(1);
   });
@@ -154,7 +154,7 @@ describe('User Story 6 - reception', () => {
     setReception({ cantidadRecibida: '10', cantidadRechazada: '0', motivoRechazo: '' });
     qs('reception-submit-button').click();
 
-    expect(storage.loadDocuments()[0].status).toBe('recibido');
+    expect(storage.loadDocuments()[0].status).toBe('Recibida');
   });
 
   it('restricts reception to the receiving role', () => {

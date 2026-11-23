@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-  addEntity, addDocument, approveDocument, cancelDocument, nextFolio, loadDocuments
+  addEntity, addDocument, approveDocument, cancelDocument, nextFolio, loadDocuments, saveDocuments
 } from '../../src/storage.js';
 import { setActiveConfig, userConfig } from '../../src/module-config.js';
 import { setSession, resetSession } from '../../src/auth.js';
@@ -93,7 +93,9 @@ describe('order approval', () => {
     const order = draftOrder(entity.entity_id);
     cancelDocument(order.id);
     expect(() => cancelDocument(order.id)).toThrow(/No se puede rechazar/);
-    const received = draftOrder(entity.entity_id, { folio: 1002, status: 'Recibida' });
+    // "Recibida" solo se alcanza registrando recepciones; se fija directamente en el storage.
+    const received = draftOrder(entity.entity_id, { folio: 1002 });
+    saveDocuments(loadDocuments().map(d => (d.id === received.id ? { ...d, status: 'Recibida' } : d)));
     expect(() => cancelDocument(received.id)).toThrow(/No se puede rechazar/);
   });
 });

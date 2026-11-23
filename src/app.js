@@ -4,11 +4,11 @@ import {
   loadDocuments, addDocument, updateDocument, deleteDocument, validateDocument,
   loadUsers, addUser, updateUser, setUserActive, touchUserAccess, validateUser,
   loadRequisitions, addRequisition, validateRequisition, approveRequisition, rejectRequisition,
-  pendingRequisitionsForDepartment, budgetForDepartment,
+  pendingRequisitionsForApprover, budgetForDepartment,
   ordersPendingReception, addReception, validateReception,
   approveDocument, cancelDocument
 } from './storage.js';
-import { can, setSession, resetSession, getSession, PERMISSIONS, roleLabel } from './auth.js';
+import { can, isAdmin, setSession, resetSession, getSession, PERMISSIONS, roleLabel } from './auth.js';
 import { attachRutFormatting } from './rut.js';
 import { ensureMockData, injectMockData } from './mock-data.js';
 import { clearEntityForm, startEntityEdit, collectEntityPayload, showEntityErrors } from './components/entity-form.js';
@@ -314,6 +314,7 @@ function onSessionChange(){
       setSession(user);
     } else resetSession();
   }
+  clearApprovalSelection();
   applyPermissions();
   showModule('dashboard');
 }
@@ -321,6 +322,7 @@ function onSessionChange(){
 export function applySession(user){
   if(user) setSession(user);
   else resetSession();
+  clearApprovalSelection();
   populateSessionSelect();
   applyPermissions();
   showModule('dashboard');
@@ -429,9 +431,22 @@ function handleRequisitionSubmit(ev){
   }
 }
 
+function clearApprovalSelection(){
+  selectedApprovalId = null;
+  const detail = qs('approval-detail');
+  if(detail) detail.innerHTML = '<p class="muted">Selecciona una solicitud pendiente.</p>';
+}
+
 function refreshApprovals(){
-  const activeUser = getSession();
-  const pending = pendingRequisitionsForDepartment(activeUser && activeUser.department);
+  // T039: bandeja limitada al departamento del aprobador (todos si es administrador;
+  // ninguno si el aprobador no tiene departamento).
+  const pending = pendingRequisitionsForApprover();
+  const session = getSession();
+  const missingDepartment = can(PERMISSIONS.REQUISITIONS_APPROVE) && !isAdmin() && !(session && session.department);
+  const notice = qs('error-approval');
+  if(notice) notice.textContent = missingDepartment
+    ? 'Tu usuario no tiene un departamento asignado; pide al administrador que lo asigne para revisar solicitudes.'
+    : '';
   if(selectedApprovalId && !pending.some(r => r.id === selectedApprovalId)){
     selectedApprovalId = null;
     qs('approval-detail').innerHTML = '<p class="muted">Selecciona una solicitud pendiente.</p>';

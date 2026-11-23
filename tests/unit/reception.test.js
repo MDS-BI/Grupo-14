@@ -104,7 +104,7 @@ describe('reception storage', () => {
     expect(reception.responsable).toBe('Raúl');
     expect(reception.lineas[0].cantidadRecibida).toBe(4);
     expect(reception.lineas[0].cantidadRechazada).toBe(1);
-    expect(loadDocuments()[0].status).toBe('Emitida');
+    expect(loadDocuments()[0].status).toBe('Recibida parcialmente');
     expect(receivedQuantityForLine(order.id, 0)).toBe(4);
     expect(pendingQuantityForLine(loadDocuments()[0], 0)).toBe(6);
   });

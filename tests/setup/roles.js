@@ -4,7 +4,7 @@ import { applySession } from '../../src/app.js';
 export const ROLE_FIXTURES = Object.freeze({
   admin: { id: 'u-admin', username: 'admin', name: 'Ana Admin', role: 'administrador', active: true },
   solicitante: { id: 'u-sol', username: 'sol', name: 'Sofía Solicitante', role: 'solicitante', active: true },
-  aprobador: { id: 'u-apr', username: 'apr', name: 'Ariel Aprobador', role: 'aprobador', active: true },
+  aprobador: { id: 'u-apr', username: 'apr', name: 'Ariel Aprobador', role: 'aprobador', department: 'TI', active: true },
   compras: { id: 'u-com', username: 'com', name: 'Carla Compras', role: 'encargado_compras', active: true },
   recepcion: { id: 'u-rec', username: 'rec', name: 'Raúl Recepción', role: 'encargado_recepcion', active: true }
 });

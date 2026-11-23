@@ -120,6 +120,7 @@ const PRODUCTS = [
 const STATUS_META = {
   [DOCUMENT_STATUS.APPROVED]: { label: 'Aprobada', tipoDocumento: 'Solicitud de Cotización' },
   [DOCUMENT_STATUS.ISSUED]: { label: 'Emitida', tipoDocumento: 'Orden de Compra' },
+  [DOCUMENT_STATUS.PARTIALLY_RECEIVED]: { label: 'Recibida parcialmente', tipoDocumento: 'Orden de Compra' },
   [DOCUMENT_STATUS.REJECTED]: { label: 'Rechazada', tipoDocumento: 'Orden de Compra' },
   [DOCUMENT_STATUS.RECEIVED]: { label: 'Recibida', tipoDocumento: 'Orden de Compra' }
 };
@@ -209,11 +210,13 @@ function buildDocuments(entities, users){
     const creator = users[(index * 3 + 4) % users.length];
     const series = status === DOCUMENT_STATUS.APPROVED ? 'SC' : 'OC';
     const partial = status === DOCUMENT_STATUS.ISSUED && index < PARTIAL_EMITTED_COUNT;
+    // Las primeras órdenes emitidas ya tienen recepciones parciales (FR-045).
+    const docStatus = partial ? DOCUMENT_STATUS.PARTIALLY_RECEIVED : status;
     folioCounters[series] += 1;
     const startDate = `2026-08-${pad((index % 20) + 1)}`;
     const endDate = addDays(startDate, 10 + (index % 5));
     const centroCosto = CENTROS_COSTO[index % CENTROS_COSTO.length];
-    const meta = STATUS_META[status];
+    const meta = STATUS_META[docStatus];
     const lineasDetalle = Array.from({ length: 1 + (index % 3) }, (_, lineIndex) => {
       const product = PRODUCTS[(index + lineIndex * 3) % PRODUCTS.length];
       const cantidad = 2 + ((index + lineIndex * 2) % 8);
@@ -242,7 +245,7 @@ function buildDocuments(entities, users){
       discount: 0,
       currency: 'CLP',
       paymentTerms: entity.paymentTerms,
-      status,
+      status: docStatus,
       estadoVisible: meta.label,
       tipoDocumento: meta.tipoDocumento,
       prioridad: index % 9 === 0 ? 'Urgente' : 'Normal',
