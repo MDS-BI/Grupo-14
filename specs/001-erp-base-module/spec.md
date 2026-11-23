@@ -164,6 +164,140 @@ Como usuario de negocio, quiero buscar mis entidades por detalles clave para enc
 
 ---
 
+### Historia de Usuario 9 - Gestionar el maestro de proveedores con validación comercial y fiscal (Prioridad: P1)
+
+**Descripción**
+
+Como Encargado de Compras, quiero registrar, editar y activar/desactivar proveedores incluyendo su RUT chileno validado, categoría, condiciones de pago y límite de crédito asignado, para mantener un catálogo confiable y evitar emitir órdenes a proveedores inactivos o sin respaldo comercial.
+
+**Por qué esta prioridad**
+
+Las Historias 2, 3 y 5 dependen directamente de que existan proveedores activos con taxId, categoriaProveedor, paymentTerms y creditLimit válidos; sin este maestro controlado, el flujo de cotización y aprobación carece de fuente oficial.
+
+**Prueba Independiente**
+
+Un Encargado de Compras abre el catálogo de proveedores, registra uno nuevo con RUT chileno válido, define su límite de crédito en CLP y plazo de pago, y verifica que aparezca disponible al crear una cotización; luego intenta registrar otro con RUT duplicado o dígito verificador inválido y comprueba que el sistema bloquea el guardado.
+
+**Escenarios de Aceptación**
+
+1. **Dado** el formulario de registro de proveedor, **cuando** el usuario ingresa razón social, RUT chileno válido (módulo 11), categoría, condición de pago (Contado, 30 días, 60 días) y límite de crédito mayor o igual a cero, **entonces** el sistema formatea el RUT (XX.XXX.XXX-X), guarda el proveedor en estado Activo y lo habilita en los selectores de compra.
+2. **Dado** el ingreso de un RUT con dígito verificador incorrecto o ya existente en el sistema, **cuando** el usuario intenta guardar, **entonces** el sistema impide el registro y muestra un mensaje específico bajo el campo indicando el error.
+3. **Dado** un proveedor con Órdenes de Compra en curso (en estado Emitida o Recibida parcialmente), **cuando** el usuario intenta cambiar su estado a Inactivo, **entonces** el sistema muestra una advertencia con los folios activos y bloquea la desactivación hasta que las órdenes concluyan.
+4. **Dado** un proveedor en estado Inactivo, **cuando** un Encargado de Compras intenta asignarlo a una nueva solicitud de cotización u Orden de Compra, **entonces** el sistema lo excluye de las opciones seleccionables.
+
+---
+
+### Historia de Usuario 10 - Controlar presupuestos por departamento y comprometer fondos en tiempo real (Prioridad: P1)
+
+**Descripción**
+
+Como Jefe de Área o Administrador, quiero asignar y visualizar el presupuesto disponible, comprometido y ejecutado por departamento/centro de costo, para evitar sobregiros financieros al autorizar solicitudes de compra y mantener trazabilidad del gasto del área.
+
+**Por qué esta prioridad**
+
+La Historia 4 exige validar el "saldo presupuestario disponible de la partida del área" antes de autorizar una solicitud, pero sin una gestión explícita de presupuestos por departamento ese saldo es estático o inexistente.
+
+**Prueba Independiente**
+
+Un administrador asigna un presupuesto de $1.000.000 CLP al área de Operaciones; luego un Jefe de Operaciones autoriza una solicitud estimada en $400.000 CLP y verifica que el saldo disponible baje automáticamente a $600.000 CLP (y que si la solicitud es rechazada o cancelada posteriormente, el monto comprometido se libere).
+
+**Escenarios de Aceptación**
+
+1. **Dado** un departamento registrado en el módulo, **cuando** el administrador define o actualiza su monto presupuestario asignado en CLP, **entonces** el sistema calcula y muestra en tiempo real tres indicadores: Presupuesto Asignado, Monto Comprometido (solicitudes aprobadas y OCs activas) y Saldo Disponible.
+2. **Dado** un jefe de área revisando una solicitud pendiente en la bandeja de aprobación, **cuando** el monto estimado de la solicitud supera el Saldo Disponible de su departamento, **entonces** el sistema destaca una alerta presupuestaria en rojo y bloquea la autorización (o exige autorización extraordinaria de rol Administrador).
+3. **Dado** una solicitud previamente autorizada que es rechazada o cancelada en etapas posteriores (cotización u OC), **cuando** se confirma la cancelación, **entonces** el sistema libera automáticamente el monto comprometido y lo reintegra al Saldo Disponible del área.
+
+---
+
+### Historia de Usuario 11 - Registrar factura de proveedor y cerrar ciclo de Orden de Compra a "Pagada" (Prioridad: P1)
+
+**Descripción**
+
+Como Encargado de Compras o Finanzas, quiero asociar el número de factura tributaria (DTE) y fecha de pago a una Orden de Compra que ya fue recibida, verificando que el monto facturado coincida con lo efectivamente recepcionado, para cerrar formalmente el ciclo de vida de la orden en estado Pagada.
+
+**Por qué esta prioridad**
+
+En la Historia 2 se exige que la orden transicione por el ciclo de vida completo (Emitida → Recibida → Pagada), y en la Historia 6 se establece que una orden no debe pasar a pago sin recepción confirmada. Esta historia cierra ese ciclo operativo y financiero.
+
+**Prueba Independiente**
+
+Un usuario con permisos abre una Orden de Compra en estado Recibida, ingresa el folio de factura del proveedor y el monto total coincidente con los ítems recibidos, confirma el registro de pago y verifica que la orden pase a estado Pagada en modo solo lectura.
+
+**Escenarios de Aceptación**
+
+1. **Dado** una Orden de Compra en estado Emitida o Recibida parcialmente, **cuando** un usuario intenta registrar factura o marcarla como Pagada, **entonces** el sistema bloquea la acción indicando que la orden debe estar completamente Recibida primero.
+2. **Dado** una Orden de Compra en estado Recibida, **cuando** el usuario ingresa el número de factura del proveedor, fecha de emisión de factura y monto facturado, **entonces** el sistema valida que el monto coincida con el total de unidades efectivamente recepcionadas (descontando ítems rechazados o dañados).
+3. **Dado** que el monto de la factura difiere del total recepcionado, **cuando** el usuario intenta guardar, **entonces** el sistema muestra la diferencia exacta en pesos (CLP) y exige registrar una nota de ajuste o bloquear el pago hasta corregir la factura.
+4. **Dado** un registro de factura y pago válido, **cuando** se confirma la operación, **entonces** la orden cambia a estado Pagada, actualiza el crédito utilizado del proveedor y bloquea cualquier edición posterior del documento.
+
+---
+
+### Historia de Usuario 12 - Consultar historial de auditoría y trazabilidad por documento (Prioridad: P2)
+
+**Descripción**
+
+Como Administrador o Auditor Interno, quiero visualizar una línea de tiempo cronológica con cada cambio de estado, usuario responsable, fecha, hora y observaciones de cada Solicitud de Compra y Orden de Compra, para garantizar transparencia y trazabilidad completa de quién solicitó, aprobó, cotizó y recepcionó cada compra.
+
+**Por qué esta prioridad**
+
+La Historia 1 define la trazabilidad y asignación de responsabilidades como pilar del módulo; sin una bitácora visible por documento no es posible auditar quién aprobó un gasto o por qué se rechazó una entrega.
+
+**Prueba Independiente**
+
+Un usuario abre el detalle de una Orden de Compra que haya pasado por solicitud, aprobación y recepción, despliega la pestaña o sección Historial / Auditoría y comprueba que figuran todos los eventos ordenados cronológicamente con el nombre y rol de quien ejecutó cada acción.
+
+**Escenarios de Aceptación**
+
+1. **Dado** cualquier evento de creación, edición, aprobación, rechazo, generación de OC, recepción parcial/total o pago, **cuando** se guarda en el almacenamiento (storage.js), **entonces** el sistema registra automáticamente una entrada inmutable con timestamp, usuarioId, nombreUsuario, rol, accion, estadoAnterior, estadoNuevo y comentario.
+2. **Dado** que un usuario abre el detalle de una solicitud u Orden de Compra, **cuando** consulta su historial de actividad, **entonces** el sistema despliega la línea de tiempo cronológica mostrando cada transición y las observaciones asociadas (como motivos de rechazo o daños en recepción).
+3. **Dado** el registro de auditoría de un documento, **cuando** cualquier usuario (incluido el Administrador) intenta editar o eliminar una entrada histórica desde la interfaz, **entonces** el sistema no ofrece opciones de modificación, garantizando la integridad de la bitácora.
+
+---
+
+### Historia de Usuario 13 - Monitorear indicadores operativos y alertas en el Dashboard ejecutivo (Prioridad: P2)
+
+**Descripción**
+
+Como Encargado de Adquisiciones o Jefe de Área, quiero visualizar métricas clave, gráficos de gasto por categoría/proveedor y alertas de documentos pendientes o atrasados en el Panel de Inicio, para priorizar las tareas urgentes del día y tomar decisiones basadas en datos en tiempo real.
+
+**Por qué esta prioridad**
+
+Potencia la Historia 3 (Escenario 3) convirtiendo el dashboard en una herramienta real de gestión que evita cuellos de botella en aprobaciones y recepciones pendientes.
+
+**Prueba Independiente**
+
+Un usuario ingresa al Panel de Inicio, observa los contadores activos de solicitudes por aprobar, cotizaciones pendientes y OCs por recibir, hace clic en una tarjeta o alerta (ej. "3 solicitudes pendientes de aprobación") y el sistema lo redirige directamente a esa bandeja filtrada.
+
+**Escenarios de Aceptación**
+
+1. **Dado** el ingreso al Panel de Inicio (Dashboard), **cuando** carga la vista, **entonces** el sistema muestra tarjetas KPI actualizadas en vivo con: Total Comprometido/Comprado del Mes (CLP), Solicitudes Pendientes de Aprobación, Cotizaciones en Evaluación y Órdenes Pendientes de Recepción.
+2. **Dado** que existen órdenes emitidas cuya fecha estimada de entrega ya venció sin recepción completa, **cuando** se renderiza el panel, **entonces** el sistema muestra una sección de Alertas Operativas destacando los folios atrasados y el proveedor correspondiente.
+3. **Dado** cualquier cambio de estado realizado en otra vista del módulo (aprobar una solicitud, emitir una OC o registrar una recepción), **cuando** el usuario vuelve al Panel de Inicio, **entonces** todos los KPIs, tablas de actividad reciente y alertas se actualizan automáticamente sin recargar la página.
+
+---
+
+### Historia de Usuario 14 - Exportar reportes transaccionales y respaldar/restaurar datos del sistema (Prioridad: P3)
+
+**Descripción**
+
+Como Encargado de Compras o Administrador, quiero exportar el listado de Órdenes de Compra y recepciones a formato CSV/imprimible, y descargar o restaurar respaldos completos de la base local en JSON, para respaldar la información operativa fuera del navegador y generar informes externos.
+
+**Por qué esta prioridad**
+
+Dado que el sistema persiste datos localmente en el navegador (localStorage), contar con exportación y respaldo previene pérdida de información durante pruebas o presentaciones y permite analizar gastos en hojas de cálculo.
+
+**Prueba Independiente**
+
+Un usuario aplica un filtro de fechas o proveedor en Órdenes de Compra, presiona Exportar CSV y descarga una planilla con los registros filtrados; además prueba exportar un respaldo .json, modifica un dato y restaura el respaldo comprobando que todo vuelve al estado guardado.
+
+**Escenarios de Aceptación**
+
+1. **Dado** el listado de Órdenes de Compra o Recepciones (con o sin filtros aplicados), **cuando** el usuario hace clic en Exportar CSV, **entonces** el sistema genera y descarga un archivo .csv codificado en UTF-8 con columnas de folio, fecha, proveedor, RUT, neto, IVA, total y estado.
+2. **Dado** el detalle de una Orden de Compra oficial (OC-XXXX), **cuando** el usuario presiona Imprimir / Guardar PDF, **entonces** el sistema formatea el documento ocultando los menús laterales y mostrando encabezado formal de empresa, datos del proveedor, tabla de ítems y totales.
+3. **Dado** el panel de configuración o barra de almacenamiento, **cuando** el administrador selecciona Exportar respaldo JSON o Restaurar respaldo, **entonces** el sistema permite descargar toda la estructura del localStorage o cargarla desde un archivo .json válido verificando su integridad antes de sobrescribir.
+
+---
+
 
 
 ### Casos Límite
