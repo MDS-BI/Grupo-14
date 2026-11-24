@@ -1,16 +1,21 @@
 import { renderCustomFields, collectCustomFields, showCustomFieldErrors, clearCustomFieldErrors } from './custom-fields.js';
+import { renderDetailLines, collectDetailLines, addDetailLine, showDetailLineErrors, clearDetailLineErrors } from './detail-lines.js';
 import { getConfig } from '../module-config.js';
+import { DOCUMENT_STATUS, NON_CANCELLABLE_ORDER_STATUSES, RECEPTION_DERIVED_STATUSES } from '../storage.js';
 
 function qs(id){ return document.getElementById(id); }
 
+// Los estados de recepción solo los asigna el registro de recepciones, así que
+// no se ofrecen como opción manual (salvo para mostrar el estado actual).
 function allowedStatusesFor(currentStatus){
   const lc = getConfig().statusLifecycle;
   if(!lc) return null;
+  const manual = s => !RECEPTION_DERIVED_STATUSES.includes(s);
   if(currentStatus === undefined || currentStatus === null || currentStatus === ''){
-    return [...lc.statuses];
+    return lc.statuses.filter(manual);
   }
   const next = lc.transitions[currentStatus] || [];
-  return [currentStatus, ...next.filter(s => s !== currentStatus)];
+  return [currentStatus, ...next.filter(s => s !== currentStatus && manual(s))];
 }
 
 export function renderStatusControl(currentStatus){
@@ -72,8 +77,20 @@ export function clearDocumentForm(){
   clearDocumentErrors();
   renderCustomFields(qs('document-custom-fields'), 'document');
   renderStatusControl('');
+  renderDetailLines(qs('document-detail-lines'), []);
   qs('document-cancel-edit').hidden = true;
   qs('document-submit-button').textContent = 'Guardar Documento';
+  toggleOrderActions(null);
+}
+
+export function toggleOrderActions(doc){
+  const approve = qs('document-approve');
+  const cancel = qs('document-cancel');
+  const status = doc ? doc.status : '';
+  const canApprove = Boolean(doc) && status === DOCUMENT_STATUS.APPROVED;
+  const canCancel = Boolean(doc) && !NON_CANCELLABLE_ORDER_STATUSES.includes(status);
+  if(approve) approve.hidden = !canApprove;
+  if(cancel) cancel.hidden = !canCancel;
 }
 
 const DOCUMENT_ERROR_FIELDS = ['entityId', 'folio', 'startDate', 'endDate', 'quantity', 'subtotal', 'discount', 'taxAmount', 'totalAmount', 'status'];
@@ -85,10 +102,12 @@ export function clearDocumentErrors(){
     if(el) el.textContent = '';
   });
   clearCustomFieldErrors(qs('document-custom-fields'));
+  clearDetailLineErrors(qs('document-detail-lines'));
 }
 
 export function startDocumentEdit(doc){
   renderCustomFields(qs('document-custom-fields'), 'document', doc);
+  renderDetailLines(qs('document-detail-lines'), doc.lineasDetalle || []);
   qs('document-id').value = doc.id;
   qs('document-entity-id').value = doc.entity_id;
   qs('document-entity').value = doc.entity_id;
@@ -109,6 +128,7 @@ export function startDocumentEdit(doc){
   clearDocumentErrors();
   qs('document-cancel-edit').hidden = false;
   qs('document-submit-button').textContent = 'Actualizar Documento';
+  toggleOrderActions(doc);
 }
 
 function setStatusValue(value){
@@ -132,8 +152,13 @@ export function collectDocumentPayload(){
     paymentTerms: qs('docPaymentTerms').value,
     notes: qs('notes').value,
     status: qs('status') ? qs('status').value : '',
+    lineasDetalle: collectDetailLines(qs('document-detail-lines')),
     ...collectCustomFields(qs('document-custom-fields'), 'document')
   };
+}
+
+export function addDocumentDetailLine(){
+  addDetailLine(qs('document-detail-lines'), {});
 }
 
 export function showDocumentErrors(errors){
@@ -143,4 +168,5 @@ export function showDocumentErrors(errors){
     if(el) el.textContent = errors[f] || '';
   }
   showCustomFieldErrors(qs('document-custom-fields'), 'document', errors);
+  showDetailLineErrors(qs('document-detail-lines'), errors);
 }

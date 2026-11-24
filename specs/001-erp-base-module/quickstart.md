@@ -14,6 +14,16 @@
 4. Edite o elimine una entidad desde el 谩rea de gesti贸n.
 5. Cambie entre m贸dulos usando la barra lateral; actualice la p谩gina para confirmar que las entidades persisten en el almacenamiento local y que el marco con marca (logotipo, nombre del m贸dulo) permanece consistente.
 
+## Flujos por rol
+
+La sesi贸n activa se elige en el selector **Sesi贸n** de la barra superior. El administrador del sistema se usa por defecto.
+
+1. **Administrador**: abra **Usuarios**, cree una cuenta con rol Solicitante, Aprobador, Encargado de Compras o Encargado de Recepci贸n y confirme que la barra lateral se adapta al rol de la sesi贸n. No se puede desactivar a un usuario con solicitudes u 贸rdenes pendientes.
+2. **Solicitante**: abra **Solicitudes**, elija departamento y partida, escriba la justificaci贸n y agregue productos o servicios. La solicitud queda en estado *Pendiente de aprobaci贸n* y la justificaci贸n se muestra completa en el historial.
+3. **Aprobador**: abra **Aprobaciones**, seleccione una solicitud de su departamento, revise la justificaci贸n y el saldo presupuestario y use **Autorizar** o **Rechazar**. El rechazo exige un motivo; sin 茅l la solicitud permanece pendiente.
+4. **Encargado de Compras**: abra **Documentos**, seleccione un proveedor, capture las l铆neas de detalle y guarde la orden. Los totales se recalculan desde las l铆neas. Desde el mismo formulario puede **Aprobar** (valida datos comerciales y l铆mite de cr茅dito y asigna la serie/folio OC-XXXX) o **Cancelar**.
+5. **Encargado de Recepci贸n**: abra **Recepci贸n**, seleccione una orden emitida o parcialmente recibida, registre cantidades recibidas y rechazadas (con motivo) y confirme. La orden pasa a *Recibido parcialmente* o *Recibido* seg煤n las cantidades pendientes.
+
 ## Validaci贸n
 
 - Verifique que los campos obligatorios muestran errores de validaci贸n.
@@ -22,6 +32,9 @@
 - Verifique que los resultados de b煤squeda se actualizan a medida que el usuario escribe.
 - Verifique que la lista permanece consistente tras las acciones de edici贸n y eliminaci贸n.
 - Verifique que las estad铆sticas del panel coinciden con el n煤mero de registros almacenados.
+- Verifique que una solicitud sin justificaci贸n no se guarda y que un rechazo sin motivo mantiene el estado pendiente.
+- Verifique que la aprobaci贸n se bloquea si faltan `taxId`, `categoriaProveedor`, `paymentTerms` o `creditLimit`, o si el total excede el cr茅dito del proveedor.
+- Verifique que no se puede recibir una orden cancelada, completa o no emitida, y que recibida + rechazada no supera la cantidad solicitada.
 
 ## Extender el M贸dulo Base
 
@@ -34,3 +47,31 @@ Los m贸dulos ERP personalizados adaptan la base mediante un 煤nico archivo de co
 5. A帽ada reglas de validaci贸n espec铆ficas del m贸dulo junto a las reglas base donde sea necesario.
 
 La generaci贸n de identidad, marcas de tiempo, integridad referencial entre entidades y documentos, eliminaci贸n en cascada, navegaci贸n y b煤squeda siguen siendo gestionadas por el m贸dulo base. Sin archivo de configuraci贸n, la aplicaci贸n se ejecuta con el comportamiento predeterminado Entidad/Documento. Consulte `specs/001-erp-base-module/` para la especificaci贸n completa.
+
+## Administraci髇 de usuarios y permisos
+
+1. Abra **Usuarios** en la barra lateral (visible para el rol administrador).
+2. Cree usuarios con nombre, cuenta y rol; use **Editar** para cambiar el rol.
+3. Un usuario con documentos pendientes asignados no puede desactivarse: el sistema explica el motivo.
+4. Al iniciar sesi髇 como un rol distinto, las vistas y acciones no autorizadas quedan fuera de alcance.
+
+## Orden de compra con l韓eas de detalle
+
+1. Abra **觬denes de Compra** y seleccione un proveedor.
+2. Agregue una o m醩 l韓eas con producto, descripci髇, cantidad, unidad, precio y descuento.
+3. El subtotal, impuesto y total se calculan en cascada al guardar; las l韓eas quedan persistidas dentro del documento.
+
+## Aprobaciones y justificaci髇
+
+1. Registre una **Solicitud de Cotizaci髇**; la justificaci髇 y el departamento son obligatorios.
+2. La solicitud se guarda en estado **pendiente de aprobaci髇**.
+3. En **Aprobaciones** revise la justificaci髇 y las l韓eas antes de decidir.
+4. Aprobar valida identificaci髇 fiscal, categor韆, condiciones de pago y l韒ite de cr閐ito del proveedor, y asigna el folio oficial `OC-XXXX`.
+5. Rechazar exige un motivo, que queda registrado en el historial.
+
+## Recepci髇 de productos
+
+1. Abra **Recepci髇** y seleccione una orden aprobada con l韓eas.
+2. Registre cantidades recibidas por l韓ea; el sistema muestra solicitado, recibido acumulado y pendiente.
+3. Una recepci髇 parcial mantiene la orden en estado aprobado; al completar todas las l韓eas cambia a **recibido**.
+4. Cada recepci髇 conserva fecha, cantidades, observaciones y motivo de rechazo por l韓ea.

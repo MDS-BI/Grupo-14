@@ -3,264 +3,862 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="Módulo de Adquisiciones y Compras: proveedores, solicitudes, aprobaciones, órdenes de compra y recepción." />
+    <meta name="theme-color" content="#0b1d25" />
     <title>Módulo Base ERP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" />
   </head>
   <body>
+    <a class="skip-link" href="#app">Saltar al contenido</a>
     <div id="config-errors" class="config-error" role="alert" hidden></div>
 
     <div class="workspace">
+      <!-- ============================ Barra superior ============================ -->
       <header class="topbar">
         <div class="brand">
           <span id="logo-mark" class="logo-mark" aria-hidden="true"></span>
-          <span id="brand-name" class="brand-name">Módulo Base ERP</span>
+          <span class="brand-text">
+            <span id="brand-name" class="brand-name">Módulo Base ERP</span>
+            <span class="brand-sub">ERP · Compras</span>
+          </span>
+        </div>
+
+        <div class="topbar-main">
+          <div class="topbar-search" role="search">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+            <label class="sr-only" for="global-search">Buscar registros</label>
+            <input id="global-search" type="search" autocomplete="off" placeholder="Buscar por nombre, código o categoría…" />
+            <kbd aria-hidden="true">/</kbd>
+          </div>
+
+          <div class="session-bar">
+            <span class="session-avatar" id="session-avatar" aria-hidden="true">
+              <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"></path></svg>
+            </span>
+            <span class="session-field">
+              <label for="session-user">Sesión</label>
+              <select id="session-user" aria-label="Usuario de la sesión"></select>
+            </span>
+          </div>
         </div>
       </header>
 
+      <!-- ============================== Navegación ============================== -->
       <aside class="sidebar">
         <nav class="side-nav" aria-label="Módulos">
-          <button type="button" class="nav-module active" data-module="dashboard" id="nav-dashboard" aria-current="page">
-            <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1"></rect><rect x="11" y="3" width="6" height="6" rx="1"></rect><rect x="3" y="11" width="6" height="6" rx="1"></rect><rect x="11" y="11" width="6" height="6" rx="1"></rect></svg>
-            <span class="nav-label" id="nav-dashboard-label">Panel</span>
-          </button>
-          <button type="button" class="nav-module" data-module="entities" id="nav-entities">
-            <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5 3.5 6v8L10 17.5 16.5 14V6L10 2.5z"></path><path d="M3.5 6 10 9.5 16.5 6"></path><path d="M10 9.5v8"></path></svg>
-            <span class="nav-label" id="nav-entities-label">Entidades</span>
-          </button>
-          <button type="button" class="nav-module" data-module="documents" id="nav-documents">
-            <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 2.5h6l4 4v11h-10z"></path><path d="M11.5 2.5v4h4"></path><path d="M8 10h5"></path><path d="M8 13h5"></path></svg>
-            <span class="nav-label" id="nav-documents-label">Documentos</span>
-          </button>
-          <button type="button" class="nav-module" data-module="search" id="nav-search">
-            <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="5"></circle><path d="m12.8 12.8 4.2 4.2"></path></svg>
-            <span class="nav-label" id="nav-search-label">Búsqueda</span>
-          </button>
+          <div class="nav-group">
+            <span class="nav-group-label">General</span>
+            <button type="button" class="nav-module active" data-module="dashboard" id="nav-dashboard" aria-current="page">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="9" rx="1.5"></rect><rect x="13.5" y="3" width="7.5" height="5" rx="1.5"></rect><rect x="13.5" y="11" width="7.5" height="10" rx="1.5"></rect><rect x="3" y="15" width="7.5" height="6" rx="1.5"></rect></svg>
+              <span class="nav-label" id="nav-dashboard-label">Panel</span>
+            </button>
+            <button type="button" class="nav-module" data-module="entities" id="nav-entities">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16"></path><path d="M15 9h3a2 2 0 0 1 2 2v10"></path><path d="M2.5 21h19"></path><path d="M8 7.5h3M8 11.5h3M8 15.5h3"></path></svg>
+              <span class="nav-label" id="nav-entities-label">Entidades</span>
+            </button>
+            <button type="button" class="nav-module" data-module="documents" id="nav-documents">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path><path d="M9 13h6M9 17h4"></path></svg>
+              <span class="nav-label" id="nav-documents-label">Documentos</span>
+            </button>
+            <button type="button" class="nav-module" data-module="search" id="nav-search">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+              <span class="nav-label" id="nav-search-label">Búsqueda</span>
+            </button>
+          </div>
+
+          <div class="nav-group">
+            <span class="nav-group-label">Flujo de compras</span>
+            <button type="button" class="nav-module-extra" data-module="requisitions" id="nav-requisitions">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 2.5h6v3H9z"></path><path d="M9 11h6M9 15h4"></path></svg>
+              <span class="nav-label" id="nav-requisitions-label">Solicitudes</span>
+            </button>
+            <button type="button" class="nav-module-extra" data-module="approvals" id="nav-approvals">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8 12.5 2.8 2.8L16.5 9.5"></path></svg>
+              <span class="nav-label" id="nav-approvals-label">Aprobaciones</span>
+            </button>
+            <button type="button" class="nav-module-extra" data-module="receptions" id="nav-receptions">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8.5 12 3.5 3 8.5v7l9 5 9-5z"></path><path d="M3 8.5l9 5 9-5"></path><path d="M12 13.5v7"></path></svg>
+              <span class="nav-label" id="nav-receptions-label">Recepción</span>
+            </button>
+          </div>
+
+          <div class="nav-group">
+            <span class="nav-group-label">Administración</span>
+            <button type="button" class="nav-module-extra" data-module="users" id="nav-users">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"></path><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"></path><path d="M18 14.3c2.1.7 3.5 2.8 3.5 5.7"></path></svg>
+              <span class="nav-label" id="nav-users-label">Usuarios</span>
+            </button>
+          </div>
         </nav>
+
+        <div class="sidebar-foot" aria-hidden="true">
+          <span class="sidebar-foot-dot"></span>
+          <span>Datos guardados en este navegador</span>
+        </div>
       </aside>
 
-      <main class="content" id="app">
-        <section id="view-dashboard" aria-labelledby="dashboard-heading">
-          <h1 id="dashboard-heading">Módulo Base ERP</h1>
-          <p id="dashboard-subtitle" class="muted">Gestiona tus entidades y documentos en un solo lugar.</p>
+      <main class="content" id="app" tabindex="-1">
+        <!-- ============================ Panel ============================ -->
+        <section id="view-dashboard" class="view" aria-labelledby="dashboard-heading">
+          <header class="page-head">
+            <div class="page-head-text">
+              <p class="eyebrow">Panel de control</p>
+              <h1 id="dashboard-heading">Módulo Base ERP</h1>
+              <p id="dashboard-subtitle" class="muted">Gestiona tus entidades y documentos en un solo lugar.</p>
+            </div>
+            <p class="date-chip" id="dashboard-date" hidden></p>
+          </header>
 
           <div class="stat-grid">
-            <div class="stat-card">
+            <div class="stat-card tone-accent">
+              <span class="stat-icon" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16"></path><path d="M15 9h3a2 2 0 0 1 2 2v10"></path><path d="M2.5 21h19"></path><path d="M8 7.5h3M8 11.5h3M8 15.5h3"></path></svg></span>
               <span class="stat-value" id="stat-entities">0</span>
               <span class="stat-label" id="stat-entities-label">Entidades</span>
             </div>
-            <div class="stat-card">
+            <div class="stat-card tone-sky">
+              <span class="stat-icon" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path><path d="M9 13h6M9 17h4"></path></svg></span>
               <span class="stat-value" id="stat-documents">0</span>
               <span class="stat-label" id="stat-documents-label">Documentos</span>
             </div>
+            <div class="stat-card tone-amber">
+              <span class="stat-icon" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+              <span class="stat-value" id="stat-requisitions">0</span>
+              <span class="stat-label" id="stat-requisitions-label">Solicitudes pendientes</span>
+            </div>
+            <div class="stat-card tone-green">
+              <span class="stat-icon" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M3 4h2.5l2.2 11h10.6L20.5 7H7"></path><circle cx="9.5" cy="19.5" r="1.5"></circle><circle cx="17" cy="19.5" r="1.5"></circle></svg></span>
+              <span class="stat-value" id="stat-orders">0</span>
+              <span class="stat-label" id="stat-orders-label">Órdenes emitidas</span>
+            </div>
+            <div class="stat-card tone-slate">
+              <span class="stat-icon" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M21 8.5 12 3.5 3 8.5v7l9 5 9-5z"></path><path d="M3 8.5l9 5 9-5"></path><path d="M12 13.5v7"></path></svg></span>
+              <span class="stat-value" id="stat-receptions">0</span>
+              <span class="stat-label" id="stat-receptions-label">Recepciones</span>
+            </div>
           </div>
 
-          <h2 id="quick-actions-heading">Acciones rápidas</h2>
-          <div class="action-grid">
-            <button type="button" class="action-card" id="action-new-entity">
-              <strong id="action-new-entity-title">Nueva Entidad</strong>
-              <span class="muted" id="action-new-entity-sub">Crear un registro de entidad</span>
-            </button>
-            <button type="button" class="action-card" id="action-new-document">
-              <strong id="action-new-document-title">Nuevo Documento</strong>
-              <span class="muted" id="action-new-document-sub">Registrar un registro de documento</span>
-            </button>
-            <button type="button" class="action-card" id="action-open-entities">
-              <strong id="action-open-entities-title">Entidades</strong>
-              <span class="muted" id="action-open-entities-sub">Abrir la gestión de entidades</span>
-            </button>
-            <button type="button" class="action-card" id="action-find">
-              <strong id="action-find-title">Buscar registros</strong>
-              <span class="muted" id="action-find-sub">Buscar entidades</span>
-            </button>
+          <div class="dash-grid">
+            <section class="card panel" aria-labelledby="dash-pending-heading">
+              <header class="panel-head">
+                <h2 id="dash-pending-heading">Solicitudes pendientes</h2>
+                <button type="button" class="link-button" data-proxy="nav-approvals">Abrir bandeja <span aria-hidden="true">→</span></button>
+              </header>
+              <ul id="dash-pending-list" class="feed-list" hidden></ul>
+              <div id="dash-pending-empty" class="empty-state">
+                <svg class="empty-art" viewBox="0 0 120 96" aria-hidden="true">
+                  <rect x="22" y="14" width="62" height="74" rx="8" class="art-back"></rect>
+                  <rect x="32" y="8" width="62" height="74" rx="8" class="art-paper"></rect>
+                  <rect x="42" y="24" width="34" height="5" rx="2.5" class="art-line-strong"></rect>
+                  <rect x="42" y="36" width="42" height="4" rx="2" class="art-line"></rect>
+                  <rect x="42" y="46" width="30" height="4" rx="2" class="art-line"></rect>
+                  <rect x="42" y="56" width="38" height="4" rx="2" class="art-line"></rect>
+                  <circle cx="90" cy="70" r="16" class="art-badge"></circle>
+                  <path d="m83 70 5 5 9-10" class="art-check"></path>
+                </svg>
+                <h3>Nada por aprobar</h3>
+                <p class="muted">Las solicitudes nuevas de tu área aparecen aquí hasta que alguien las autorice o rechace.</p>
+                <button type="button" class="primary" data-proxy="action-new-requisition">Crear solicitud</button>
+              </div>
+            </section>
+
+            <section class="card panel" aria-labelledby="dash-activity-heading">
+              <header class="panel-head">
+                <h2 id="dash-activity-heading">Actividad reciente</h2>
+              </header>
+              <ol id="dash-activity-list" class="timeline" hidden></ol>
+              <div id="dash-activity-empty" class="empty-state">
+                <svg class="empty-art" viewBox="0 0 120 96" aria-hidden="true">
+                  <circle cx="60" cy="48" r="38" class="art-back"></circle>
+                  <circle cx="60" cy="48" r="26" class="art-paper"></circle>
+                  <path d="M60 34v15l9 6" class="art-hand"></path>
+                  <circle cx="22" cy="22" r="4" class="art-dot"></circle>
+                  <circle cx="100" cy="76" r="5" class="art-dot"></circle>
+                  <circle cx="98" cy="20" r="3" class="art-dot-soft"></circle>
+                </svg>
+                <h3>Todavía sin movimientos</h3>
+                <p class="muted">Cada solicitud, orden y recepción que registres queda en esta línea de tiempo.</p>
+                <button type="button" class="secondary" data-proxy="action-new-entity">Registrar proveedor</button>
+              </div>
+            </section>
+          </div>
+
+          <p id="mock-data-message" class="notice is-success" role="status" hidden></p>
+
+          <section class="quick-actions" aria-labelledby="quick-actions-heading">
+            <h2 id="quick-actions-heading">Acciones rápidas</h2>
+            <div class="action-grid">
+              <button type="button" class="action-card" id="action-new-entity">
+                <span class="action-icon tone-accent" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16"></path><path d="M2.5 21h12.5"></path><path d="M8 7.5h3M8 11.5h3"></path><path d="M19 13v6M16 16h6"></path></svg></span>
+                <strong id="action-new-entity-title">Nueva Entidad</strong>
+                <span class="muted" id="action-new-entity-sub">Crear un registro de entidad</span>
+                <span class="action-arrow" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+              </button>
+              <button type="button" class="action-card" id="action-new-document">
+                <span class="action-icon tone-sky" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path><path d="M12 11v6M9 14h6"></path></svg></span>
+                <strong id="action-new-document-title">Nuevo Documento</strong>
+                <span class="muted" id="action-new-document-sub">Registrar un registro de documento</span>
+                <span class="action-arrow" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+              </button>
+              <button type="button" class="action-card" id="action-new-requisition">
+                <span class="action-icon tone-amber" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 2.5h6v3H9z"></path><path d="M12 10v6M9 13h6"></path></svg></span>
+                <strong id="action-new-requisition-title">Nueva Solicitud</strong>
+                <span class="muted" id="action-new-requisition-sub">Solicitar compra con justificación</span>
+                <span class="action-arrow" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+              </button>
+              <button type="button" class="action-card" id="action-open-approvals">
+                <span class="action-icon tone-green" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="m8 12.5 2.8 2.8L16.5 9.5"></path></svg></span>
+                <strong id="action-open-approvals-title">Aprobaciones</strong>
+                <span class="muted" id="action-open-approvals-sub">Autorizar solicitudes del área</span>
+                <span class="action-arrow" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+              </button>
+              <button type="button" class="action-card" id="action-open-receptions">
+                <span class="action-icon tone-slate" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M21 8.5 12 3.5 3 8.5v7l9 5 9-5z"></path><path d="M3 8.5l9 5 9-5"></path><path d="M12 13.5v7"></path></svg></span>
+                <strong id="action-open-receptions-title">Recepción</strong>
+                <span class="muted" id="action-open-receptions-sub">Recibir Órdenes de compra</span>
+                <span class="action-arrow" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+              </button>
+              <button type="button" class="action-card" id="action-open-entities">
+                <span class="action-icon tone-accent" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"></path><circle cx="4" cy="6" r="1"></circle><circle cx="4" cy="12" r="1"></circle><circle cx="4" cy="18" r="1"></circle></svg></span>
+                <strong id="action-open-entities-title">Entidades</strong>
+                <span class="muted" id="action-open-entities-sub">Abrir la gestión de entidades</span>
+                <span class="action-arrow" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+              </button>
+              <button type="button" class="action-card" id="action-find">
+                <span class="action-icon tone-sky" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></span>
+                <strong id="action-find-title">Buscar registros</strong>
+                <span class="muted" id="action-find-sub">Buscar entidades</span>
+                <span class="action-arrow" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+              </button>
+              <button type="button" class="action-card" id="action-open-users">
+                <span class="action-icon tone-slate" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"></path><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"></path><path d="M18 14.3c2.1.7 3.5 2.8 3.5 5.7"></path></svg></span>
+                <strong id="action-open-users-title">Usuarios</strong>
+                <span class="muted" id="action-open-users-sub">Administrar roles y accesos</span>
+                <span class="action-arrow" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+              </button>
+              <button type="button" class="action-card" id="action-load-mock-data">
+                <span class="action-icon tone-amber" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v12"></path><path d="m7.5 10.5 4.5 4.5 4.5-4.5"></path><path d="M4 20h16"></path></svg></span>
+                <strong>Cargar Datos de Prueba</strong>
+                <span class="muted">7 proveedores, 150 órdenes de compra y más</span>
+                <span class="action-arrow" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+              </button>
+            </div>
+          </section>
+        </section>
+
+        <!-- ========================== Entidades ========================== -->
+        <section id="view-entities" class="view" aria-labelledby="entities-view-heading" hidden>
+          <header class="page-head">
+            <div class="page-head-text">
+              <p class="eyebrow">Datos maestros</p>
+              <h1 id="entities-view-heading">Entidades</h1>
+              <p class="muted">Alta, edición y baja de registros maestros.</p>
+            </div>
+          </header>
+
+          <section class="card card-entity-table" aria-labelledby="entity-table-heading">
+            <div class="panel-head">
+              <h2 id="entity-table-heading">Proveedores registrados</h2>
+              <span id="entity-table-count" class="muted"></span>
+            </div>
+            <div class="table-toolbar">
+              <div class="search-field">
+                <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                <input id="entity-table-search" type="search" autocomplete="off" placeholder="Buscar por nombre o RUT..." aria-label="Buscar proveedores por nombre o RUT" />
+              </div>
+              <label class="filter-field" for="entity-status-filter">
+                <span>Estado</span>
+                <select id="entity-status-filter">
+                  <option value="">Todos</option>
+                  <option value="Activo">Activo</option>
+                  <option value="Inactivo">Inactivo</option>
+                </select>
+              </label>
+            </div>
+            <div class="table-responsive">
+              <table id="entity-table" class="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Nombre</th>
+                    <th scope="col">RUT</th>
+                    <th scope="col">Rubro</th>
+                    <th scope="col">Contacto</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Pago</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="entity-table-body"></tbody>
+              </table>
+            </div>
+            <div id="entity-table-empty" class="empty" hidden>No hay proveedores que coincidan con la búsqueda.</div>
+            <div id="entity-detail" class="detail-pane entity-detail" hidden></div>
+          </section>
+
+          <div class="view-grid layout-main-aside">
+            <section class="card" aria-labelledby="entity-form-heading">
+              <h2 id="entity-form-heading">Agregar / Editar Entidad</h2>
+              <form id="entity-form">
+                <input type="hidden" id="entity-id" />
+
+                <fieldset class="form-group">
+                  <legend>Identificación</legend>
+                  <div class="field-grid">
+                    <div>
+                      <label for="name">Nombre *</label>
+                      <input id="name" name="name" required />
+                      <div class="error" id="error-name" aria-live="polite"></div>
+                    </div>
+                    <div>
+                      <label for="code">Código *</label>
+                      <input id="code" name="code" required />
+                      <div class="error" id="error-code" aria-live="polite"></div>
+                    </div>
+      <div>
+        <label for="taxId">RUT</label>
+        <input id="taxId" name="taxId" placeholder="12.345.678-5" autocomplete="off" />
+        <div class="error" id="error-taxId" aria-live="polite"></div>
+      </div>
+                  </div>
+                </fieldset>
+
+                <fieldset class="form-group">
+                  <legend>Contacto</legend>
+                  <div class="field-grid">
+                    <div>
+                      <label for="email">Correo electrónico</label>
+                      <input id="email" name="email" type="email" />
+                      <div class="error" id="error-email" aria-live="polite"></div>
+                    </div>
+                    <div>
+                      <label for="phone">Teléfono</label>
+                      <input id="phone" name="phone" />
+                    </div>
+                    <div class="span-full">
+                      <label for="address">Dirección</label>
+                      <input id="address" name="address" />
+                    </div>
+                  </div>
+                </fieldset>
+
+                <fieldset class="form-group">
+                  <legend>Clasificación</legend>
+                  <div class="field-grid">
+                    <div>
+                      <label for="category">Categoría</label>
+                      <input id="category" name="category" />
+                    </div>
+                    <div>
+                      <label for="estado">Estado</label>
+                      <select id="estado" name="estado">
+                        <option value="Activo">Activo</option>
+                        <option value="Inactivo">Inactivo</option>
+                      </select>
+                    </div>
+                    <div class="span-full">
+                      <label for="description">Descripción</label>
+                      <textarea id="description" name="description" rows="3"></textarea>
+                    </div>
+                  </div>
+                </fieldset>
+
+                <fieldset class="form-group">
+                  <legend>Condiciones comerciales</legend>
+                  <div class="field-grid">
+                    <div>
+                      <label for="targetDate">Fecha objetivo</label>
+                      <input id="targetDate" name="targetDate" type="date" />
+                      <div class="error" id="error-targetDate" aria-live="polite"></div>
+                    </div>
+                    <div>
+                      <label for="creditLimit">Límite de crédito</label>
+                      <input id="creditLimit" name="creditLimit" type="number" min="0" step="0.01" />
+                      <div class="error" id="error-creditLimit" aria-live="polite"></div>
+                    </div>
+                    <div class="span-full">
+                      <label for="paymentTerms">Condiciones de pago</label>
+                      <input id="paymentTerms" name="paymentTerms" placeholder="p. ej., contado, neto 30" />
+                    </div>
+                  </div>
+                </fieldset>
+
+                <div id="entity-custom-fields" class="custom-fields-grid"></div>
+
+                <div class="form-actions form-actions-bar">
+                  <button type="submit" id="submit-button" class="primary">Guardar</button>
+                  <button type="button" id="cancel-edit" class="secondary" hidden>Cancelar edición</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="card card-aside" aria-labelledby="edit-entity-heading">
+              <span class="aside-icon" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg></span>
+              <h2 id="edit-entity-heading">Editar o eliminar la entidad</h2>
+              <div>
+                <label for="edit-entity">Selecciona una entidad</label>
+                <select id="edit-entity"></select>
+                <div class="error" id="error-edit-entity" aria-live="polite"></div>
+              </div>
+              <div class="form-actions">
+                <button type="button" id="delete-entity" class="danger">Eliminar la entidad seleccionada</button>
+              </div>
+            </section>
           </div>
         </section>
 
-        <section id="view-entities" aria-labelledby="entities-view-heading" hidden>
-          <h1 id="entities-view-heading">Entidades</h1>
+        <!-- ========================== Documentos ========================= -->
+        <section id="view-documents" class="view" aria-labelledby="documents-view-heading" hidden>
+          <header class="page-head">
+            <div class="page-head-text">
+              <p class="eyebrow">Documentos transaccionales</p>
+              <h1 id="documents-view-heading">Documentos</h1>
+              <p class="muted">Captura, aprobación y seguimiento de documentos con sus líneas de detalle.</p>
+            </div>
+          </header>
 
-          <section class="card" aria-labelledby="entity-form-heading">
-            <h2 id="entity-form-heading">Agregar / Editar Entidad</h2>
-            <form id="entity-form">
-              <input type="hidden" id="entity-id" />
+          <div class="view-grid layout-main-aside">
+            <section class="card" aria-labelledby="document-form-heading">
+              <h2 id="document-form-heading">Agregar / Editar Documento</h2>
+              <form id="document-form">
+                <input type="hidden" id="document-id" />
+                <input type="hidden" id="document-entity-id" />
+
+                <fieldset class="form-group">
+                  <legend>Datos generales</legend>
+                  <div class="field-grid">
+                    <div class="span-full">
+                      <label for="document-entity">Entidad *</label>
+                      <select id="document-entity" name="document-entity"></select>
+                      <div class="error" id="error-document-entity" aria-live="polite"></div>
+                    </div>
+                    <div>
+                      <label for="series">Serie</label>
+                      <input id="series" name="series" placeholder="p. ej., FAC" />
+                    </div>
+                    <div>
+                      <label for="folio">Folio *</label>
+                      <input id="folio" name="folio" type="number" min="1" step="1" required />
+                      <div class="error" id="error-folio" aria-live="polite"></div>
+                    </div>
+                  </div>
+                </fieldset>
+
+                <fieldset class="form-group">
+                  <legend>Vigencia</legend>
+                  <div class="field-grid">
+                    <div>
+                      <label for="startDate">Fecha de inicio *</label>
+                      <input id="startDate" name="startDate" type="date" required />
+                      <div class="error" id="error-startDate" aria-live="polite"></div>
+                    </div>
+                    <div>
+                      <label for="endDate">Fecha de fin *</label>
+                      <input id="endDate" name="endDate" type="date" required />
+                      <div class="error" id="error-endDate" aria-live="polite"></div>
+                    </div>
+                  </div>
+                </fieldset>
+
+                <fieldset class="form-group">
+                  <legend>Importes</legend>
+                  <div class="field-grid field-grid-3">
+                    <div>
+                      <label for="quantity">Cantidad</label>
+                      <input id="quantity" name="quantity" type="number" min="1" step="1" />
+                      <div class="error" id="error-quantity" aria-live="polite"></div>
+                    </div>
+                    <div>
+                      <label for="subtotal">Subtotal</label>
+                      <input id="subtotal" name="subtotal" type="number" min="0" step="0.01" />
+                      <div class="error" id="error-subtotal" aria-live="polite"></div>
+                    </div>
+                    <div>
+                      <label for="discount">Descuento</label>
+                      <input id="discount" name="discount" type="number" min="0" step="0.01" />
+                      <div class="error" id="error-discount" aria-live="polite"></div>
+                    </div>
+                    <div>
+                      <label for="taxAmount">Impuesto</label>
+                      <input id="taxAmount" name="taxAmount" type="number" min="0" step="0.01" />
+                      <div class="error" id="error-taxAmount" aria-live="polite"></div>
+                    </div>
+                    <div class="field-total">
+                      <label for="totalAmount">Importe total</label>
+                      <input id="totalAmount" name="totalAmount" type="number" min="0" step="0.01" />
+                      <div class="error" id="error-totalAmount" aria-live="polite"></div>
+                    </div>
+                    <div>
+                      <label for="currency">Moneda</label>
+                      <input id="currency" name="currency" placeholder="p. ej., MXN" />
+                    </div>
+                  </div>
+                </fieldset>
+
+                <fieldset class="form-group">
+                  <legend>Condiciones y notas</legend>
+                  <div class="field-grid">
+                    <div class="span-full">
+                      <label for="docPaymentTerms">Condiciones de pago</label>
+                      <input id="docPaymentTerms" name="docPaymentTerms" placeholder="p. ej., contado, neto 30" />
+                    </div>
+                    <div class="span-full">
+                      <label for="notes">Notas</label>
+                      <textarea id="notes" name="notes" rows="2"></textarea>
+                    </div>
+                  </div>
+                </fieldset>
+
+                <fieldset class="form-group">
+                  <legend>Estado y clasificación</legend>
+                  <div class="field-grid">
+                    <div id="document-status-control"></div>
+                    <div id="document-custom-fields" class="custom-fields-grid span-full"></div>
+                  </div>
+                </fieldset>
+
+                <section class="detail-lines-section" aria-labelledby="detail-lines-heading">
+                  <h3 id="detail-lines-heading">Líneas de detalle</h3>
+                  <p class="muted" id="detail-lines-help">Captura Cantidad, Precio Unitario y Descuento de cada línea. El importe y el desglose con IVA (19%) se actualizan al escribir.</p>
+                  <div id="document-detail-lines"></div>
+                  <div class="error" id="error-detail-lines" aria-live="polite"></div>
+                  <div class="form-actions">
+                    <button type="button" id="add-detail-line" class="secondary">Agregar línea</button>
+                  </div>
+                  <div id="document-totals-breakdown" class="totals-breakdown" aria-live="polite"></div>
+                </section>
+
+                <div class="form-actions form-actions-bar">
+                  <button type="submit" id="document-submit-button" class="primary">Guardar Documento</button>
+                  <button type="button" id="document-cancel-edit" class="secondary" hidden>Cancelar edición</button>
+                  <button type="button" id="document-approve" class="primary" hidden>Aprobar Orden</button>
+                  <button type="button" id="document-cancel" class="danger" hidden>Cancelar Orden</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="card card-aside" aria-labelledby="edit-document-heading">
+              <span class="aside-icon" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg></span>
+              <h2 id="edit-document-heading">Editar o eliminar el documento</h2>
               <div>
-                <label for="name">Nombre *</label>
-                <input id="name" name="name" required />
-                <div class="error" id="error-name" aria-live="polite"></div>
+                <label for="edit-document">Selecciona un documento</label>
+                <select id="edit-document"></select>
+                <div class="error" id="error-edit-document" aria-live="polite"></div>
               </div>
-              <div>
-                <label for="code">Código *</label>
-                <input id="code" name="code" required />
-                <div class="error" id="error-code" aria-live="polite"></div>
-              </div>
-              <div>
-                <label for="taxId">Identificación fiscal</label>
-                <input id="taxId" name="taxId" />
-              </div>
-              <div>
-                <label for="email">Correo electrónico</label>
-                <input id="email" name="email" type="email" />
-                <div class="error" id="error-email" aria-live="polite"></div>
-              </div>
-              <div>
-                <label for="phone">Teléfono</label>
-                <input id="phone" name="phone" />
-              </div>
-              <div>
-                <label for="address">Dirección</label>
-                <input id="address" name="address" />
-              </div>
-              <div>
-                <label for="category">Categoría</label>
-                <input id="category" name="category" />
-              </div>
-              <div>
-                <label for="description">Descripción</label>
-                <textarea id="description" name="description" rows="3"></textarea>
-              </div>
-              <div>
-                <label for="targetDate">Fecha objetivo</label>
-                <input id="targetDate" name="targetDate" type="date" />
-                <div class="error" id="error-targetDate" aria-live="polite"></div>
-              </div>
-              <div>
-                <label for="creditLimit">Límite de crédito</label>
-                <input id="creditLimit" name="creditLimit" type="number" min="0" step="0.01" />
-                <div class="error" id="error-creditLimit" aria-live="polite"></div>
-              </div>
-              <div>
-                <label for="paymentTerms">Condiciones de pago</label>
-                <input id="paymentTerms" name="paymentTerms" placeholder="p. ej., contado, neto 30" />
-              </div>
-              <div id="entity-custom-fields"></div>
               <div class="form-actions">
-                <button type="submit" id="submit-button" class="primary">Guardar</button>
-                <button type="button" id="cancel-edit" class="secondary" hidden>Cancelar edición</button>
+                <button type="button" id="delete-document" class="danger">Eliminar el documento seleccionado</button>
               </div>
-            </form>
-          </section>
-
-          <section class="card" aria-labelledby="edit-entity-heading">
-            <h2 id="edit-entity-heading">Editar o eliminar la entidad</h2>
-            <div>
-              <label for="edit-entity">Selecciona una entidad</label>
-              <select id="edit-entity"></select>
-              <div class="error" id="error-edit-entity" aria-live="polite"></div>
-            </div>
-            <div class="form-actions">
-              <button type="button" id="delete-entity" class="danger">Eliminar la entidad seleccionada</button>
-            </div>
-          </section>
+            </section>
+          </div>
         </section>
 
-        <section id="view-documents" aria-labelledby="documents-view-heading" hidden>
-          <h1 id="documents-view-heading">Documentos</h1>
-
-          <section class="card" aria-labelledby="document-form-heading">
-            <h2 id="document-form-heading">Agregar / Editar Documento</h2>
-            <form id="document-form">
-              <input type="hidden" id="document-id" />
-              <input type="hidden" id="document-entity-id" />
-              <div>
-                <label for="document-entity">Entidad *</label>
-                <select id="document-entity" name="document-entity"></select>
-                <div class="error" id="error-document-entity" aria-live="polite"></div>
-              </div>
-              <div class="field-row">
-                <div>
-                  <label for="series">Serie</label>
-                  <input id="series" name="series" placeholder="p. ej., FAC" />
-                </div>
-                <div>
-                  <label for="folio">Folio *</label>
-                  <input id="folio" name="folio" type="number" min="1" step="1" required />
-                  <div class="error" id="error-folio" aria-live="polite"></div>
-                </div>
-              </div>
-              <div>
-                <label for="startDate">Fecha de inicio *</label>
-                <input id="startDate" name="startDate" type="date" required />
-                <div class="error" id="error-startDate" aria-live="polite"></div>
-              </div>
-              <div>
-                <label for="endDate">Fecha de fin *</label>
-                <input id="endDate" name="endDate" type="date" required />
-                <div class="error" id="error-endDate" aria-live="polite"></div>
-              </div>
-              <div>
-                <label for="quantity">Cantidad</label>
-                <input id="quantity" name="quantity" type="number" min="1" step="1" />
-                <div class="error" id="error-quantity" aria-live="polite"></div>
-              </div>
-              <div>
-                <label for="subtotal">Subtotal</label>
-                <input id="subtotal" name="subtotal" type="number" min="0" step="0.01" />
-                <div class="error" id="error-subtotal" aria-live="polite"></div>
-              </div>
-              <div>
-                <label for="discount">Descuento</label>
-                <input id="discount" name="discount" type="number" min="0" step="0.01" />
-                <div class="error" id="error-discount" aria-live="polite"></div>
-              </div>
-              <div>
-                <label for="taxAmount">Impuesto</label>
-                <input id="taxAmount" name="taxAmount" type="number" min="0" step="0.01" />
-                <div class="error" id="error-taxAmount" aria-live="polite"></div>
-              </div>
-              <div>
-                <label for="totalAmount">Importe total</label>
-                <input id="totalAmount" name="totalAmount" type="number" min="0" step="0.01" />
-                <div class="error" id="error-totalAmount" aria-live="polite"></div>
-              </div>
-              <div>
-                <label for="currency">Moneda</label>
-                <input id="currency" name="currency" placeholder="p. ej., MXN" />
-              </div>
-              <div>
-                <label for="docPaymentTerms">Condiciones de pago</label>
-                <input id="docPaymentTerms" name="docPaymentTerms" placeholder="p. ej., contado, neto 30" />
-              </div>
-              <div>
-                <label for="notes">Notas</label>
-                <textarea id="notes" name="notes" rows="2"></textarea>
-              </div>
-              <div id="document-status-control"></div>
-              <div id="document-custom-fields"></div>
-              <div class="form-actions">
-                <button type="submit" id="document-submit-button" class="primary">Guardar Documento</button>
-                <button type="button" id="document-cancel-edit" class="secondary" hidden>Cancelar edición</button>
-              </div>
-            </form>
-          </section>
-
-          <section class="card" aria-labelledby="edit-document-heading">
-            <h2 id="edit-document-heading">Editar o eliminar el documento</h2>
-            <div>
-              <label for="edit-document">Selecciona un documento</label>
-              <select id="edit-document"></select>
-              <div class="error" id="error-edit-document" aria-live="polite"></div>
+        <!-- =========================== Búsqueda ========================== -->
+        <section id="view-search" class="view" aria-labelledby="search-view-heading" hidden>
+          <header class="page-head">
+            <div class="page-head-text">
+              <p class="eyebrow">Consulta</p>
+              <h1 id="search-view-heading">Buscar Entidades</h1>
+              <p class="muted">Encuentra registros y revisa sus documentos asociados.</p>
             </div>
-            <div class="form-actions">
-              <button type="button" id="delete-document" class="danger">Eliminar el documento seleccionado</button>
-            </div>
-          </section>
-        </section>
+          </header>
 
-        <section id="view-search" aria-labelledby="search-view-heading" hidden>
-          <h1 id="search-view-heading">Buscar Entidades</h1>
-
-          <section class="card" aria-labelledby="search-heading">
+          <section class="card card-search" aria-labelledby="search-heading">
             <h2 id="search-heading">Buscar una entidad</h2>
-            <input id="search-input" name="search-input" placeholder="Buscar por nombre, código, categoría..." aria-label="Buscar entidades" />
+            <div class="search-field">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+              <input id="search-input" name="search-input" placeholder="Buscar por nombre, código, categoría..." aria-label="Buscar entidades" />
+            </div>
           </section>
 
           <section class="card" aria-labelledby="results-heading">
             <h2 id="results-heading">Resultados</h2>
-            <div id="search-empty" class="empty" hidden>Sin coincidencias para tu búsqueda.</div>
-            <ul id="search-results-list" aria-live="polite"></ul>
+            <div id="search-empty" class="empty empty-search" hidden>Sin coincidencias para tu búsqueda.</div>
+            <ul id="search-results-list" class="record-list" aria-live="polite"></ul>
           </section>
+        </section>
+
+        <!-- =========================== Usuarios ========================== -->
+        <section id="view-users" class="view" aria-labelledby="users-view-heading" hidden>
+          <header class="page-head">
+            <div class="page-head-text">
+              <p class="eyebrow">Administración</p>
+              <h1 id="users-view-heading">Usuarios y Permisos</h1>
+              <p class="muted">Crea usuarios, asigna roles y controla el acceso a cada módulo.</p>
+            </div>
+          </header>
+
+          <div class="users-view-stack">
+            <section class="card" aria-labelledby="user-form-heading">
+              <h2 id="user-form-heading">Agregar / Editar Usuario</h2>
+              <form id="user-form">
+                <input type="hidden" id="user-id" />
+                <div class="field-grid field-grid-3">
+                  <div>
+                    <label for="user-username">Usuario *</label>
+                    <input id="user-username" autocomplete="off" />
+                    <div class="error" id="error-user-username" aria-live="polite"></div>
+                  </div>
+                  <div>
+                    <label for="user-name">Nombre *</label>
+                    <input id="user-name" />
+                    <div class="error" id="error-user-name" aria-live="polite"></div>
+                  </div>
+                  <div>
+                    <label for="user-email">Correo</label>
+                    <input id="user-email" type="email" autocomplete="off" />
+                    <div class="error" id="error-user-email" aria-live="polite"></div>
+                  </div>
+                  <div>
+      <label for="user-rut">RUT</label>
+      <input id="user-rut" placeholder="12.345.678-5" autocomplete="off" />
+      <div class="error" id="error-user-rut" aria-live="polite"></div>
+                  </div>
+                  <div>
+                    <label for="user-department">Departamento</label>
+                    <select id="user-department"><option value="">Sin departamento</option></select>
+                    <div class="error" id="error-user-department" aria-live="polite"></div>
+                  </div>
+                  <div>
+                    <label for="user-role">Rol *</label>
+                    <select id="user-role"></select>
+                    <div class="error" id="error-user-role" aria-live="polite"></div>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" id="user-submit-button" class="primary">Guardar Usuario</button>
+                  <button type="button" id="user-cancel-edit" class="secondary" hidden>Cancelar edición</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="card card-entity-table" aria-labelledby="users-list-heading">
+              <div class="card-heading-row">
+                <h2 id="users-list-heading">Usuarios registrados</h2>
+                <span id="users-count" class="muted"></span>
+              </div>
+              <div id="users-message" class="notice" hidden></div>
+              <div class="table-toolbar">
+                <div class="search-field">
+                  <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                  <label class="sr-only" for="user-search">Buscar usuarios por nombre o correo</label>
+                  <input id="user-search" type="search" autocomplete="off" placeholder="Buscar por nombre o correo…" />
+                </div>
+                <label class="filter-field" for="user-role-filter">Rol
+                  <select id="user-role-filter"><option value="">Todos los roles</option></select>
+                </label>
+                <button type="button" id="user-new-button" class="primary">Crear usuario</button>
+              </div>
+              <div id="users-empty" class="empty-state compact" hidden>
+                <span class="empty-icon" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"></path><path d="M19 8v6M16 11h6"></path></svg></span>
+                <h3>Sin usuarios registrados</h3>
+                <p class="muted">Crea el primero con el formulario y asígnale un rol del flujo de compras.</p>
+              </div>
+              <div id="users-no-results" class="empty-state compact" hidden>
+                <h3>Sin coincidencias</h3>
+                <p class="muted">Prueba con otro nombre, correo o filtro de rol.</p>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table" id="users-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Nombre</th>
+                      <th scope="col">Correo</th>
+                      <th scope="col">RUT</th>
+                      <th scope="col">Departamento</th>
+                      <th scope="col">Rol</th>
+                      <th scope="col">Estado</th>
+                      <th scope="col">Último acceso</th>
+                      <th scope="col">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="users-list" aria-live="polite"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="card card-permissions" aria-labelledby="permission-matrix-heading">
+              <div class="card-heading-row">
+                <div>
+                  <h2 id="permission-matrix-heading">Matriz de Permisos por Rol</h2>
+                  <p id="permission-matrix-help" class="muted">Los checks muestran las acciones permitidas para cada rol. La última fila refleja lo que puedes ejecutar con la sesión activa.</p>
+                </div>
+                <span id="permission-session-badge" class="status-badge" data-tone="sky">Sesión activa</span>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table permission-matrix" id="permission-matrix">
+                  <thead>
+                    <tr>
+                      <th scope="col">Rol</th>
+                      <th scope="col">Crear solicitudes</th>
+                      <th scope="col">Emitir OC</th>
+                      <th scope="col">Aprobar/Rechazar OC</th>
+                      <th scope="col">Gestionar proveedores</th>
+                      <th scope="col">Registrar recepciones</th>
+                      <th scope="col">Administrar usuarios</th>
+                    </tr>
+                  </thead>
+                  <tbody id="permission-matrix-body"></tbody>
+                </table>
+              </div>
+              <p id="permission-matrix-note" class="muted"></p>
+            </section>
+          </div>
+        </section>
+
+        <!-- ========================= Solicitudes ========================= -->
+        <section id="view-requisitions" class="view" aria-labelledby="requisitions-view-heading" hidden>
+          <header class="page-head">
+            <div class="page-head-text">
+              <p class="eyebrow">Flujo de compras · Paso 1</p>
+              <h1 id="requisitions-view-heading">Solicitudes de Compra</h1>
+              <p class="muted">Pide productos o servicios con una justificación; tu área la revisa antes de comprar.</p>
+            </div>
+            <ol class="flow-steps" aria-label="Flujo de compras">
+              <li class="is-current" aria-current="step"><span>1</span>Solicitud</li>
+              <li><span>2</span>Aprobación</li>
+              <li><span>3</span>Recepción</li>
+            </ol>
+          </header>
+
+          <div class="view-grid layout-split">
+            <section class="card" aria-labelledby="requisition-form-heading">
+              <h2 id="requisition-form-heading">Nueva Solicitud</h2>
+              <form id="requisition-form">
+                <input type="hidden" id="requisition-id" />
+                <div class="field-grid">
+                  <div>
+                    <label for="requisition-department">Departamento *</label>
+                    <select id="requisition-department"></select>
+                    <div class="error" id="error-requisition-department" aria-live="polite"></div>
+                  </div>
+                  <div>
+                    <label for="requisition-budget-line">Partida presupuestal</label>
+                    <input id="requisition-budget-line" />
+                  </div>
+                  <div class="span-full">
+                    <label for="requisition-justification">Justificación *</label>
+                    <textarea id="requisition-justification" rows="3"></textarea>
+                    <div class="error" id="error-requisition-justification" aria-live="polite"></div>
+                  </div>
+                </div>
+                <div class="detail-lines-section">
+                  <h3>Productos o servicios</h3>
+                  <div id="requisition-lines"></div>
+                  <div class="error" id="error-requisition-lines" aria-live="polite"></div>
+                </div>
+                <div class="form-actions form-actions-bar">
+                  <button type="button" id="add-requisition-line" class="secondary">Agregar línea</button>
+                  <button type="submit" id="requisition-submit-button" class="primary">Enviar Solicitud</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="card" aria-labelledby="requisitions-list-heading">
+              <h2 id="requisitions-list-heading">Mis solicitudes</h2>
+              <div id="requisitions-empty" class="empty-state compact" hidden>
+                <span class="empty-icon" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 2.5h6v3H9z"></path><path d="M9 11h6M9 15h4"></path></svg></span>
+                <h3>Sin solicitudes registradas</h3>
+                <p class="muted">Completa el formulario y envía tu primera solicitud; aparecerá aquí con su estado.</p>
+              </div>
+              <ul id="requisitions-list" class="record-list" aria-live="polite"></ul>
+            </section>
+          </div>
+        </section>
+
+        <!-- ======================== Aprobaciones ========================= -->
+        <section id="view-approvals" class="view" aria-labelledby="approvals-view-heading" hidden>
+          <header class="page-head">
+            <div class="page-head-text">
+              <p class="eyebrow">Flujo de compras · Paso 2</p>
+              <h1 id="approvals-view-heading">Aprobación de Solicitudes</h1>
+              <p class="muted">Revisa la justificación y el presupuesto del área antes de autorizar o rechazar.</p>
+            </div>
+            <ol class="flow-steps" aria-label="Flujo de compras">
+              <li class="is-done"><span>1</span>Solicitud</li>
+              <li class="is-current" aria-current="step"><span>2</span>Aprobación</li>
+              <li><span>3</span>Recepción</li>
+            </ol>
+          </header>
+
+          <div class="view-grid layout-inbox">
+            <section class="card" aria-labelledby="approvals-list-heading">
+              <h2 id="approvals-list-heading">Solicitudes pendientes</h2>
+              <div id="approvals-empty" class="empty-state compact" hidden>
+                <span class="empty-icon tone-green" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="m8 12.5 2.8 2.8L16.5 9.5"></path></svg></span>
+                <h3>No hay solicitudes pendientes</h3>
+                <p class="muted">Tu bandeja está al día. Las nuevas solicitudes de tu área llegarán aquí.</p>
+              </div>
+              <ul id="approvals-list" class="record-list inbox-list" aria-live="polite"></ul>
+            </section>
+
+            <section class="card" aria-labelledby="approval-detail-heading">
+              <h2 id="approval-detail-heading">Detalle de la solicitud</h2>
+              <div id="approval-detail" class="detail-pane"><p class="muted">Selecciona una solicitud pendiente.</p></div>
+              <div class="error" id="error-approval" aria-live="polite"></div>
+            </section>
+          </div>
+        </section>
+
+        <!-- ========================== Recepción ========================== -->
+        <section id="view-receptions" class="view" aria-labelledby="receptions-view-heading" hidden>
+          <header class="page-head">
+            <div class="page-head-text">
+              <p class="eyebrow">Flujo de compras · Paso 3</p>
+              <h1 id="receptions-view-heading">Recepción de Órdenes</h1>
+              <p class="muted">Registra entregas totales o parciales, con cantidades rechazadas y su motivo.</p>
+            </div>
+            <ol class="flow-steps" aria-label="Flujo de compras">
+              <li class="is-done"><span>1</span>Solicitud</li>
+              <li class="is-done"><span>2</span>Aprobación</li>
+              <li class="is-current" aria-current="step"><span>3</span>Recepción</li>
+            </ol>
+          </header>
+
+          <div class="view-grid layout-inbox">
+            <section class="card" aria-labelledby="receptions-list-heading">
+              <h2 id="receptions-list-heading">Órdenes aprobadas</h2>
+              <div class="table-toolbar inbox-toolbar">
+                <div class="search-field">
+                  <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                  <input id="reception-search" type="search" autocomplete="off" placeholder="Buscar por folio o proveedor..." aria-label="Buscar órdenes por folio o proveedor" />
+                </div>
+                <label class="filter-field" for="reception-status-filter">
+                  <span>Estado</span>
+                  <select id="reception-status-filter">
+                    <option value="">Todos</option>
+                    <option value="Emitida">Emitida</option>
+                    <option value="Recibida parcialmente">Recibida parcialmente</option>
+                  </select>
+                </label>
+              </div>
+              <div id="receptions-empty" class="empty-state compact" hidden>
+                <span class="empty-icon" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M21 8.5 12 3.5 3 8.5v7l9 5 9-5z"></path><path d="M3 8.5l9 5 9-5"></path><path d="M12 13.5v7"></path></svg></span>
+                <h3>No hay órdenes por recibir</h3>
+                <p class="muted">Ajusta la búsqueda o el filtro para ver otras órdenes aprobadas.</p>
+              </div>
+              <ul id="receptions-list" class="record-list inbox-list" aria-live="polite"></ul>
+            </section>
+
+            <section class="card" aria-labelledby="reception-form-heading">
+              <h2 id="reception-form-heading">Detalle de la orden</h2>
+              <input type="hidden" id="reception-order-id" />
+              <div class="error" id="error-reception-order" aria-live="polite"></div>
+              <div id="reception-detail" class="detail-pane"><p class="muted">Selecciona una orden por recibir.</p></div>
+              <div>
+                <label for="reception-observaciones">Observaciones</label>
+                <textarea id="reception-observaciones" rows="2"></textarea>
+              </div>
+              <div class="form-actions">
+                <button type="button" id="reception-submit-button" class="primary">Confirmar recepción</button>
+              </div>
+            </section>
+          </div>
         </section>
       </main>
     </div>
 
     <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/components/dashboard-activity.js"></script>
   </body>
 </html>

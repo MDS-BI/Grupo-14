@@ -47,7 +47,7 @@ describe('User Story 10 - add a document to an entity', () => {
     qs('currency').value = 'MXN';
     qs('docPaymentTerms').value = 'neto 30';
     qs('notes').value = 'Entrega parcial';
-    qs('status').value = 'borrador';
+    qs('status').value = 'Aprobada';
     qs('cf-tipoDocumento').value = 'Orden de Compra';
     qs('cf-fechaEmision').value = '2026-08-01';
     qs('document-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));

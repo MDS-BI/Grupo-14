@@ -26,8 +26,8 @@
 //     { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
 //   ],
 //   statusLifecycle: {
-//     statuses: ['borrador', 'cotización', 'aprobado', 'recibido', 'facturado', 'cancelado'],
-//     transitions: { borrador: ['cotización', 'cancelado'], cotización: ['aprobado', 'cancelado'], aprobado: ['recibido', 'cancelado'], recibido: ['facturado'], facturado: [], cancelado: [] }
+//     statuses: ['Aprobada', 'Emitida', 'Recibida parcialmente', 'Rechazada', 'Recibida'],
+//     transitions: { Aprobada: ['Emitida', 'Rechazada'], Emitida: ['Recibida parcialmente', 'Recibida', 'Rechazada'], 'Recibida parcialmente': ['Recibida'], Rechazada: [], Recibida: [] }
 //   },
 //   lineasDetalle: {
 //     // Etiqueta de la sección en la UI (opcional; por defecto "Líneas de detalle").
@@ -53,7 +53,7 @@ export const userConfig = {
   },
   customFields: [
     // Proveedores
-    { target: 'entity', key: 'categoriaProveedor', label: 'Categoría del proveedor', type: 'select', options: ['Materias primas', 'Servicios', 'Equipos', 'General'], required: true },
+    { target: 'entity', key: 'categoriaProveedor', label: 'Categoría del proveedor', type: 'select', options: ['Ferretería y seguridad industrial', 'Transporte de carga y embalaje', 'Equipamiento TI y redes', 'Artículos de escritorio e impresión', 'Estructuras metálicas y repuestos', 'Cartón corrugado y plásticos', 'Insumos químicos y limpieza', 'Materias primas', 'Servicios', 'Equipos', 'General'], required: true },
     { target: 'entity', key: 'vendedorContacto', label: 'Vendedor de contacto', type: 'text' },
     // Documentos de compra
     { target: 'document', key: 'tipoDocumento', label: 'Tipo de documento', type: 'select', options: ['Solicitud de Cotización', 'Orden de Compra', 'Recepción', 'Factura de Proveedor'], required: true },
@@ -63,18 +63,30 @@ export const userConfig = {
     { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
   ],
   statusLifecycle: {
-    statuses: ['borrador', 'cotización', 'aprobado', 'recibido', 'facturado', 'cancelado'],
+    statuses: ['Aprobada', 'Emitida', 'Recibida parcialmente', 'Rechazada', 'Recibida'],
     transitions: {
-      borrador: ['cotización', 'cancelado'],
-      cotización: ['aprobado', 'cancelado'],
-      aprobado: ['recibido', 'cancelado'],
-      recibido: ['facturado'],
-      facturado: [],
-      cancelado: []
+      Aprobada: ['Emitida', 'Rechazada'],
+      // Recibida parcialmente / Recibida solo se asignan al registrar recepciones (FR-045)
+      Emitida: ['Recibida parcialmente', 'Recibida', 'Rechazada'],
+      'Recibida parcialmente': ['Recibida'],
+      Rechazada: [],
+      Recibida: []
     }
   },
-  theme: { accentColor: '#0f766e' }
+  lineasDetalle: {
+    label: 'Líneas de detalle',
+    unidadesMedida: ['unidades', 'cajas', 'litros', 'kg', 'metros'],
+    maxPorcentajeDescuento: 100,
+    camposExtra: [
+      { key: 'centroCosto', label: 'Centro de costo', type: 'text' }
+    ]
+  },
+  theme: { accentColor: '#0e6278' }
 };
+
+// Tasa de impuesto aplicada en la cascada de totales de la cabecera
+// (fracción: 0.19 = 19 % de IVA).
+export const DEFAULT_TAX_RATE = 0.19;
 
 // ---------------------------------------------------------------------------
 // Cargador central — no deberías necesitar modificar nada debajo de esta línea.
@@ -131,8 +143,8 @@ export const LINEA_DETALLE_FIELDS = Object.freeze({
 export const BASE_LINEA_FIELDS = Object.freeze(Object.keys(LINEA_DETALLE_FIELDS));
 
 export const BASE_FIELDS = Object.freeze({
-  entity: Object.freeze(['id', 'entity_id', 'name', 'code', 'taxId', 'email', 'phone', 'address', 'category', 'description', 'targetDate', 'creditLimit', 'paymentTerms', 'createdAt', 'updatedAt']),
-  document: Object.freeze(['id', 'entity_id', 'series', 'folio', 'startDate', 'endDate', 'quantity', 'subtotal', 'discount', 'taxAmount', 'totalAmount', 'currency', 'paymentTerms', 'notes', 'status', 'createdAt', 'updatedAt']),
+  entity: Object.freeze(['id', 'entity_id', 'name', 'code', 'taxId', 'email', 'phone', 'address', 'category', 'description', 'targetDate', 'creditLimit', 'paymentTerms', 'estado', 'createdAt', 'updatedAt']),
+  document: Object.freeze(['id', 'entity_id', 'series', 'folio', 'startDate', 'endDate', 'quantity', 'subtotal', 'discount', 'taxAmount', 'totalAmount', 'currency', 'paymentTerms', 'notes', 'status', 'lineasDetalle', 'createdAt', 'updatedAt']),
   detalle: BASE_LINEA_FIELDS
 });
 

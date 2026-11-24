@@ -32,3 +32,4 @@
 ## Notas
 
 - La especificación está lista para la planificación y la implementación.
+- 2026-11-03: Revalidada tras reemplazar la Historia de Usuario 6 por la historia de verificación y registro de recepción de productos (FR-040 a FR-047, SC-011 a SC-013). Todos los ítems siguen cumpliéndose; sin marcadores [NEEDS CLARIFICATION].
