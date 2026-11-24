@@ -363,3 +363,57 @@
 - En la Fase 16, T064-T067 y T069 pueden ejecutarse en paralelo; T072 aterriza junto al cambio de enrutamiento T068
 - En la Fase 17, T073/T074/T077 pueden ejecutarse en paralelo con T075/T076
 - En la Fase 18, T078 y T079 pueden ejecutarse en paralelo antes de la verificación final T080-T081
+
+---
+
+## Fase 19: Líneas de Detalle de Documentos de Compra
+
+**Propósito**: Completar la relación 1 a N entre documentos de compra y sus líneas de detalle, incluyendo validación, persistencia, cálculo automático y representación en la interfaz.
+
+**Prueba Independiente**: Un usuario puede crear o editar una orden de compra, recepción o factura con varias líneas de producto; cada línea valida sus datos, calcula su subtotal y actualiza los totales de la cabecera sin que el usuario los escriba manualmente.
+
+### Pruebas para Líneas de Detalle
+
+- [ ] T082 [P] Añadir pruebas unitarias para la validación del sub-esquema de líneas y para la colisión de campos extra en tests/unit/module-config.test.js y tests/unit/storage.test.js
+- [ ] T083 [P] Añadir pruebas unitarias para `computeSubtotalLinea`, `subtotalFromLineas` y `applyTotalesToCabecera` en tests/unit/module-config.test.js
+- [ ] T084 [P] Añadir pruebas de integración para crear, editar y eliminar líneas dentro de un documento en tests/integration/document-lineas.test.js
+
+### Implementación de Líneas de Detalle
+
+- [ ] T085 Activar en el perfil de adquisiciones `lineasDetalle` con etiqueta, unidades de medida, descuento máximo y campos extra definidos en src/module-config.js
+- [ ] T086 Añadir el campo persistido `lineasDetalle` al modelo de `Document` y documentar su relación 1 a N con `documento_id` en specs/001-erp-base-module/data-model.md
+- [ ] T087 Implementar validación y normalización de líneas en src/storage.js: clave foránea, producto, descripción, cantidad, unidad, precio, descuento y campos extra
+- [ ] T088 Persistir `lineasDetalle` al crear y actualizar documentos, asignar `documento_id` al identificador del documento y eliminar las líneas junto con el documento en src/storage.js
+- [ ] T089 Crear la interfaz editable de líneas dentro de src/components/document-form.js, con añadir/quitar líneas, campos obligatorios, controles de unidad y campos extra configurados
+- [ ] T090 Conectar los cambios de las líneas al recálculo en vivo de `subtotalLinea`, `subtotal`, `discount`, `taxAmount` y `totalAmount` en src/components/document-form.js y src/storage.js
+- [ ] T091 Mostrar las líneas y sus subtotales en la lista o detalle de documentos en src/components/document-list.js y src/app.js
+
+---
+
+## Fase 20: Trazabilidad, Totales e Integridad de Compras
+
+**Propósito**: Cerrar las reglas específicas del perfil activo que afectan a divisas, impuestos, descuentos y consistencia histórica de las compras.
+
+**Prueba Independiente**: Guardar una compra en USD con tipo de cambio y fecha de emisión conserva la instantánea, recalcula correctamente sus totales y rechaza valores inválidos o inconsistentes.
+
+### Pruebas
+
+- [ ] T092 [P] Ampliar tests/unit/storage.test.js para validar fecha de emisión obligatoria, tipo de cambio numérico y descuento global no superior al subtotal derivado de líneas
+- [ ] T093 [P] Ampliar tests/integration/tipos-cambio.test.js para comprobar que moneda, tipo de cambio y fecha permanecen congelados tras editar el documento
+- [ ] T094 [P] Añadir pruebas de cálculo de impuestos y descuentos globales con líneas en tests/integration/document-lineas.test.js
+
+### Implementación
+
+- [ ] T095 Conservar `currency`, `tipoCambio` y `fechaEmision` como instantánea del documento y validar que el tipo de cambio sea numérico no negativo en src/storage.js
+- [ ] T096 Incorporar la tasa de impuesto configurable del perfil y una moneda local de referencia en src/module-config.js, sin recalcular tipos de cambio históricos ni totales desde catálogos externos
+- [ ] T097 Hacer que el almacenamiento y el formulario consuman una única cascada de cálculo de totales basada en líneas, con redondeo consistente a dos decimales y sin permitir edición manual de importes derivados
+
+---
+
+## Dependencias adicionales
+
+- Fase 19: depende de completar las Historias de Usuario 5, 10 y 12
+- Fase 20: depende de completar la Fase 19 y las tareas existentes de tipos de cambio
+- T082-T083 pueden ejecutarse en paralelo con T085
+- T084 puede ejecutarse en paralelo con T089 una vez definido el contrato de líneas
+- T092-T094 pueden ejecutarse en paralelo antes de T095-T097
