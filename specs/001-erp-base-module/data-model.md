@@ -4,6 +4,14 @@
 
 Fuentes: `specs/001-erp-base-module/plan.md`, `specs/001-erp-base-module/spec.md`, `src/module-config.js`. Ante contradicciones prevalece `plan.md` (ver [Notas de reconciliación](#notas-de-reconciliación)).
 
+## Diagramas
+
+| MER conceptual | MER lógico |
+|---|---|
+| [![MER conceptual](mer-conceptual.svg)](mer-conceptual.svg) | [![MER lógico](mer-logico.svg)](mer-logico.svg) |
+
+- **Conceptual**: Proveedor, Orden de Compra, Recepción y Producto; la relación Orden–Producto N:M se dibuja punteada.
+- **Lógico**: la N:M se resuelve con la entidad intermedia **Línea de Detalle** (dos relaciones 1:N).
 
 ### Vista rápida (Mermaid, modelo lógico)
 
@@ -17,7 +25,7 @@ erDiagram
     string ID_Proveedor PK
     string name "Nombre o razón social"
     string code "Código de negocio"
-    string taxId "RFC / NIT / CUIT / RUT"
+    string taxId "RUT chileno XX.XXX.XXX-X"
     select categoriaProveedor "Materias primas / Servicios / Equipos / General"
     string vendedorContacto "Vendedor asignado (opcional)"
     string telefono "Teléfono de contacto"
@@ -27,12 +35,12 @@ erDiagram
   }
   ORDEN_DE_COMPRA {
     string ID_OrdenCompra PK
-    string series_folio "Ej. OC-2045, SC-1001"
+    string series_folio "Ej. OC-2045"
     select tipoDocumento "Solicitud de Cotización / Orden de Compra / Recepción / Factura de Proveedor"
-    select estado "Aprobada, Emitida, Recibida parcialmente, Rechazada, Recibida"
+    select estado "Pendiente de aprobación, Aprobada, En cotización, Emitida, Recibida parcialmente, Recibida, Pagada, Rechazada"
     select prioridad "Normal / Urgente"
     date fechaEmision "YYYY-MM-DD (obligatoria)"
-    string currency "Moneda (MXN, USD, EUR…)"
+    string currency "Moneda (CLP, USD, EUR…)"
     number tipoCambio "Instantánea congelada al guardar"
     number subtotal "Calculado: Σ subtotalLinea"
     number discount "Descuento global de cabecera"
@@ -53,6 +61,16 @@ erDiagram
     string Nombre_Producto "Nombre del bien o servicio"
     string Unidad_Medida "unidades, cajas, litros…"
     number Precio_Referencia "Precio unitario sugerido"
+  }
+  EVENTO_DE_AUDITORIA {
+    string eventoId PK "ID del evento"
+    datetime timestamp "ISO-8601"
+    string rol "Rol activo"
+    string accion " Acción"
+    string entidadTipo "Tipo de entidad"
+    string entidadId "ID de entidad"
+    string estadoAnterior "Estado anterior"
+    string estadoNuevo "Estado nuevo"
   }
   LINEA_DE_DETALLE {
     string id PK
@@ -83,7 +101,7 @@ Dato maestro: empresa o persona que suministra bienes o servicios, con su identi
 | `id` | `id` | string | Sí |  | Identificador interno del registro en el storage. | Generado automáticamente. | — |
 | `name` | `name` | string | Sí |  | Nombre o razón social del proveedor. Ej./valores: Nombre o razón social | No vacío; se almacena recortado. | ✓ |
 | `code` | `code` | string | Sí |  | Código o clave de negocio del proveedor. Ej./valores: Código de negocio | No vacío; se almacena recortado. | ✓ |
-| `taxId` | `taxId` | string | No |  | Identificación fiscal (RFC, NIT, CUIT o RUT según el país). Ej./valores: RFC / NIT / CUIT / RUT | Opcional; se almacena recortado. | ✓ |
+| `taxId` | `taxId` | string | Sí |  | Identificación fiscal del perfil activo: RUT chileno validado con módulo 11. Ej./valores: RUT chileno XX.XXX.XXX-X | Obligatorio; único entre proveedores; módulo 11; formato XX.XXX.XXX-X. | ✓ |
 | `categoriaProveedor` | `categoriaProveedor` | select | Sí |  | Clasifica el tipo de suministro que aporta el proveedor (campo personalizado). Ej./valores: Materias primas / Servicios / Equipos / General | Obligatorio; uno de: Materias primas, Servicios, Equipos, General. | ✓ |
 | `vendedorContacto` | `vendedorContacto` | string | No |  | Representante o vendedor asignado por el proveedor (campo personalizado). Ej./valores: Vendedor asignado (opcional) | Opcional; texto libre. | ✓ |
 | `telefono` | `phone` | string | No |  | Número telefónico de contacto. Ej./valores: Teléfono de contacto | Opcional; se almacena recortado. | ✓ |
@@ -96,6 +114,7 @@ Dato maestro: empresa o persona que suministra bienes o servicios, con su identi
 | `targetDate` | `targetDate` | date | No |  | Fecha objetivo genérica de la base (p. ej., revisión del proveedor). | Opcional; fecha válida YYYY-MM-DD. | — |
 | `createdAt` | `createdAt` | datetime | Sí |  | Marca de tiempo de creación. | Asignada por el storage. | — |
 | `updatedAt` | `updatedAt` | datetime | Sí |  | Marca de tiempo de la última actualización. | Asignada por el storage. | — |
+| `revision` | `revision` | integer | Sí |  | Versión optimista del registro para detectar escrituras obsoletas. | Entero >= 1; se incrementa en cada mutación y se compara antes de guardar. | — |
 
 ### ORDEN DE COMPRA
 
@@ -106,12 +125,12 @@ Documento transaccional del flujo de compras (solicitud de cotización, orden de
 | Campo | Campo en código | Tipo | Obligatorio | PK/FK | Descripción / ejemplo | Regla de validación | MER |
 |---|---|---|---|---|---|---|---|
 | `ID_OrdenCompra` | `id` | string | Sí | PK | Identificador único del documento. | Generado automáticamente. | ✓ |
-| `series / folio` | `series + folio` | string + integer | Sí |  | Numeración oficial: la serie agrupa folios consecutivos y se combina con el folio. Ej./valores: Ej. OC-2045, SC-1001 | series opcional; folio obligatorio, entero positivo. | ✓ |
+| `series / folio` | `series + folio` | string + integer | Sí |  | Numeración oficial; las Órdenes de Compra usan exclusivamente OC-XXXX. Ej./valores: Ej. OC-2045 | folio obligatorio y único; en Orden de Compra el formato OC-XXXX es irreversible. | ✓ |
 | `tipoDocumento` | `tipoDocumento` | select | Sí |  | Etapa del flujo de compras que representa el documento (campo personalizado). Ej./valores: Solicitud de Cotización / Orden de Compra / Recepción / Factura de Proveedor | Obligatorio; uno de: Solicitud de Cotización, Orden de Compra, Recepción, Factura de Proveedor. | ✓ |
-| `estado` | `status` | select | No |  | Estado del documento dentro del ciclo de vida configurado. Ej./valores: Aprobada, Emitida, Recibida parcialmente, Rechazada, Recibida | Uno de los estados de statusLifecycle; solo transiciones permitidas. | ✓ |
+| `estado` | `status` | select | No |  | Estado del documento dentro del ciclo de vida configurado. Ej./valores: Pendiente de aprobación, Aprobada, En cotización, Emitida, Recibida parcialmente, Recibida, Pagada, Rechazada | Uno de los estados de statusLifecycle; solo transiciones permitidas; el override exige motivo en auditoría. | ✓ |
 | `prioridad` | `prioridad` | select | No |  | Prioridad de la compra (campo personalizado). Ej./valores: Normal / Urgente | Opcional; Normal o Urgente. | ✓ |
 | `fechaEmision` | `fechaEmision` | date | Sí |  | Día en que se creó el documento y se fijó el tipo de cambio. Ej./valores: YYYY-MM-DD (obligatoria) | Obligatoria; fecha de calendario válida YYYY-MM-DD. | ✓ |
-| `currency` | `currency` | string | No |  | Código de moneda de los importes del documento. Ej./valores: Moneda (MXN, USD, EUR…) | Opcional. | ✓ |
+| `currency` | `currency` | string | No |  | Código de moneda de los importes del documento; la moneda local de referencia es CLP. Ej./valores: Moneda (CLP, USD, EUR…) | Obligatorio en el perfil activo; las comparaciones usan tolerancia de 0,01 CLP. | ✓ |
 | `tipoCambio` | `tipoCambio` | number | No |  | Valor de una unidad de la divisa del documento frente a la moneda local; no se recalcula después. Ej./valores: Instantánea congelada al guardar | Opcional; debe ser un número. | ✓ |
 | `subtotal` | `subtotal` | number | Calculado |  | Importe antes de descuento global e impuestos. Ej./valores: Calculado: Σ subtotalLinea | Calculado; número no negativo. | ✓ |
 | `discount` | `discount` | number | No |  | Descuento global aplicado sobre el subtotal (lo captura el usuario). Ej./valores: Descuento global de cabecera | Opcional; número no negativo, no puede superar el subtotal. | ✓ |
@@ -124,6 +143,7 @@ Documento transaccional del flujo de compras (solicitud de cotización, orden de
 | `notes` | `notes` | string | No |  | Notas u observaciones libres. | Opcional. | — |
 | `createdAt` | `createdAt` | datetime | Sí |  | Marca de tiempo de creación. | Asignada por el storage. | — |
 | `updatedAt` | `updatedAt` | datetime | Sí |  | Marca de tiempo de la última actualización. | Asignada por el storage. | — |
+| `revision` | `revision` | integer | Sí |  | Versión optimista del registro para detectar escrituras obsoletas. | Entero >= 1; se incrementa en cada mutación y se compara antes de guardar. | — |
 | `ID_Proveedor` | `entity_id` | string | Sí | FK → PROVEEDOR.ID_Proveedor | Proveedor al que se emite el documento. | Obligatorio; debe existir en PROVEEDOR. Al eliminar el proveedor se eliminan sus documentos (cascada). | ✓ |
 
 ### RECEPCIÓN
@@ -139,6 +159,8 @@ Registro de una entrega física del proveedor contra una Orden de Compra.
 | `Responsable_Almacen` | — | string | Sí |  | Usuario con rol de encargado de recepción que confirma la entrega. Ej./valores: Encargado de recepción | Obligatorio; solo usuarios con rol de encargado de recepción (FR-046). | ✓ |
 | `Estado_Recepcion` | — | string | Sí |  | Resultado de la recepción frente a lo pendiente de la orden. Ej./valores: Completa / parcial | Obligatorio. | ✓ |
 | `Observaciones` | — | string | No |  | Observaciones generales de la entrega (spec.md, entidad Recepción). | Opcional. | — |
+| `updatedAt` | `updatedAt` | datetime | Sí |  | Marca de tiempo de la última actualización de la recepción. | Asignada por el storage. | — |
+| `revision` | `revision` | integer | Sí |  | Versión optimista de la recepción. | Entero >= 1; se compara antes de guardar. | — |
 | `ID_OrdenCompra` | — | string | Sí | FK → ORDEN DE COMPRA.ID_OrdenCompra | Orden de compra que se recibe. | Obligatorio; la orden debe existir y no estar recibida por completo, cancelada ni sin emitir (FR-047). | ✓ |
 
 ### PRODUCTO
@@ -154,6 +176,29 @@ Bien o servicio que puede comprarse.
 | `Nombre_Producto` | — | string | Sí |  | Nombre del producto o servicio. Ej./valores: Nombre del bien o servicio | No vacío. | ✓ |
 | `Unidad_Medida` | — | string | Sí |  | Unidad de medida por defecto. Ej./valores: unidades, cajas, litros… | Obligatoria; idealmente una de lineasDetalle.unidadesMedida. | ✓ |
 | `Precio_Referencia` | — | number | No |  | Precio unitario de referencia para proponer precioUnitario en las líneas. Ej./valores: Precio unitario sugerido | Opcional; número no negativo. | ✓ |
+| `updatedAt` | `updatedAt` | datetime | Sí |  | Marca de tiempo de la última actualización del producto. | Asignada por el storage cuando la colección esté activa. | — |
+| `revision` | `revision` | integer | Sí |  | Versión optimista del producto. | Entero >= 1; se compara antes de guardar. | — |
+
+### EVENTO DE AUDITORÍA (solo MER lógico)
+
+Registro secuencial de cambios y decisiones relevantes, de solo lectura para todos los roles.
+
+*Implementación*: Colección eventosAuditoria en src/storage.js; escrita por src/auth.js y las acciones de dominio.
+
+| Campo | Campo en código | Tipo | Obligatorio | PK/FK | Descripción / ejemplo | Regla de validación | MER |
+|---|---|---|---|---|---|---|---|
+| `eventoId` | `eventoId` | string | Sí | PK | Identificador único del evento de auditoría. Ej./valores: ID del evento | Generado automáticamente; único e inmutable. | ✓ |
+| `timestamp` | `timestamp` | datetime | Sí |  | Momento en que ocurrió la acción. Ej./valores: ISO-8601 | Asignado por el storage; ISO-8601. | ✓ |
+| `usuarioId` | `usuarioId` | string | Sí |  | Identificador del usuario que ejecutó la acción. | Obligatorio; debe existir en usuarios. | — |
+| `nombreUsuario` | `nombreUsuario` | string | Sí |  | Nombre legible del usuario en el momento del evento. | Obligatorio; instantánea del nombre, no se recalcula. | — |
+| `rol` | `rol` | string | Sí |  | Rol del usuario cuando se registró el evento. Ej./valores: Rol activo | Uno de: solicitante, encargado_compras, aprobador, recepcion, administrador. | ✓ |
+| `accion` | `accion` | string | Sí |  | Acción ejecutada (crear, editar, aprobar, rechazar, override, emitir, recibir, pagar, exportar, restaurar). Ej./valores:  Acción | Obligatorio; vocabulario controlado por module-config.js. | ✓ |
+| `entidadTipo` | `entidadTipo` | string | Sí |  | Tipo de objeto afectado. Ej./valores: Tipo de entidad | Obligatorio. | ✓ |
+| `entidadId` | `entidadId` | string | Sí |  | Identificador del objeto afectado. Ej./valores: ID de entidad | Obligatorio; UUID del registro. | ✓ |
+| `estadoAnterior` | `estadoAnterior` | string | No |  | Valor previo del campo gobernado por el flujo. Ej./valores: Estado anterior | Opcional; requerido en transiciones de estado. | ✓ |
+| `estadoNuevo` | `estadoNuevo` | string | No |  | Valor posterior del campo gobernado por el flujo. Ej./valores: Estado nuevo | Opcional; requerido en transiciones de estado. | ✓ |
+| `comentario` | `comentario` | string | No |  | Motivo o contexto de la acción; obligatorio en overrides. | Texto libre; obligatorio cuando accion = override. | — |
+| `revision` | `revision` | integer | Sí |  | Revisión de la entidad afectada al registrarse el evento. | Entero >= 1. | — |
 
 ### LÍNEA DE DETALLE (solo MER lógico)
 
@@ -189,26 +234,35 @@ Integridad referencial: al eliminar un PROVEEDOR se eliminan los documentos que 
 
 | Estado actual | Transiciones permitidas |
 |---|---|
-| Aprobada | Emitida, Rechazada |
+| Pendiente de aprobación | Aprobada, Rechazada |
+| Aprobada | En cotización, Emitida, Rechazada |
+| En cotización | Aprobada, Rechazada |
 | Emitida | Recibida parcialmente, Recibida, Rechazada |
 | Recibida parcialmente | Recibida |
+| Recibida | Pagada |
+| Pagada | *(fin)* |
 | Rechazada | *(fin)* |
-| Recibida | *(fin)* |
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Aprobada
+  [*] --> Pendiente_de_aprobacion
+  Pendiente_de_aprobacion --> Aprobada
+  Pendiente_de_aprobacion --> Rechazada
+  Aprobada --> En_cotizacion
   Aprobada --> Emitida
   Aprobada --> Rechazada
+  En_cotizacion --> Aprobada
+  En_cotizacion --> Rechazada
   Emitida --> Recibida_parcialmente
   Emitida --> Recibida
   Emitida --> Rechazada
   Recibida_parcialmente --> Recibida
+  Recibida --> Pagada
+  Pagada --> [*]
   Rechazada --> [*]
-  Recibida --> [*]
 ```
 
-El flujo avanza solicitud de cotización aprobada (Aprobada) → orden de compra emitida con folio OC (Emitida) → recepción parcial (Recibida parcialmente) → recepción completa (Recibida). La emisión solo parte de Aprobada; Recibida parcialmente y Recibida solo se asignan al registrar recepciones (FR-045, SC-013). El rechazo se permite mientras no se haya confirmado ninguna recepción.
+El flujo avanza solicitud justificada pendiente → aprobación → cotización/orden emitida con folio exclusivo OC-XXXX → recepción parcial → recepción completa → pago. En cotización vuelve a Aprobada al elegir proveedor; la emisión solo parte de Aprobada; Recibida parcialmente y Recibida solo se asignan al registrar recepciones (FR-045, SC-013); Pagada solo se asigna tras registrar el pago. El rechazo se permite mientras no se haya confirmado ninguna recepción y todo override exige motivo en auditoría.
 
 ## Fórmulas de totales
 
@@ -219,7 +273,7 @@ El flujo avanza solicitud de cotización aprobada (Aprobada) → orden de compra
 | `taxAmount` | `taxAmount = (subtotal − discount) × tasaImpuesto` | `applyTotalesToCabecera` |
 | `totalAmount` | `totalAmount = subtotal − discount + taxAmount` | `applyTotalesToCabecera` |
 
-Todos los importes se redondean a 2 decimales. tasaImpuesto es una fracción (p. ej., 0.19 para 19 %). El porcentaje de descuento de línea se acota a 0..100 antes de aplicarse. Cualquier cambio en las líneas recalcula en cascada los totales de la cabecera.
+Todos los importes se redondean a 2 decimales; las comparaciones monetarias usan tolerancia absoluta de 0,01 CLP. tasaImpuesto es una fracción (p. ej., 0.19 para 19 %). El porcentaje de descuento de línea se acota a 0..100 antes de aplicarse. Cualquier cambio en las líneas recalcula en cascada los totales de la cabecera.
 
 ## Configuración del módulo (ModuleConfig)
 
@@ -233,12 +287,21 @@ Objeto ModuleConfig (`userConfig` en src/module-config.js) cargado al arrancar q
 | `statusLifecycle` | object | Estados y transiciones permitidas de los documentos (ver ciclo de vida). | Opcional; los estados de transitions deben existir en statuses. |
 | `lineasDetalle` | object | Configuración de las líneas: label, unidadesMedida, maxPorcentajeDescuento, camposExtra. | Opcional; maxPorcentajeDescuento entre 0 y 100; camposExtra no chocan con LINEA_DETALLE_FIELDS. |
 | `theme` | object | Marca; accentColor = #0f766e. | accentColor debe ser hexadecimal #rgb o #rrggbb. |
+| `identidadFiscal` | object | RUT chileno como identidad fiscal activa; validación módulo 11 y formato XX.XXX.XXX-X. | Obligatorio en proveedores; único y normalizado antes de persistir. |
+| `monedaLocal` | string | Moneda funcional de referencia para totales y comparaciones (CLP). | Código ISO; las comparaciones usan tolerancia de 0,01 CLP. |
+| `realtime` | object | Configuración de actualización por evento para dashboard, alertas y presupuestos. | stalenessMaxMs = 2000; sin sondeo continuo. |
+| `concurrencia` | object | Control optimista basado en revision y updatedAt. | Toda mutación compara la versión leída antes de escribir; conflicto = sin guardado silencioso. |
+| `esquemaRespaldo` | object | Formato del archivo JSON de exportación/restauración con schemaVersion, exportedAt y colecciones del módulo. | La restauración valida versión, colecciones obligatorias, RUT, folios únicos y tipos antes de reemplazar el estado. |
 
 - La configuración se carga una vez al arrancar y se aplica en todas las pantallas.
 - Sin configuración se usan los valores integrados: Entidad/Documento, sin campos personalizados, estado de texto libre y color de acento predeterminado.
 - Los valores inválidos o conflictivos se informan con claridad en lugar de fallar en silencio.
 - Los valores de campos personalizados se persisten junto a los campos base sin cambios de esquema en el storage.
 - Un ciclo de vida configurado reemplaza la entrada de estado de texto libre.
+- La numeración de Órdenes de Compra usa exclusivamente OC-XXXX, con sufijo único e irreversible.
+- Los roles se verifican en la capa de aplicación; el solicitante no aprueba su propia solicitud y el aprobador no confirma recepciones.
+- Los eventos de auditoría son de solo lectura y todo override exige comentario obligatorio.
+- La exportación produce JSON versionado; la restauración rechaza esquemas desconocidos o incompletos sin mezclar datos.
 
 ## Notas de reconciliación
 
@@ -248,11 +311,17 @@ Objeto ModuleConfig (`userConfig` en src/module-config.js) cargado al arrancar q
 4. **discount no es calculado.** El encargo pedía marcar subtotal, discount, taxAmount y totalAmount como calculados. Según plan.md y applyTotalesToCabecera, discount es el descuento global que captura el usuario y se aplica después de Σ subtotalLinea; solo subtotal, taxAmount y totalAmount son calculados.
 5. **Ortografía de categoriaProveedor.** La imagen dice «Materias primes»; lo correcto (y lo que usa module-config.js) es «Materias primas».
 6. **Nombres lógicos frente a campos de código.** ID_Proveedor corresponde a entity_id (identificador público al que apuntan los documentos; el storage también guarda un id interno), ID_OrdenCompra corresponde a document.id, telefono corresponde a phone y estado corresponde a status. La columna «Campo en código» de cada tabla da la correspondencia.
-7. **taxId.** El encargo indica RFC / NIT / RUT; plan.md indica RFC/NIT/CUIT. Se documentan los cuatro, ya que el campo es texto libre.
-8. **PK de la Línea de Detalle.** El storage genera un `id` por línea al persistirla dentro de `documento.lineasDetalle` y asigna `documento_id` desde el documento padre; la relación 1:N queda materializada en cada línea.
+7. **taxId.** El perfil activo fija RUT chileno como identidad fiscal: obligatorio, único, validado con módulo 11 y formateado XX.XXX.XXX-X. RFC/NIT/CUIT quedan como punto de extensión de otros perfiles, no como valor libre del perfil actual.
+8. **PK de la Línea de Detalle.** El storage genera un id por línea al persistirla dentro de documento.lineasDetalle y asigna documento_id desde el documento padre; la relación 1:N queda materializada en cada línea.
 9. **PRODUCTO sin catálogo implementado.** plan.md solo define producto_id como «referencia al catálogo de bienes/servicios (id o SKU)», de tipo texto y sin validación referencial. PRODUCTO y sus atributos (SKU / Código, Nombre_Producto, Unidad_Medida, Precio_Referencia) son el catálogo conceptual al que apunta esa referencia; la FK producto_id → ID_Producto es lógica y el storage todavía no la valida.
-10. **lineasDetalle activo en userConfig.** El perfil de Adquisiciones declara etiqueta, `unidadesMedida`, `maxPorcentajeDescuento` y `camposExtra`; el formulario usa selectores de unidad y el storage persiste y recalcula las líneas con esos límites.
+10. **lineasDetalle activo en userConfig.** El perfil de Adquisiciones declara etiqueta, unidadesMedida, maxPorcentajeDescuento y camposExtra; el formulario usa selectores de unidad y el storage persiste y recalcula las líneas con esos límites.
 11. **Fechas base del Documento.** El storage actual sigue exigiendo startDate y endDate (endDate ≥ startDate) además de fechaEmision. Se documentan como obligatorias, pero no se muestran en el MER.
-12. **Estados en spec.md.** spec.md (HU2/HU6/HU11) menciona Emitida, Recibida parcialmente, Recibida y Pagada. El ciclo de vida implementado en `module-config.js` es Aprobada → Emitida → Recibida parcialmente → Recibida → Pagada, con Rechazada hasta la primera recepción. Por FR-045 «Recibida parcialmente» y «Recibida» solo los asigna el registro de recepciones; «Pagada» se asigna al registrar una factura cuyo monto coincide con la recepción total.
+12. **Estados en spec.md.** El ciclo de vida canónico es Pendiente de aprobación → Aprobada → En cotización/Emitida → Recibida parcialmente → Recibida → Pagada, con Rechazada hasta la primera recepción. Por FR-045 «Recibida parcialmente» y «Recibida» solo los asigna el registro de recepciones; «Pagada» se asigna al registrar el pago; todo override se registra con motivo en auditoría.
 13. **Nombre de la tabla intermedia.** spec.md (HU2) llama Detalle_Orden a la tabla intermedia; en el modelo se llama LÍNEA DE DETALLE, como en plan.md y LINEA_DETALLE_FIELDS.
 14. **Línea de Recepción.** spec.md describe una Línea de Recepción (cantidad conforme, rechazada y motivo). Queda fuera de este MER, que se limita a las entidades pedidas; es la siguiente extensión natural de RECEPCIÓN (1:N).
+15. **Auditoría.** EVENTO_DE_AUDITORIA se modela solo en el MER lógico porque no es un concepto del MER conceptual solicitado. Registra eventoId, timestamp, usuarioId, nombreUsuario, rol, accion, entidadTipo, entidadId, estadoAnterior, estadoNuevo, comentario y revision; es de solo lectura.
+16. **Concurrencia.** Los registros persistentes incluyen revision y updatedAt. El storage relee antes de escribir y bloquea la mutación si la versión cambió; no se permite sobrescritura silenciosa.
+17. **Exportación y respaldo.** El archivo JSON incluye schemaVersion, exportedAt, módulo, colecciones y eventos de auditoría; la restauración valida versión, colecciones obligatorias, RUT y unicidad de folio antes de reemplazar el estado.
+18. **Seguridad solo-cliente.** La manipulación de localStorage no puede impedirse sin backend. El riesgo se acepta para la Prueba de Concepto y se compensa con validación de esquema, hash saltado, roles funcionales, auditoría y revisión optimista.
+19. **Tiempo real y rendimiento.** Dashboard, alertas y presupuestos se actualizan por evento con staleness máxima de 2 s; las metas verificables son p95 ≤500 ms en búsqueda y render inicial ≤1.000 ms con 500 registros.
+20. **Módulos huérfanos.** approval.js, components/approval-panel.js y components/user-profile.js se integran desde app.js/shell.js; user-management.js implementa la administración de usuarios de FR-016/FR-017.

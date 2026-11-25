@@ -3,12 +3,12 @@
 **Entrada**: Documentos de diseño desde `/specs/001-erp-base-module/`
 **Prerrequisitos**: plan.md (obligatorio), spec.md (obligatorio para las historias de usuario), research.md, data-model.md, contracts/
 
-**Nota de reorganización**: esta lista se alinea con las historias de usuario vigentes en `spec.md` (HU1, HU2, HU3, HU4, HU5, HU6, HU7, HU8 y HU11). La numeración US5 se conserva para la historia de solicitudes de cotización. Las tareas base ya entregadas se conservan marcadas como completadas para mantener la trazabilidad.
+**Nota de reorganización**: esta lista se alinea con las historias de usuario vigentes en `spec.md` (HU1-HU18). La numeración US5 se conserva para la historia de solicitudes de cotización. Las tareas base ya entregadas se conservan marcadas como completadas para mantener la trazabilidad; las fases 22-35 agregan de forma incremental la cobertura que faltaba para US9-US18 y las reglas transversales FR-039, FR-048-FR-051 y SC-008.
 
 ## Formato: `[ID] [P?] [Historia] Descripción`
 
 - **[P]**: Puede ejecutarse en paralelo (archivos distintos, sin dependencias)
-- **[Historia]**: Historia de usuario a la que pertenece la tarea (US1, US2, US3, US4, US5, US6, US7, US8, US11)
+- **[Historia]**: Historia de usuario a la que pertenece la tarea (US1-US18)
 - Incluir rutas de archivo exactas en las descripciones
 
 ## Convenciones de Rutas
@@ -232,6 +232,8 @@
 - [X] T077 [P] Actualizar `README.md` y `specs/001-erp-base-module/quickstart.md` con los flujos de usuarios/roles, solicitudes, órdenes y recepción
 - [X] T078 Ejecutar la suite completa de Vitest y la compilación de producción; corregir regresiones en `tests/` y `src/`
 - [X] T079 Validar manualmente el flujo de extremo a extremo de cada historia según `specs/001-erp-base-module/quickstart.md`
+- [ ] T080 [P] Documentar y verificar los marcadores de análisis pendientes (`C1-C3`, `G1-G8`, `I1-I8`, `U1-U7`, `A1-A5`) en `specs/001-erp-base-module/tasks.md`
+- [ ] T081 Cerrar las brechas de trazabilidad entre `spec.md`, `plan.md`, `data-model.md` y `tasks.md` antes de declarar completada la fase de pulido
 
 ---
 
@@ -323,8 +325,8 @@ Task: "Marcado de la vista de usuarios en index.html"
 
 - `[P]` indica tareas en archivos distintos y sin dependencias entre sí
 - `[Historia]` mapea cada tarea a la historia de usuario de `spec.md` para trazabilidad
-- La secuencia de etiquetas es US1, US2, US3, US4, US5, US6, US7, US8 y US11
-- El ciclo de vida implementado sigue `plan.md` y `spec.md` (`Aprobada → Emitida → Recibida parcialmente → Recibida → Pagada`, con `Rechazada` hasta la primera recepción); `Pagada` se asigna al registrar la factura y el pago (ver `data-model.md`, nota 12)
+- La secuencia de etiquetas es US1-US18
+- El ciclo de vida canónico sigue `plan.md` y `spec.md` (`Pendiente de aprobación → Aprobada → En cotización/Emitida → Recibida parcialmente → Recibida → Pagada`, con `Rechazada` hasta la primera recepción); `Pagada` se asigna al registrar el pago (ver `data-model.md`, nota 12)
 - `data-model.md` define RECEPCIÓN como entidad propia; las tareas de US6 la implementan como colección separada, no como `tipoDocumento`
 - Verificar que las pruebas fallen antes de implementar
 - Confirmar después de cada tarea o grupo lógico
@@ -397,4 +399,207 @@ Task: "Marcado de la vista de usuarios en index.html"
 - [X] T106 Revisar y justificar o eliminar la siembra automática de datos de demostración de `src/mock-data.js` ejecutada al arrancar desde `src/app.js`, conservando únicamente las semillas de pruebas autorizadas en `tests/setup/roles.js` per plan: storage decision, T012 (unrequested)
 - [X] T107 Completar la validación manual de extremo a extremo de cada historia, incluida la nueva US5, según `specs/001-erp-base-module/quickstart.md` per T079 (partial)
 - [X] T108 Alinear `theme.accentColor` de `userConfig` en `src/module-config.js` con el valor `#0f766e` decidido en el plan per plan: configuración de referencia (contradicts)
+
+---
+
+## Fase 22: Historia de Usuario 9 - Gestionar el maestro de proveedores con validación comercial y fiscal (Prioridad: P1)
+
+**Objetivo**: Mantener proveedores activos con RUT chileno válido, categoría, condiciones de pago y límite de crédito, evitando órdenes a proveedores inactivos o duplicados.
+
+**Prueba Independiente**: Un encargado registra un proveedor con RUT válido y único, lo ve disponible al cotizar, intenta guardar un RUT duplicado/inválido y no puede desactivar un proveedor con OC en curso.
+
+### Pruebas para la Historia de Usuario 9
+
+- [ ] T109 [P] [US9] Añadir pruebas unitarias de normalización, formato `XX.XXX.XXX-X`, módulo 11, RUT duplicado y proveedor inactivo en `tests/unit/rut.test.js` y `tests/unit/storage.test.js`
+- [ ] T110 [P] [US9] Añadir pruebas de integración de CRUD de proveedores, exclusión de inactivos y bloqueo de desactivación con folios activos en `tests/integration/supplier-management.test.js`
+
+### Implementación de la Historia de Usuario 9
+
+- [ ] T111 [US9] Implementar `src/rut.js` con `normalizeRut`, `isValidRut` y `formatRut`, y conectarlo a la validación de proveedores en `src/storage.js`
+- [ ] T112 [US9] Crear `src/components/vendor-form.js` con razón social, RUT, categoría, condiciones de pago, límite de crédito y estado Activo/Inactivo, integrado desde `src/app.js`
+- [ ] T113 [US9] Bloquear la desactivación de proveedores con Órdenes de Compra `Emitida` o `Recibida parcialmente` y excluir inactivos de selectores en `src/storage.js`, `src/components/document-form.js` y `src/app.js`
+
+---
+
+## Fase 23: Historia de Usuario 10 - Controlar presupuestos por departamento (Prioridad: P1)
+
+**Objetivo**: Mostrar presupuesto asignado, comprometido y disponible por centro de costo, con bloqueo por sobregiro y override administrativo auditado.
+
+**Prueba Independiente**: Al autorizar una solicitud de $400.000 CLP sobre un presupuesto de $1.000.000 CLP, el saldo baja a $600.000 CLP; al rechazar o cancelar se libera; un sobregiro solo se autoriza con override administrativo y motivo.
+
+### Pruebas para la Historia de Usuario 10
+
+- [ ] T114 [P] [US10] Añadir pruebas unitarias de cálculo de presupuesto asignado, comprometido, disponible y liberación por rechazo/cancelación en `tests/unit/department-budget.test.js`
+- [ ] T115 [P] [US10] Añadir pruebas de integración de alerta roja, bloqueo de autorización y override administrativo con evento de auditoría en `tests/integration/department-approvals.test.js`
+
+### Implementación de la Historia de Usuario 10
+
+- [ ] T116 [US10] Implementar la colección de presupuestos, estados que comprometen fondos y recálculo por evento en `src/storage.js`, `src/components/approval-inbox.js` y `src/components/dashboard.js`
+
+---
+
+## Fase 24: Historia de Usuario 11 - Registrar factura y cerrar la Orden de Compra como Pagada (Prioridad: P1)
+
+**Objetivo**: Validar factura y pago contra lo efectivamente recibido con tolerancia de 0,01 CLP, actualizar crédito usado y bloquear edición posterior.
+
+**Prueba Independiente**: Una OC `Recibida` con factura coincidente pasa a `Pagada`; una OC `Emitida` o `Recibida parcialmente` no puede pagarse; una diferencia mayor a 0,01 CLP muestra la diferencia y exige nota o corrección.
+
+### Pruebas para la Historia de Usuario 11
+
+- [ ] T117 [P] [US11] Ampliar `tests/unit/payment.test.js` y `tests/integration/payment.test.js` con tolerancia 0,01 CLP, bloqueo previo a `Recibida`, crédito usado y modo solo lectura
+- [ ] T118 [US11] Implementar el registro de factura/pago, el total recepcionado neto de rechazos, la transición a `Pagada` y la actualización de crédito en `src/storage.js`
+- [ ] T119 [US11] Implementar el formulario de pago, el mensaje de diferencia exacta y el bloqueo de edición posterior en `src/components/document-form.js`
+
+---
+
+## Fase 25: Historia de Usuario 12 - Consultar historial de auditoría y trazabilidad (Prioridad: P2)
+
+**Objetivo**: Registrar y mostrar eventos inmutables con usuario, rol, acción, estados y revisión.
+
+**Prueba Independiente**: El detalle de una orden muestra cronológicamente creación, aprobación, emisión, recepción y pago sin controles de edición o eliminación.
+
+### Pruebas para la Historia de Usuario 12
+
+- [ ] T120 [P] [US12] Añadir pruebas unitarias del esquema completo de `eventosAuditoria` y del orden cronológico en `tests/unit/audit.test.js`
+- [ ] T121 [P] [US12] Añadir pruebas de integración de la línea de tiempo por documento y ausencia de acciones de edición/eliminación en `tests/integration/audit-trail.test.js`
+
+### Implementación de la Historia de Usuario 12
+
+- [ ] T122 [US12] Implementar el escritor append-only de auditoría en `src/storage.js` y el resolvedor de usuario/rol en `src/auth.js`, y renderizar la línea de tiempo en `src/components/document-list.js` y `src/app.js`
+
+---
+
+## Fase 26: Historia de Usuario 13 - Monitorear indicadores y alertas en el Dashboard (Prioridad: P2)
+
+**Objetivo**: Mostrar KPIs y alertas operativas refrescadas por evento con staleness ≤2 s y navegación directa a bandejas filtradas.
+
+**Prueba Independiente**: Al emitir una OC atrasada o aprobar una solicitud, los KPIs y alertas se actualizan sin recargar; al hacer clic en una tarjeta se abre la bandeja filtrada.
+
+### Pruebas para la Historia de Usuario 13
+
+- [ ] T123 [P] [US13] Añadir pruebas unitarias de cálculo de KPIs, gasto del mes y detección de OCs atrasadas en `tests/unit/dashboard.test.js`
+- [ ] T124 [P] [US13] Ampliar `tests/integration/dashboard.test.js` con staleness ≤2 s, actualización por evento y deep links filtrados
+
+### Implementación de la Historia de Usuario 13
+
+- [ ] T125 [US13] Implementar el bus de eventos, el cálculo de atraso y el refresco de KPIs en `src/storage.js`, `src/app.js` y `src/components/dashboard.js`
+- [ ] T126 [US13] Implementar tarjetas y alertas navegables a bandejas filtradas en `src/components/dashboard.js`, `src/components/dashboard-activity.js` y `src/styles.css`
+
+---
+
+## Fase 27: Historia de Usuario 14 - Exportar reportes y respaldar/restaurar datos (Prioridad: P3)
+
+**Objetivo**: Exportar OC/recepciones a CSV/imprimible y respaldar/restaurar JSON con validación de esquema, versión, tipos y relaciones.
+
+**Prueba Independiente**: Un filtro produce un CSV UTF-8 correcto; un respaldo JSON se restaura íntegro y un archivo inválido se rechaza sin mezclar datos.
+
+### Pruebas para la Historia de Usuario 14
+
+- [ ] T127 [P] [US14] Añadir pruebas de integración de exportación CSV, vista imprimible y respaldo/restauración JSON válida e inválida en `tests/integration/export-backup.test.js`
+
+### Implementación de la Historia de Usuario 14
+
+- [ ] T128 [US14] Implementar exportación CSV, impresión y respaldo/restauración con validación de `schemaVersion`, colecciones, RUT y folios en `src/storage.js`
+- [ ] T129 [US14] Añadir controles de exportar/respaldar/restaurar y estilos de impresión en `src/components/document-list.js`, `src/app.js` y `src/styles.css`
+
+---
+
+## Fase 28: Historia de Usuario 15 - Iniciar sesión y gestionar la sesión activa (Prioridad: P1)
+
+**Objetivo**: Redirigir a login sin sesión, filtrar funciones por rol, registrar responsable de acciones y respetar segregación de funciones.
+
+**Prueba Independiente**: Enlaces profundos, recarga y botón atrás sin sesión llevan a login; credenciales inválidas o usuario desactivado se rechazan; el solicitante no puede aprobar su propia solicitud.
+
+### Pruebas para la Historia de Usuario 15
+
+- [ ] T130 [P] [US15] Ampliar `tests/unit/auth.test.js` y `tests/integration/users-permissions.test.js` con login, logout, deep links, recarga, botón atrás, credenciales inválidas, usuario desactivado y segregación
+
+### Implementación de la Historia de Usuario 15
+
+- [ ] T131 [US15] Implementar la vista de login, el guard de sesión, la restauración de ruta autorizada y el cierre de sesión en `index.html`, `src/main.js`, `src/auth.js` y `src/app.js`
+- [ ] T132 [US15] Implementar la confirmación de salida con cambios sin guardar en `src/dom.js`, `src/components/entity-form.js` y `src/components/document-form.js`
+
+---
+
+## Fase 29: Historia de Usuario 16 - Administrar departamentos y centros de costo (Prioridad: P1)
+
+**Objetivo**: Registrar departamentos con código único y jefe aprobador, vincular usuarios y dirigir solicitudes/presupuesto al área correcta.
+
+**Prueba Independiente**: Un departamento creado con jefe aprobador aparece solo en esa bandeja; no puede desactivarse con usuarios, presupuesto comprometido o solicitudes en curso.
+
+### Pruebas para la Historia de Usuario 16
+
+- [ ] T133 [P] [US16] Añadir pruebas unitarias de departamento, código único, jefe aprobador y guard de desactivación en `tests/unit/department.test.js`
+- [ ] T134 [P] [US16] Añadir pruebas de integración de asignación automática de departamento y enrutamiento al aprobador en `tests/integration/department-approvals.test.js`
+
+### Implementación de la Historia de Usuario 16
+
+- [ ] T135 [US16] Implementar la colección de departamentos, pertenencia de usuarios y guard de desactivación en `src/storage.js`; añadir la gestión en `src/components/entity-form.js`, `src/app.js` y `src/auth.js`
+
+---
+
+## Fase 30: Historia de Usuario 17 - Gestionar el catálogo de productos y servicios (Prioridad: P1)
+
+**Objetivo**: Mantener un catálogo oficial con código único, unidad, categoría y precio de referencia, con autocompletado y alerta de duplicados.
+
+**Prueba Independiente**: Un producto se crea con código único; al seleccionarlo en una solicitud se completan unidad y precio; un código duplicado se rechaza y una solicitud simultánea del mismo producto genera advertencia.
+
+### Pruebas para la Historia de Usuario 17
+
+- [ ] T136 [P] [US17] Añadir pruebas unitarias de validación de catálogo, código único y precio no negativo en `tests/unit/catalog.test.js`
+- [ ] T137 [P] [US17] Ampliar `tests/integration/requisition.test.js` con autocompletado desde catálogo, exclusión de inactivos y advertencia de compra duplicada
+
+### Implementación de la Historia de Usuario 17
+
+- [ ] T138 [US17] Implementar la colección de productos y su validación en `src/storage.js` y `src/module-config.js`, y el formulario/selector en `src/components/entity-form.js`, `src/components/requisition-form.js` y `src/components/detail-lines.js`
+
+---
+
+## Fase 31: Historia de Usuario 18 - Emitir la Orden de Compra con fecha de entrega y despacho (Prioridad: P1)
+
+**Objetivo**: Completar la emisión con fecha estimada, dirección e instrucciones, detectar atrasos y auditar cambios de fecha.
+
+**Prueba Independiente**: Una cotización aprobada se emite con datos válidos; una fecha inválida se rechaza; una OC vencida aparece en alertas; un cambio de fecha conserva el valor original y genera auditoría.
+
+### Pruebas para la Historia de Usuario 18
+
+- [ ] T139 [P] [US18] Ampliar `tests/unit/order-lifecycle.test.js` con validación de fecha estimada, dirección, atraso y cambio de fecha auditado
+- [ ] T140 [P] [US18] Añadir pruebas de integración de emisión, bandeja de recepción, vista imprimible y alertas operativas en `tests/integration/delivery.test.js`
+
+### Implementación de la Historia de Usuario 18
+
+- [ ] T141 [US18] Implementar los campos de entrega, validación de rango, cálculo de atraso y auditoría del cambio en `src/storage.js`, `src/module-config.js`, `src/components/document-form.js`, `src/components/reception-list.js` y `src/app.js`
+
+---
+
+## Fase 32: Correcciones Transversales y Gates (Prerrequisito para cierre)
+
+**Propósito**: Cerrar brechas existentes de navegación, concurrencia, configuración, fixtures y evidencia de verificación.
+
+- [ ] T142 [P] Añadir prueba de barra lateral contraída en ventanas estrechas y navegación operativa por iconos en `tests/integration/workspace-shell.test.js` (FR-039)
+- [ ] T143 Ajustar `src/styles.css` para que la barra lateral se contraiga a iconos accesibles sin perder etiquetas ARIA (FR-039)
+- [ ] T144 [P] Añadir prueba SC-008 en `tests/integration/relabeling.test.js` demostrando una adaptación completa mediante configuración sin modificar archivos centrales
+- [ ] T145 [P] Añadir pruebas de control optimista en `tests/unit/storage.test.js` y `tests/integration/document-lineas.test.js`: snapshot obsoleto, conflicto y sin sobrescritura silenciosa (FR-048)
+- [ ] T146 Implementar el mensaje de conflicto con opciones recargar/reintentar en `src/dom.js` y `src/components/document-form.js` (FR-048)
+- [ ] T147 [P] Verificar que la siembra automática use solo fixtures sintéticos autorizados, sin proveedores reales, en `src/mock-data.js`, `src/app.js` y `tests/setup/roles.js`
+- [ ] T148 [P] Añadir pruebas de fechas inválidas, rangos invertidos y campos obligatorios por campo en `tests/unit/storage.test.js` y `tests/integration/create-entity.test.js`
+- [ ] T149 Actualizar `specs/001-erp-base-module/quickstart.md` con los flujos US9-US18, comandos de verificación y limitación de seguridad aceptada
+- [ ] T150 Ejecutar y registrar como gate final `npm run test`, `npm run lint`, `npm run build` y `npm run mer`, corrigiendo cualquier regresión en `tests/`, `src/` y `specs/001-erp-base-module/`
+
+---
+
+## Dependencias de las Fases 22-32
+
+- Fase 22 (US9) depende de Fase 2 y provee proveedores válidos a US3, US5 y US18
+- Fase 23 (US10) depende de US7, US16 y de la bandeja de US4
+- Fase 24 (US11) depende de US2 y US6
+- Fase 25 (US12) depende de US1 y de las mutaciones de US2-US18
+- Fase 26 (US13) depende de US3, US4, US10 y US18
+- Fase 27 (US14) depende de US2 y US6
+- Fase 28 (US15) depende de US1 y es prerrequisito de todas las vistas protegidas
+- Fase 29 (US16) depende de US1 y precede a US10/US4
+- Fase 30 (US17) depende de US9 y precede a US7/US5/US2
+- Fase 31 (US18) depende de US3 y US5, y precede a US6/US13
+- Fase 32 depende de todas las fases anteriores; T150 es el gate final de cierre
+- Paralelismo: T109/T110, T114/T115, T117, T120/T121, T123/T124, T127, T130, T133/T134, T136/T137 y T139/T140 pueden ejecutarse en paralelo dentro de su fase; T142-T148 pueden ejecutarse en paralelo antes de T149 y T150
 

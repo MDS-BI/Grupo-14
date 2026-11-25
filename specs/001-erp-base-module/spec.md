@@ -7,7 +7,17 @@
 
 ## Propósito
 
-Este proyecto sirve como módulo base reutilizable para construir módulos ERP personalizados. Establece los patrones comunes que todo módulo ERP necesita: gestionar registros de datos maestros (**Entidades**) y sus **Documentos** transaccionales asociados, con navegación, validación, persistencia y búsqueda ya implementadas, de modo que los módulos personalizados solo necesiten definir sus campos y reglas específicos del dominio.
+Este proyecto sirve como módulo base reutilizable para construir módulos ERP personalizados. Establece los patrones comunes que todo módulo ERP necesita: gestionar registros de datos maestros (**Entidades**) y sus **Documentos de Compra** transaccionales asociados, con navegación, validación, persistencia y búsqueda ya implementadas, de modo que los módulos personalizados solo necesiten definir sus campos y reglas específicos del dominio. El perfil Adquisiciones y Compras es una implementación de referencia sobre esta base reutilizable: demuestra la adaptación mediante configuración sin modificar el núcleo. En esta especificación, **Documento de Compra** es el concepto transaccional genérico y **Orden de Compra** se reserva para documentos oficiales con serie/folio `OC-XXXX`.
+
+## Clarifications
+
+### Session 2026-11-25
+
+- Q: ¿Qué historias y límites de seguridad forman parte del alcance? → A: Se conservan US9, US10, US15, US16, US17 y US18; la autenticación y la auditoría de una app solo-cliente sobre localStorage son limitaciones aceptadas y no garantizan seguridad criptográfica ni inmutabilidad frente a manipulación del navegador.
+- Q: ¿Qué umbrales medibles reemplazan a “rápido”, “en vivo” y “coincida”? → A: Con 500 registros, p95 de búsqueda ≤500 ms y render inicial de lista ≤1.000 ms; “tiempo real” significa refresco por evento con staleness máxima de 2 s; los montos se comparan tras redondeo a 2 decimales con tolerancia absoluta ≤0,01 CLP.
+- Q: ¿Cómo se resuelven concurrencia, navegación y fechas? → A: Toda mutación relee el snapshot y compara `revision`/`updatedAt` para detectar conflictos; los enlaces profundos y la recarga exigen sesión; los cambios sin guardar se confirman antes de salir; las fechas inválidas y los rangos invertidos se rechazan con mensaje por campo.
+- Q: ¿Cuál es la terminología canónica? → A: “Documento de Compra” es el concepto genérico; “Orden de Compra” se reserva para documentos con serie/folio `OC-XXXX`; `lineasDetalle` sustituye a `Detalle_Orden`; el perfil Adquisiciones y Compras es una implementación de referencia sobre la base reutilizable.
+- Q: ¿Qué significa un proveedor ficticio en las pruebas? → A: Solo fixtures de prueba con datos sintéticos; en producción todo documento debe referenciar un proveedor persistido y activo.
 
 ## Escenarios de Usuario y Pruebas *(obligatorio)*
 
@@ -26,7 +36,7 @@ Como administrador del sistema, quiero gestionar los usuarios, roles y permisos 
 
 3. **Dado** que el administrador consulta el listado de usuarios, **cuando** visualiza la información de la plataforma, **entonces** el sistema despliega la lista completa de usuarios registrados junto con sus roles asignados.
 
-4. **Dado** que el administrador intenta desactivar a un usuario que tiene solicitudes u órdenes de compra pendientes en su flujo, **cuando** confirma la acción de desactivación, **entonces** el sistema muestra una advertencia y prohibe la desactivación hasta que dichos trámites sean reasignados o concluidos.
+4. **Dado** que el administrador intenta desactivar a un usuario con solicitudes de compra en `Pendiente de aprobación`, `Aprobada` o `En cotización`, o con Documentos de Compra en `Aprobada`, `Emitida` o `Recibida parcialmente`, **cuando** confirma la desactivación, **entonces** el sistema muestra una advertencia con los folios y bloquea la acción hasta que esos trámites sean reasignados o concluidos.
    
 
 ---
@@ -37,10 +47,10 @@ Como Encargado de Compras, quiero generar un documento de Orden de Compra vincul
 
 **Por qué esta prioridad**: Esta función es el núcleo del módulo, ya que formaliza legal y financieramente la adquisición de insumos con los proveedores externos, resolviendo problemas críticos como las compras duplicadas por falta de comunicación y el nulo control sobre los gastos. Además, garantiza que el sistema registre los campos obligatorios de una transacción ERP (serie, folio, subtotal, descuento, impuesto y total) para saber exactamente cuánto se gasta y a quién se le debe.
 
-**Prueba Independiente**: Se realiza simulando la creación de una Orden de Compra asociada a un id_proveedor ficticio. En esta simulación, se ingresan los productos junto con sus cantidades y precios unitarios dentro de la tabla intermedia llamada Detalle_Orden. El objetivo de esta prueba es comprobar que la suma de los valores detallados genere los totales correctos en el documento principal. Además, se debe verificar que el ciclo de vida de la orden se active de forma adecuada desde los parámetros de configuración.
+**Prueba Independiente**: Se realiza simulando la creación de una Orden de Compra asociada a un proveedor sintético creado solo en fixtures de prueba. En esta simulación, se ingresan los productos junto con sus cantidades y precios unitarios dentro de `lineasDetalle`. El objetivo de esta prueba es comprobar que la suma de los valores detallados genere los totales correctos en el documento principal. Además, se debe verificar que el ciclo de vida de la orden se active de forma adecuada desde los parámetros de configuración.
 **Escenarios de Aceptación**:
 
-1. **Dada** una Orden de Compra creada con un id_proveedor ficticio, cuando se agregan productos con cantidades y precios unitarios en la tabla Detalle_Orden, el sistema debe calcular matemáticamente los subtotales, descuentos, impuestos y el total final.
+1. **Dada** una Orden de Compra creada con un proveedor sintético de fixture, cuyo uso se limita a pruebas, cuando se agregan productos con cantidades y precios unitarios en `lineasDetalle`, el sistema debe calcular matemáticamente los subtotales, descuentos, impuestos y el total final.
 2. **Dada** la generación de un nuevo documento transaccional, cuando se asignan los datos, el sistema debe guardar correctamente la persistencia del ID del proveedor asignado y de los artículos comprados.
 3. **Dada** una orden formalizada y vinculada a la configuración del módulo, cuando el proceso operativo avanza, el documento debe transicionar correctamente por los estados de su ciclo de vida (Emitida, Recibida, Pagada).
 
@@ -54,9 +64,9 @@ Como Encargado de Adquisiciones, quiero revisar y cambiar el estado de las solic
 **Prueba Independiente**: Un usuario puede seleccionar una Solicitud de Cotización pendiente, autorizarla para cambiar su estado a "Aprobado" y verificar que la orden oficial (OC-XXXX) quede registrada correctamente.
 
 **Escenarios de Aceptación**:
-1. **Dado** que un Encargado de Adquisiciones está viendo un documento en estado cotización, cuando selecciona la opción de aprobar validando que el proveedor cumple con sus datos comerciales (taxId, categoriaProveedor, paymentTerms y creditLimit), entonces el documento cambia su estado a aprobado, se le asigna su serie/folio oficial (OC-XXXX) y se guardan los cambios en el almacenamiento.
-2.	**Dado** que un Encargado de Adquisiciones intenta aprobar un documento, cuando el monto total excede el límite de crédito del proveedor o faltan campos obligatorios de la entidad, entonces el sistema impide guardar la aprobación y despliega un mensaje de error explicando qué información se requiere.
-3.	**Dado** que un Encargado de Adquisiciones aprueba o cancela una orden, cuando guarda la actualización, entonces el panel de inicio (dashboard) refleja los contadores y métricas de documentos en vivo sin necesidad de recargar la página.
+1. **Dado** que un Encargado de Adquisiciones está viendo una Solicitud de Cotización en estado `En cotización`, cuando selecciona aprobar, entonces el sistema valida proveedor activo con `taxId` válido, `categoriaProveedor`, `paymentTerms`, `creditLimit`, además de `tipoDocumento`, `fechaEmision`, al menos una línea válida en `lineasDetalle` y totales derivados; el Documento de Compra cambia a `Aprobada`, recibe serie/folio `OC-XXXX` y persiste el evento de auditoría.
+2.	**Dado** que un Encargado de Adquisiciones intenta aprobar una Solicitud de Cotización, cuando `totalAmount` excede `creditLimit` o falta cualquiera de los campos enumerados en el escenario 1, entonces el sistema bloquea la aprobación y muestra un mensaje por campo indicando la corrección requerida.
+3.	**Dado** que un Encargado de Adquisiciones aprueba o cancela una Solicitud de Cotización, cuando se persiste el evento, entonces el panel de inicio se actualiza por evento con staleness máxima de 2 s, sin recargar la página.
 
 ---
 
@@ -95,7 +105,7 @@ Como Encargado de Compras, quiero revisar las solicitudes de compra autorizadas 
 1. **Dado** que el encargado de compras ingresa a la bandeja de solicitudes autorizadas, **cuando** consulta el listado, **entonces** el sistema despliega solo las solicitudes en estado Aprobada que aún no tienen cotización, con su folio, área solicitante, fecha de autorización y motivo de compra.
 2. **Dado** que el encargado selecciona una solicitud autorizada, **cuando** abre su detalle, **entonces** el sistema muestra los productos o servicios solicitados con sus cantidades, la justificación original y la decisión de autorización del jefe de área.
 3. **Dado** que el encargado asigna un proveedor activo y registra el precio unitario de cada línea, **cuando** confirma la generación de la cotización, **entonces** el sistema crea la solicitud de cotización en estado “En cotización”, calcula subtotal, impuestos y total, la vincula a la solicitud de compra original y muestra esta última como “En cotización”.
-4. **Dado** que el encargado intenta generar la cotización sin proveedor, con un proveedor inactivo o con datos comerciales incompletos, o con una línea sin precio, con precio negativo o no numérico, cuando confirma la acción, **entonces** el sistema impide guardar e indica qué dato debe corregirse.
+4. **Dado** que el encargado intenta generar la cotización sin proveedor, con un proveedor inactivo, con `taxId`, `categoriaProveedor`, `paymentTerms` o `creditLimit` ausentes o inválidos, o con una línea en `lineasDetalle` sin `producto_id`, `descripcion`, `unidadMedida`, `cantidad > 0` o `precioUnitario >= 0` numérico, **cuando** confirma la acción, **entonces** el sistema impide guardar e indica el campo y la línea a corregir.
 5. **Dado** que un usuario sin rol de encargado de compras intenta generar una cotización, **cuando** accede a la acción, **entonces** el sistema la bloquea según los permisos de su rol.
 
 ---
@@ -160,7 +170,7 @@ Como usuario de negocio, quiero buscar mis entidades por detalles clave para enc
 
 1. **Dadas** múltiples entidades almacenadas, **cuando** el usuario busca con un término coincidente, **entonces** solo se muestran las entidades coincidentes.
 2. **Dada** una búsqueda sin coincidencias, **cuando** el usuario envía la búsqueda, **entonces** el sistema muestra un estado vacío claro y permite volver a intentarlo.
-3. **Dadas** cientos de entidades almacenadas, **cuando** el usuario busca, **entonces** los resultados coincidentes aparecen con prontitud sin retraso perceptible.
+3. **Dadas** 500 entidades almacenadas, **cuando** el usuario busca con un término coincidente, **entonces** los resultados se muestran con p95 ≤500 ms y el render inicial de la lista ≤1.000 ms.
 
 ---
 
@@ -203,8 +213,8 @@ Un administrador asigna un presupuesto de $1.000.000 CLP al área de Operaciones
 
 **Escenarios de Aceptación**
 
-1. **Dado** un departamento registrado en el módulo, **cuando** el administrador define o actualiza su monto presupuestario asignado en CLP, **entonces** el sistema calcula y muestra en tiempo real tres indicadores: Presupuesto Asignado, Monto Comprometido (solicitudes aprobadas y OCs activas) y Saldo Disponible.
-2. **Dado** un jefe de área revisando una solicitud pendiente en la bandeja de aprobación, **cuando** el monto estimado de la solicitud supera el Saldo Disponible de su departamento, **entonces** el sistema destaca una alerta presupuestaria en rojo y bloquea la autorización (o exige autorización extraordinaria de rol Administrador).
+1. **Dado** un departamento registrado en el módulo, **cuando** el administrador define o actualiza su monto presupuestario asignado en CLP, **entonces** el sistema calcula y muestra por evento, con staleness máxima de 2 s, tres indicadores: Presupuesto Asignado, Monto Comprometido (solicitudes en `Pendiente de aprobación`, `Aprobada` o `En cotización` y Órdenes de Compra en `Emitida` o `Recibida parcialmente`) y Saldo Disponible.
+2. **Dado** un jefe de área revisando una solicitud pendiente en la bandeja de aprobación, **cuando** el monto estimado supera el Saldo Disponible, **entonces** el sistema destaca una alerta roja y bloquea la autorización; solo un Administrador puede aplicar un override explícito con motivo obligatorio registrado en auditoría.
 3. **Dado** una solicitud previamente autorizada que es rechazada o cancelada en etapas posteriores (cotización u OC), **cuando** se confirma la cancelación, **entonces** el sistema libera automáticamente el monto comprometido y lo reintegra al Saldo Disponible del área.
 
 ---
@@ -226,8 +236,8 @@ Un usuario con permisos abre una Orden de Compra en estado Recibida, ingresa el 
 **Escenarios de Aceptación**
 
 1. **Dado** una Orden de Compra en estado Emitida o Recibida parcialmente, **cuando** un usuario intenta registrar factura o marcarla como Pagada, **entonces** el sistema bloquea la acción indicando que la orden debe estar completamente Recibida primero.
-2. **Dado** una Orden de Compra en estado Recibida, **cuando** el usuario ingresa el número de factura del proveedor, fecha de emisión de factura y monto facturado, **entonces** el sistema valida que el monto coincida con el total de unidades efectivamente recepcionadas (descontando ítems rechazados o dañados).
-3. **Dado** que el monto de la factura difiere del total recepcionado, **cuando** el usuario intenta guardar, **entonces** el sistema muestra la diferencia exacta en pesos (CLP) y exige registrar una nota de ajuste o bloquear el pago hasta corregir la factura.
+2. **Dado** una Orden de Compra en estado Recibida, **cuando** el usuario ingresa el número de factura del proveedor, fecha de emisión de factura y monto facturado, **entonces** el sistema compara ambos importes tras redondeo a 2 decimales, con tolerancia absoluta máxima de 0,01 CLP, sobre el total de unidades efectivamente recepcionadas (descontando ítems rechazados o dañados).
+3. **Dado** que la diferencia absoluta entre el monto facturado y el total recepcionado supera 0,01 CLP, **cuando** el usuario intenta guardar, **entonces** el sistema muestra la diferencia exacta en CLP y exige una nota de ajuste o bloquea el pago hasta corregir la factura.
 4. **Dado** un registro de factura y pago válido, **cuando** se confirma la operación, **entonces** la orden cambia a estado Pagada, actualiza el crédito utilizado del proveedor y bloquea cualquier edición posterior del documento.
 
 ---
@@ -248,7 +258,7 @@ Un usuario abre el detalle de una Orden de Compra que haya pasado por solicitud,
 
 **Escenarios de Aceptación**
 
-1. **Dado** cualquier evento de creación, edición, aprobación, rechazo, generación de OC, recepción parcial/total o pago, **cuando** se guarda en el almacenamiento (storage.js), **entonces** el sistema registra automáticamente una entrada inmutable con timestamp, usuarioId, nombreUsuario, rol, accion, estadoAnterior, estadoNuevo y comentario.
+1. **Dado** cualquier evento de creación, edición, aprobación, rechazo, generación de OC, recepción parcial/total o pago, **cuando** se guarda en `src/storage.js`, **entonces** el sistema anexa una entrada de solo lectura con `eventoId`, `timestamp`, `usuarioId`, `nombreUsuario`, `rol`, `accion`, `entidadTipo`, `entidadId`, `estadoAnterior`, `estadoNuevo`, `comentario` y `revision` incremental; la interfaz no ofrece edición ni eliminación de entradas.
 2. **Dado** que un usuario abre el detalle de una solicitud u Orden de Compra, **cuando** consulta su historial de actividad, **entonces** el sistema despliega la línea de tiempo cronológica mostrando cada transición y las observaciones asociadas (como motivos de rechazo o daños en recepción).
 3. **Dado** el registro de auditoría de un documento, **cuando** cualquier usuario (incluido el Administrador) intenta editar o eliminar una entrada histórica desde la interfaz, **entonces** el sistema no ofrece opciones de modificación, garantizando la integridad de la bitácora.
 
@@ -270,9 +280,9 @@ Un usuario ingresa al Panel de Inicio, observa los contadores activos de solicit
 
 **Escenarios de Aceptación**
 
-1. **Dado** el ingreso al Panel de Inicio (Dashboard), **cuando** carga la vista, **entonces** el sistema muestra tarjetas KPI actualizadas en vivo con: Total Comprometido/Comprado del Mes (CLP), Solicitudes Pendientes de Aprobación, Cotizaciones en Evaluación y Órdenes Pendientes de Recepción.
+1. **Dado** el ingreso al Panel de Inicio (Dashboard), **cuando** carga la vista, **entonces** el sistema muestra tarjetas KPI con: Total Comprometido/Comprado del Mes (CLP), Solicitudes Pendientes de Aprobación, Cotizaciones en Evaluación y Órdenes Pendientes de Recepción, refrescadas por evento con staleness máxima de 2 s.
 2. **Dado** que existen órdenes emitidas cuya fecha estimada de entrega ya venció sin recepción completa, **cuando** se renderiza el panel, **entonces** el sistema muestra una sección de Alertas Operativas destacando los folios atrasados y el proveedor correspondiente.
-3. **Dado** cualquier cambio de estado realizado en otra vista del módulo (aprobar una solicitud, emitir una OC o registrar una recepción), **cuando** el usuario vuelve al Panel de Inicio, **entonces** todos los KPIs, tablas de actividad reciente y alertas se actualizan automáticamente sin recargar la página.
+3. **Dado** cualquier cambio de estado realizado en otra vista (aprobar una solicitud, emitir una OC o registrar una recepción), **cuando** se persiste el evento, **entonces** los KPIs, tablas de actividad reciente y alertas se recalculan automáticamente con staleness máxima de 2 s y sin recargar la página.
 
 ---
 
@@ -294,7 +304,7 @@ Un usuario aplica un filtro de fechas o proveedor en Órdenes de Compra, presion
 
 1. **Dado** el listado de Órdenes de Compra o Recepciones (con o sin filtros aplicados), **cuando** el usuario hace clic en Exportar CSV, **entonces** el sistema genera y descarga un archivo .csv codificado en UTF-8 con columnas de folio, fecha, proveedor, RUT, neto, IVA, total y estado.
 2. **Dado** el detalle de una Orden de Compra oficial (OC-XXXX), **cuando** el usuario presiona Imprimir / Guardar PDF, **entonces** el sistema formatea el documento ocultando los menús laterales y mostrando encabezado formal de empresa, datos del proveedor, tabla de ítems y totales.
-3. **Dado** el panel de configuración o barra de almacenamiento, **cuando** el administrador selecciona Exportar respaldo JSON o Restaurar respaldo, **entonces** el sistema permite descargar toda la estructura del localStorage o cargarla desde un archivo .json válido verificando su integridad antes de sobrescribir.
+3. **Dado** el panel de configuración o barra de almacenamiento, **cuando** el administrador selecciona Exportar respaldo JSON o Restaurar respaldo, **entonces** el sistema descarga toda la estructura del localStorage con `schemaVersion` o carga un `.json` válido, validando esquema, versión, tipos y relaciones antes de sobrescribir.
 
 ---
 
@@ -319,6 +329,8 @@ Como usuario registrado del módulo de Adquisiciones y Compras, quiero iniciar s
 5. **Dado** que un usuario con sesión activa ejecuta una acción (crear, aprobar, rechazar, cotizar, recepcionar o pagar), **cuando** el sistema guarda la operación, **entonces** registra automáticamente su identificador, nombre y rol como responsable en el documento y en la bitácora de auditoría.
 
 6. **Dado** que un usuario es solicitante de una solicitud de compra, **cuando** intenta autorizarla con su propia sesión aunque tenga también rol de aprobador, **entonces** el sistema bloquea la acción por segregación de funciones e indica que otro aprobador debe revisarla.
+
+**Limitación de seguridad aceptada**: en esta versión solo-cliente, usuarios, credenciales, sesión, roles y bitácora se almacenan en `localStorage`; estos mecanismos son controles funcionales, no seguridad criptográfica. Un usuario con acceso al navegador puede manipularlos con herramientas de desarrollo, por lo que la inmutabilidad de auditoría y la autenticación no pueden garantizarse frente a manipulación local. El riesgo se acepta explícitamente para el alcance de demostración y Prueba de Concepto; los datos reales sensibles requieren un backend fuera de este alcance.
 
 ---
 
@@ -394,27 +406,27 @@ Como Encargado de Compras, quiero emitir la Orden de Compra a partir de la cotiz
 
 - ¿Qué ocurre cuando un usuario intenta guardar una entidad sin nombre o código obligatorio?
 - ¿Cómo gestiona el sistema una búsqueda que no devuelve coincidencias?
-- ¿Qué ocurre si un usuario intenta editar o eliminar una entidad que ya no existe?
-- ¿Qué ocurre cuando un usuario introduce una fecha objetivo que no es una fecha de calendario válida?
-- ¿Qué ocurre con los documentos de una entidad cuando esta se elimina?
-- ¿Qué ocurre cuando un usuario introduce una fecha final anterior a la fecha inicial en un documento?
-- ¿Qué ocurre cuando la configuración declara un campo personalizado cuya clave choca con un nombre de campo base?
-- ¿Qué ocurre cuando la configuración referencia un tipo de campo desconocido o una definición de transición de ciclo de vida inválida?
-- ¿Qué ocurre cuando los registros almacenados contienen valores de campos personalizados que ya no están declarados en la configuración?
-- ¿Qué ocurre cuando un usuario abre la aplicación directamente en la pantalla de gestión o búsqueda (p. ej., vía enlace profundo o recarga del navegador) sin pasar por el panel de inicio?
-- ¿Qué ocurre cuando un usuario pulsa el botón atrás del navegador estando en la pantalla de gestión o búsqueda?
-- ¿Qué ocurre si un usuario navega fuera de la pantalla de gestión mientras un formulario aún tiene cambios sin guardar?
-- ¿Permanecen intactas las entidades y los documentos al navegar entre el panel, la gestión y la búsqueda?
+- Si un usuario intenta editar o eliminar una entidad que ya no existe, la operación se bloquea, se recarga el snapshot y se muestra un estado vacío claro.
+- Las fechas `targetDate`, `fechaEmision`, `fechaEstimadaEntrega`, `startDate` y `endDate` se rechazan si no son fechas de calendario válidas `YYYY-MM-DD`; el mensaje se muestra bajo el campo correspondiente.
+- Al eliminar una entidad se eliminan sus Documentos de Compra asociados y sus `lineasDetalle` en cascada.
+- Si `endDate < startDate`, el guardado se bloquea y se indica el rango inválido en ambos campos.
+- Si un campo personalizado choca con un campo base, el cargador de configuración informa el error y conserva la configuración integrada.
+- Si la configuración referencia un tipo de campo desconocido o una transición inválida, se informa el error y se conserva la configuración integrada.
+- Los valores de campos personalizados que ya no están declarados se conservan en el registro, no se muestran como campos editables y se omiten de la búsqueda.
+- Un enlace profundo o una recarga a gestión/búsqueda sin sesión redirige a login y no muestra datos del módulo; con sesión válida se restaura la vista autorizada.
+- El botón atrás del navegador no puede eludir el guard de sesión; con sesión activa vuelve a la vista previa y conserva entidades y Documentos de Compra.
+- Si un formulario tiene cambios sin guardar, al salir se muestra confirmación para descartar o continuar editando.
+- Las entidades y los Documentos de Compra permanecen intactos al navegar entre panel, gestión y búsqueda.
 - ¿Qué ocurre cuando el panel se abre con cero entidades o cero documentos (valores estadísticos)?
 - ¿Qué ocurre cuando el color de acento configurado no es un valor de color válido?
 - ¿Cómo mantiene la barra lateral contraída las etiquetas de módulo accesibles en ventanas gráficas estrechas?
 - ¿Qué ocurre cuando el proveedor entrega más unidades de las solicitadas en la Orden de Compra?
 - ¿Qué ocurre si se intenta registrar una recepción sobre una Orden de Compra que ya está Recibida por completo, anulada o aún no emitida?
 - ¿Qué ocurre cuando una entrega llega en varias partes en días distintos?
-- ¿Qué ocurre si dos encargados intentan registrar la recepción de la misma orden al mismo tiempo?
-- ¿Qué ocurre si una solicitud ya tiene una cotización generada y otro usuario intenta cotizarla de nuevo?
-- ¿Qué ocurre si dos encargados abren la misma solicitud autorizada al mismo tiempo?
-- ¿Qué ocurre si la solicitud es modificada, anulada o devuelta después de abrirla pero antes de generar la cotización?
+- Antes de guardar una recepción, el sistema relee el snapshot y compara `revision`/`updatedAt`; si difiere del valor cargado, bloquea la escritura, muestra conflicto y exige recargar o reintentar.
+- Si una solicitud ya tiene una cotización, una segunda cotización se bloquea por regla de dominio, independientemente de la revisión.
+- Si dos encargados abren la misma solicitud autorizada, ambos pueden verla, pero el primero que persista incrementa `revision`; el segundo recibe conflicto antes de guardar.
+- Si la solicitud cambia entre apertura y generación de cotización, la comparación de `revision` bloquea la escritura y exige recargar el documento vigente.
 
 ## Requisitos *(obligatorio)*
 
@@ -441,7 +453,7 @@ Como Encargado de Compras, quiero emitir la Orden de Compra a partir de la cotiz
 - **FR-019**: El sistema DEBE navegar a una pantalla de búsqueda dedicada cuando se selecciona el botón Buscar en la barra lateral.
 - **FR-020**: La pantalla de búsqueda DEBE permitir buscar entidades por nombre, código, categoría, descripción o fecha objetivo.
 - **FR-021**: La pantalla de búsqueda DEBE ser accesible tanto desde la barra lateral como desde la acción rápida de buscar registros del panel.
-- **FR-022**: El sistema DEBE mantener los datos de entidades y documentos intactos y consistentes durante la navegación entre pantallas.
+- **FR-022**: El sistema DEBE mantener los datos de entidades y documentos intactos y consistentes durante la navegación entre pantallas, incluidos enlaces profundos, recarga y botón atrás, y DEBE exigir confirmación antes de descartar cambios sin guardar.
 - **FR-023**: El sistema DEBE cargar la configuración del módulo al arrancar y aplicarla en todas las pantallas.
 - **FR-024**: El sistema DEBE retroceder a los valores predeterminados integrados (terminología Entidad/Documento, sin campos personalizados, sin ciclo de vida) cuando no se proporciona configuración.
 - **FR-025**: El sistema DEBE informar claramente de una configuración inválida o conflictiva en lugar de fallar silenciosamente.
@@ -451,10 +463,10 @@ Como Encargado de Compras, quiero emitir la Orden de Compra a partir de la cotiz
 - **FR-029**: El sistema DEBE derivar todas las etiquetas visibles para el usuario de la configuración del módulo en lugar de texto fijo en el código.
 - **FR-030**: El sistema DEBE aplicar las transiciones de estado configuradas en los documentos independientemente de cómo se envíe un cambio.
 - **FR-031**: El sistema DEBE mantener el estado del documento como texto libre cuando no hay ciclo de vida configurado.
-- **FR-032**: El sistema DEBE mantener el renderizado de listas y la búsqueda ágiles y correctos para conjuntos de datos de al menos 500 registros de entidad.
+- **FR-032**: El sistema DEBE mantener búsqueda y renderizado correctos con al menos 500 entidades, con p95 de respuesta de búsqueda ≤500 ms y render inicial de lista ≤1.000 ms medidos desde la interacción hasta que el resultado es visible.
 - **FR-033**: El panel DEBE ofrecer al menos cuatro botones de acción rápida: nueva entidad, nuevo documento, abrir gestión de entidades y buscar registros.
 - **FR-034**: Activar la acción rápida de nueva entidad o nuevo documento DEBE abrir el área de gestión correspondiente con un formulario vacío listo para introducir datos.
-- **FR-035**: El panel DEBE mostrar tarjetas de estadísticas con el número de entidades y documentos almacenados, actualizadas cada vez que se muestra el panel.
+- **FR-035**: El panel DEBE mostrar tarjetas de estadísticas con el número de entidades y Documentos de Compra almacenados, actualizadas por evento con staleness máxima de 2 s cada vez que se muestra el panel.
 - **FR-036**: La barra superior DEBE mostrar un logotipo derivado del nombre del módulo junto con el nombre del módulo configurado en cada pantalla.
 - **FR-037**: La barra lateral DEBE resaltar visualmente el módulo activo en cada pantalla.
 - **FR-038**: La configuración PUEDE definir un color de acento; el sistema DEBE aplicarlo consistentemente en todo el marco y retroceder de forma segura a los valores integrados cuando esté ausente o sea inválido.
@@ -467,6 +479,10 @@ Como Encargado de Compras, quiero emitir la Orden de Compra a partir de la cotiz
 - **FR-045**: El sistema DEBE cambiar el estado de la Orden de Compra a Recibida cuando todas sus líneas estén completas, y a Recibida parcialmente cuando quede alguna cantidad pendiente.
 - **FR-046**: El sistema DEBE permitir registrar recepciones únicamente a usuarios con el rol de encargado de recepción.
 - **FR-047**: El sistema NO DEBE permitir registrar recepciones sobre órdenes Recibidas por completo, anuladas o no emitidas.
+- **FR-048**: El sistema DEBE aplicar control optimista de concurrencia antes de mutar registros en localStorage, comparando `revision`/`updatedAt` con el snapshot cargado y bloqueando la escritura cuando exista un conflicto.
+- **FR-049**: El sistema DEBE anexar eventos de auditoría con `eventoId`, `timestamp`, `usuarioId`, `nombreUsuario`, `rol`, `accion`, `entidadTipo`, `entidadId`, `estadoAnterior`, `estadoNuevo`, `comentario` y `revision`, sin ofrecer edición ni eliminación en la interfaz.
+- **FR-050**: El sistema DEBE exportar Órdenes de Compra y recepciones a CSV/imprimible y un respaldo JSON con `schemaVersion`, validando esquema, versión, tipos y relaciones antes de restaurar.
+- **FR-051**: El sistema DEBE aplicar el guard de sesión a enlaces profundos, recarga y botón atrás, y DEBE confirmar la salida cuando un formulario tenga cambios sin guardar.
 
 ### Requisitos de Extensibilidad *(obligaciones del módulo base)*
 
@@ -481,7 +497,9 @@ Los módulos personalizados construidos sobre esta base DEBEN poder:
 ### Entidades Clave *(incluir si la funcionalidad implica datos)*
 
 - **Entidad**: Un registro de datos maestros gestionado por el módulo, que incluye su nombre, código de negocio, detalles descriptivos, categoría de clasificación, una fecha objetivo opcional y un entity_id autogenerado. Los módulos personalizados definen qué representa una Entidad en el mundo real (p. ej., cliente, producto, activo).
-- **Documento**: Detalles transaccionales adjuntos a una entidad, vinculados a ella por el entity_id de la entidad. Los módulos personalizados definen qué representa un Documento (p. ej., pedido, factura, contrato).
+- **Documento de Compra** (base `Documento`): Detalles transaccionales adjuntos a una entidad, vinculados a ella por `entity_id`; es el concepto genérico usado para Solicitudes de Cotización, Órdenes de Compra, recepciones y facturas de proveedor.
+- **Orden de Compra**: Documento de Compra oficial identificado con serie/folio `OC-XXXX`; no se usa como sinónimo de cotización, recepción o factura.
+- **`lineasDetalle`**: Colección de líneas de detalle de un Documento de Compra, con `documento_id` asignado por storage; sustituye al nombre anterior `Detalle_Orden`.
 - **ModuleConfig**: El objeto de adaptación cargado al arrancar que define el nombre del módulo, las etiquetas de terminología, las definiciones de campos personalizados y el ciclo de vida de estados de documentos. Consulte data-model.md para su forma completa.
 - **Recepción**: Registro de una entrega física asociada a una Orden de Compra; incluye fecha y hora, encargado responsable, observaciones generales y sus líneas de recepción.
 - **Línea de Recepción**: Detalle de un producto dentro de una recepción; indica la línea de la Orden de Compra a la que corresponde, la cantidad recibida conforme, la cantidad rechazada y el motivo del rechazo.
@@ -491,15 +509,15 @@ Los módulos personalizados construidos sobre esta base DEBEN poder:
 ### Resultados Medibles
 
 - **SC-001**: Los usuarios pueden crear una nueva entidad y verla en la lista en menos de 2 minutos.
-- **SC-002**: Los usuarios pueden encontrar una entidad existente mediante la búsqueda en menos de 10 segundos tras introducir un término relevante.
+- **SC-002**: Con al menos 500 entidades almacenadas, el p95 de respuesta de búsqueda es ≤500 ms desde la confirmación del término hasta que los resultados son visibles.
 - **SC-003**: Al menos el 90% de los usuarios de prueba pueden completar tareas de crear, editar, eliminar y buscar sin ayuda.
-- **SC-004**: El sistema sigue siendo utilizable para un conjunto de datos de al menos 500 registros de entidad sin pérdida de funcionalidad central.
+- **SC-004**: Con al menos 500 registros de entidad, el render inicial de la lista es ≤1.000 ms, el p95 de búsqueda es ≤500 ms y no hay pérdida de funcionalidad central.
 - **SC-005**: Un usuario puede alcanzar las pantallas de gestión y búsqueda desde el panel o la barra lateral en menos de 10 segundos en el primer uso.
 - **SC-006**: Toda la funcionalidad existente de gestión de entidades y documentos sigue operativa tras el rediseño del marco ERP y el panel (sin regresiones).
 - **SC-007**: Los usuarios pueden navegar entre las pantallas de panel, gestión y búsqueda sin perder ninguna entidad ni documento almacenado.
 - **SC-008**: Un desarrollador puede producir un módulo adaptado usando solo el archivo de configuración, con cero modificaciones en archivos fuente centrales.
 - **SC-009**: Cada pantalla presenta el mismo marco con marca, y los usuarios pueden identificar en qué módulo están de un vistazo.
-- **SC-010**: Las estadísticas de registros mostradas en el panel siempre coinciden con el número de entidades y documentos almacenados.
+- **SC-010**: Las estadísticas del panel coinciden con el número de entidades y Documentos de Compra almacenados en cada refresco por evento, con staleness máxima de 2 s.
 - **SC-011**: Un encargado de recepción puede registrar la recepción de una Orden de Compra de hasta 10 líneas en menos de 3 minutos.
 - **SC-012**: El 100% de las recepciones registradas quedan asociadas a su Orden de Compra con fecha, responsable y cantidades, y la cantidad pendiente de cada línea siempre coincide con lo solicitado menos lo recibido.
 - **SC-013**: Ninguna Orden de Compra puede quedar en estado Recibida mientras alguna de sus líneas tenga cantidades pendientes.
@@ -509,7 +527,7 @@ Los módulos personalizados construidos sobre esta base DEBEN poder:
 - El módulo base gestiona datos para un único espacio de trabajo en lugar de una base de datos multiinquilino compartida.
 - La adaptación a un módulo específico se realiza mediante un archivo de configuración del módulo en lugar de editando archivos fuente centrales.
 - Cada entidad incluye información básica suficiente para identificación y seguimiento; los módulos personalizados aportan los campos específicos del dominio.
-- La versión inicial se centra en la gestión central de datos maestros y documentos en lugar de capacidades ERP avanzadas como flujos de aprobación, períodos de contabilización o informes.
+- La versión inicial cubre las HU1-HU18, incluidos usuarios, proveedores, departamentos, presupuestos, catálogo, cotizaciones, Órdenes de Compra, recepciones, pago, auditoría, dashboard y exportación; quedan fuera capacidades ERP avanzadas como contabilidad, multiinquilino y backend.
 - La búsqueda se realiza sobre los registros de entidad almacenados.
 - La pantalla de gestión consolida los formularios de añadir/editar entidad y añadir/editar documento en una sola pantalla de gestión.
 - La navegación entre áreas ocurre mediante una barra lateral persistente; la pantalla de gestión aloja ambos paneles de gestión y no muestra la lista de entidades.
@@ -523,4 +541,9 @@ Los módulos personalizados construidos sobre esta base DEBEN poder:
 - El ciclo de vida de la Orden de Compra (Historia de Usuario 2) incorpora el estado intermedio Recibida parcialmente entre Emitida y Recibida.
 - La actualización de existencias de inventario a partir de la recepción queda fuera del alcance de esta historia.
 - El contenido del usuario introducido por el usuario (nombres, descripciones, notas de documentos) DEBE sanitizarse antes de renderizarse en el DOM para prevenir ataques de inyección de scripts (XSS). El módulo base DEBE escapar HTML y atributos de eventos al mostrar datos de localStorage.
+- “Tiempo real” significa refresco por evento con staleness máxima de 2 s; no se define como actualización instantánea ni como sondeo continuo.
+- Antes de mutar localStorage, el sistema relee el snapshot y compara `revision`/`updatedAt`; en conflicto bloquea la escritura y exige recargar o reintentar.
+- La autenticación, la segregación de funciones y la auditoría son controles funcionales de la app solo-cliente; la manipulación local del navegador se acepta como riesgo conocido de la Prueba de Concepto.
+- El perfil Adquisiciones y Compras es una implementación de referencia sobre el módulo base reutilizable; la personalización de dominio se realiza por configuración y no por cambios al núcleo.
+- Los importes se comparan tras redondeo a 2 decimales con tolerancia absoluta de 0,01 CLP.
 

@@ -84,10 +84,10 @@
           "nombre": "taxId",
           "campoCodigo": "taxId",
           "tipo": "string",
-          "obligatorio": false,
-          "mer": "RFC / NIT / CUIT / RUT",
-          "descripcion": "Identificación fiscal (RFC, NIT, CUIT o RUT según el país).",
-          "validacion": "Opcional; se almacena recortado."
+          "obligatorio": true,
+          "mer": "RUT chileno XX.XXX.XXX-X",
+          "descripcion": "Identificación fiscal del perfil activo: RUT chileno validado con módulo 11.",
+          "validacion": "Obligatorio; único entre proveedores; módulo 11; formato XX.XXX.XXX-X."
         },
         {
           "nombre": "categoriaProveedor",
@@ -196,6 +196,15 @@
           "enMer": false,
           "descripcion": "Marca de tiempo de la última actualización.",
           "validacion": "Asignada por el storage."
+        },
+        {
+          "nombre": "revision",
+          "campoCodigo": "revision",
+          "tipo": "integer",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Versión optimista del registro para detectar escrituras obsoletas.",
+          "validacion": "Entero >= 1; se incrementa en cada mutación y se compara antes de guardar."
         }
       ]
     },
@@ -236,9 +245,9 @@
           "campoCodigo": "series + folio",
           "tipo": "string + integer",
           "obligatorio": true,
-          "mer": "Ej. OC-2045, SC-1001",
-          "descripcion": "Numeración oficial: la serie agrupa folios consecutivos y se combina con el folio.",
-          "validacion": "series opcional; folio obligatorio, entero positivo."
+          "mer": "Ej. OC-2045",
+          "descripcion": "Numeración oficial; las Órdenes de Compra usan exclusivamente OC-XXXX.",
+          "validacion": "folio obligatorio y único; en Orden de Compra el formato OC-XXXX es irreversible."
         },
         {
           "nombre": "tipoDocumento",
@@ -254,9 +263,9 @@
           "campoCodigo": "status",
           "tipo": "select",
           "obligatorio": false,
-          "mer": "Aprobada, Emitida, Recibida parcialmente, Rechazada, Recibida",
+          "mer": "Pendiente de aprobación, Aprobada, En cotización, Emitida, Recibida parcialmente, Recibida, Pagada, Rechazada",
           "descripcion": "Estado del documento dentro del ciclo de vida configurado.",
-          "validacion": "Uno de los estados de statusLifecycle; solo transiciones permitidas."
+          "validacion": "Uno de los estados de statusLifecycle; solo transiciones permitidas; el override exige motivo en auditoría."
         },
         {
           "nombre": "prioridad",
@@ -281,9 +290,9 @@
           "campoCodigo": "currency",
           "tipo": "string",
           "obligatorio": false,
-          "mer": "Moneda (MXN, USD, EUR…)",
-          "descripcion": "Código de moneda de los importes del documento.",
-          "validacion": "Opcional."
+          "mer": "Moneda (CLP, USD, EUR…)",
+          "descripcion": "Código de moneda de los importes del documento; la moneda local de referencia es CLP.",
+          "validacion": "Obligatorio en el perfil activo; las comparaciones usan tolerancia de 0,01 CLP."
         },
         {
           "nombre": "tipoCambio",
@@ -397,6 +406,15 @@
           "validacion": "Asignada por el storage."
         },
         {
+          "nombre": "revision",
+          "campoCodigo": "revision",
+          "tipo": "integer",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Versión optimista del registro para detectar escrituras obsoletas.",
+          "validacion": "Entero >= 1; se incrementa en cada mutación y se compara antes de guardar."
+        },
+        {
           "nombre": "ID_Proveedor",
           "campoCodigo": "entity_id",
           "tipo": "string",
@@ -476,6 +494,24 @@
           "validacion": "Opcional."
         },
         {
+          "nombre": "updatedAt",
+          "campoCodigo": "updatedAt",
+          "tipo": "datetime",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Marca de tiempo de la última actualización de la recepción.",
+          "validacion": "Asignada por el storage."
+        },
+        {
+          "nombre": "revision",
+          "campoCodigo": "revision",
+          "tipo": "integer",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Versión optimista de la recepción.",
+          "validacion": "Entero >= 1; se compara antes de guardar."
+        },
+        {
           "nombre": "ID_OrdenCompra",
           "tipo": "string",
           "obligatorio": true,
@@ -552,6 +588,151 @@
           "mer": "Precio unitario sugerido",
           "descripcion": "Precio unitario de referencia para proponer precioUnitario en las líneas.",
           "validacion": "Opcional; número no negativo."
+        },
+        {
+          "nombre": "updatedAt",
+          "campoCodigo": "updatedAt",
+          "tipo": "datetime",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Marca de tiempo de la última actualización del producto.",
+          "validacion": "Asignada por el storage cuando la colección esté activa."
+        },
+        {
+          "nombre": "revision",
+          "campoCodigo": "revision",
+          "tipo": "integer",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Versión optimista del producto.",
+          "validacion": "Entero >= 1; se compara antes de guardar."
+        }
+      ]
+    },
+    {
+      "id": "auditoria",
+      "titulo": "Evento de Auditoría",
+      "implementacion": "Colección eventosAuditoria en src/storage.js; escrita por src/auth.js y las acciones de dominio",
+      "descripcion": "Registro secuencial de cambios y decisiones relevantes, de solo lectura para todos los roles.",
+      "vistas": [
+        "logico"
+      ],
+      "layout": {
+        "logico": {
+          "x": 990,
+          "y": 560,
+          "ancho": 300
+        }
+      },
+      "atributos": [
+        {
+          "nombre": "eventoId",
+          "campoCodigo": "eventoId",
+          "tipo": "string",
+          "obligatorio": true,
+          "clave": "PK",
+          "mer": "ID del evento",
+          "descripcion": "Identificador único del evento de auditoría.",
+          "validacion": "Generado automáticamente; único e inmutable."
+        },
+        {
+          "nombre": "timestamp",
+          "campoCodigo": "timestamp",
+          "tipo": "datetime",
+          "obligatorio": true,
+          "mer": "ISO-8601",
+          "descripcion": "Momento en que ocurrió la acción.",
+          "validacion": "Asignado por el storage; ISO-8601."
+        },
+        {
+          "nombre": "usuarioId",
+          "campoCodigo": "usuarioId",
+          "tipo": "string",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Identificador del usuario que ejecutó la acción.",
+          "validacion": "Obligatorio; debe existir en usuarios."
+        },
+        {
+          "nombre": "nombreUsuario",
+          "campoCodigo": "nombreUsuario",
+          "tipo": "string",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Nombre legible del usuario en el momento del evento.",
+          "validacion": "Obligatorio; instantánea del nombre, no se recalcula."
+        },
+        {
+          "nombre": "rol",
+          "campoCodigo": "rol",
+          "tipo": "string",
+          "obligatorio": true,
+          "mer": "Rol activo",
+          "descripcion": "Rol del usuario cuando se registró el evento.",
+          "validacion": "Uno de: solicitante, encargado_compras, aprobador, recepcion, administrador."
+        },
+        {
+          "nombre": "accion",
+          "campoCodigo": "accion",
+          "tipo": "string",
+          "obligatorio": true,
+          "mer": " Acción",
+          "descripcion": "Acción ejecutada (crear, editar, aprobar, rechazar, override, emitir, recibir, pagar, exportar, restaurar).",
+          "validacion": "Obligatorio; vocabulario controlado por module-config.js."
+        },
+        {
+          "nombre": "entidadTipo",
+          "campoCodigo": "entidadTipo",
+          "tipo": "string",
+          "obligatorio": true,
+          "mer": "Tipo de entidad",
+          "descripcion": "Tipo de objeto afectado.",
+          "validacion": "Obligatorio."
+        },
+        {
+          "nombre": "entidadId",
+          "campoCodigo": "entidadId",
+          "tipo": "string",
+          "obligatorio": true,
+          "mer": "ID de entidad",
+          "descripcion": "Identificador del objeto afectado.",
+          "validacion": "Obligatorio; UUID del registro."
+        },
+        {
+          "nombre": "estadoAnterior",
+          "campoCodigo": "estadoAnterior",
+          "tipo": "string",
+          "obligatorio": false,
+          "mer": "Estado anterior",
+          "descripcion": "Valor previo del campo gobernado por el flujo.",
+          "validacion": "Opcional; requerido en transiciones de estado."
+        },
+        {
+          "nombre": "estadoNuevo",
+          "campoCodigo": "estadoNuevo",
+          "tipo": "string",
+          "obligatorio": false,
+          "mer": "Estado nuevo",
+          "descripcion": "Valor posterior del campo gobernado por el flujo.",
+          "validacion": "Opcional; requerido en transiciones de estado."
+        },
+        {
+          "nombre": "comentario",
+          "campoCodigo": "comentario",
+          "tipo": "string",
+          "obligatorio": false,
+          "enMer": false,
+          "descripcion": "Motivo o contexto de la acción; obligatorio en overrides.",
+          "validacion": "Texto libre; obligatorio cuando accion = override."
+        },
+        {
+          "nombre": "revision",
+          "campoCodigo": "revision",
+          "tipo": "integer",
+          "obligatorio": true,
+          "enMer": false,
+          "descripcion": "Revisión de la entidad afectada al registrarse el evento.",
+          "validacion": "Entero >= 1."
         }
       ]
     },
@@ -813,15 +994,27 @@
     "entidad": "ordenCompra",
     "atributo": "estado",
     "estados": [
+      "Pendiente de aprobación",
       "Aprobada",
+      "En cotización",
       "Emitida",
       "Recibida parcialmente",
-      "Rechazada",
-      "Recibida"
+      "Recibida",
+      "Pagada",
+      "Rechazada"
     ],
     "transiciones": {
+      "Pendiente de aprobación": [
+        "Aprobada",
+        "Rechazada"
+      ],
       "Aprobada": [
+        "En cotización",
         "Emitida",
+        "Rechazada"
+      ],
+      "En cotización": [
+        "Aprobada",
         "Rechazada"
       ],
       "Emitida": [
@@ -832,10 +1025,13 @@
       "Recibida parcialmente": [
         "Recibida"
       ],
-      "Rechazada": [],
-      "Recibida": []
+      "Recibida": [
+        "Pagada"
+      ],
+      "Pagada": [],
+      "Rechazada": []
     },
-    "nota": "El flujo avanza solicitud de cotización aprobada (Aprobada) → orden de compra emitida con folio OC (Emitida) → recepción parcial (Recibida parcialmente) → recepción completa (Recibida). La emisión solo parte de Aprobada; Recibida parcialmente y Recibida solo se asignan al registrar recepciones (FR-045, SC-013). El rechazo se permite mientras no se haya confirmado ninguna recepción."
+    "nota": "El flujo avanza solicitud justificada pendiente → aprobación → cotización/orden emitida con folio exclusivo OC-XXXX → recepción parcial → recepción completa → pago. En cotización vuelve a Aprobada al elegir proveedor; la emisión solo parte de Aprobada; Recibida parcialmente y Recibida solo se asignan al registrar recepciones (FR-045, SC-013); Pagada solo se asigna tras registrar el pago. El rechazo se permite mientras no se haya confirmado ninguna recepción y todo override exige motivo en auditoría."
   },
   "formulas": [
     {
@@ -859,7 +1055,7 @@
       "helper": "applyTotalesToCabecera"
     }
   ],
-  "notaFormulas": "Todos los importes se redondean a 2 decimales. tasaImpuesto es una fracción (p. ej., 0.19 para 19 %). El porcentaje de descuento de línea se acota a 0..100 antes de aplicarse. Cualquier cambio en las líneas recalcula en cascada los totales de la cabecera.",
+  "notaFormulas": "Todos los importes se redondean a 2 decimales; las comparaciones monetarias usan tolerancia absoluta de 0,01 CLP. tasaImpuesto es una fracción (p. ej., 0.19 para 19 %). El porcentaje de descuento de línea se acota a 0..100 antes de aplicarse. Cualquier cambio en las líneas recalcula en cascada los totales de la cabecera.",
   "configuracionModulo": {
     "descripcion": "Objeto ModuleConfig (`userConfig` en src/module-config.js) cargado al arrancar que adapta el módulo base al módulo Adquisiciones y Compras.",
     "campos": [
@@ -898,6 +1094,36 @@
         "tipo": "object",
         "descripcion": "Marca; accentColor = #0f766e.",
         "restricciones": "accentColor debe ser hexadecimal #rgb o #rrggbb."
+      },
+      {
+        "nombre": "identidadFiscal",
+        "tipo": "object",
+        "descripcion": "RUT chileno como identidad fiscal activa; validación módulo 11 y formato XX.XXX.XXX-X.",
+        "restricciones": "Obligatorio en proveedores; único y normalizado antes de persistir."
+      },
+      {
+        "nombre": "monedaLocal",
+        "tipo": "string",
+        "descripcion": "Moneda funcional de referencia para totales y comparaciones (CLP).",
+        "restricciones": "Código ISO; las comparaciones usan tolerancia de 0,01 CLP."
+      },
+      {
+        "nombre": "realtime",
+        "tipo": "object",
+        "descripcion": "Configuración de actualización por evento para dashboard, alertas y presupuestos.",
+        "restricciones": "stalenessMaxMs = 2000; sin sondeo continuo."
+      },
+      {
+        "nombre": "concurrencia",
+        "tipo": "object",
+        "descripcion": "Control optimista basado en revision y updatedAt.",
+        "restricciones": "Toda mutación compara la versión leída antes de escribir; conflicto = sin guardado silencioso."
+      },
+      {
+        "nombre": "esquemaRespaldo",
+        "tipo": "object",
+        "descripcion": "Formato del archivo JSON de exportación/restauración con schemaVersion, exportedAt y colecciones del módulo.",
+        "restricciones": "La restauración valida versión, colecciones obligatorias, RUT, folios únicos y tipos antes de reemplazar el estado."
       }
     ],
     "reglas": [
@@ -905,7 +1131,11 @@
       "Sin configuración se usan los valores integrados: Entidad/Documento, sin campos personalizados, estado de texto libre y color de acento predeterminado.",
       "Los valores inválidos o conflictivos se informan con claridad en lugar de fallar en silencio.",
       "Los valores de campos personalizados se persisten junto a los campos base sin cambios de esquema en el storage.",
-      "Un ciclo de vida configurado reemplaza la entrada de estado de texto libre."
+      "Un ciclo de vida configurado reemplaza la entrada de estado de texto libre.",
+      "La numeración de Órdenes de Compra usa exclusivamente OC-XXXX, con sufijo único e irreversible.",
+      "Los roles se verifican en la capa de aplicación; el solicitante no aprueba su propia solicitud y el aprobador no confirma recepciones.",
+      "Los eventos de auditoría son de solo lectura y todo override exige comentario obligatorio.",
+      "La exportación produce JSON versionado; la restauración rechaza esquemas desconocidos o incompletos sin mezclar datos."
     ]
   },
   "notasReconciliacion": [
@@ -935,7 +1165,7 @@
     },
     {
       "tema": "taxId",
-      "detalle": "El encargo indica RFC / NIT / RUT; plan.md indica RFC/NIT/CUIT. Se documentan los cuatro, ya que el campo es texto libre."
+      "detalle": "El perfil activo fija RUT chileno como identidad fiscal: obligatorio, único, validado con módulo 11 y formateado XX.XXX.XXX-X. RFC/NIT/CUIT quedan como punto de extensión de otros perfiles, no como valor libre del perfil actual."
     },
     {
       "tema": "PK de la Línea de Detalle",
@@ -955,7 +1185,7 @@
     },
     {
       "tema": "Estados en spec.md",
-      "detalle": "spec.md (HU2/HU6/HU11) menciona Emitida, Recibida parcialmente, Recibida y Pagada. El ciclo de vida implementado en module-config.js es Aprobada → Emitida → Recibida parcialmente → Recibida → Pagada, con Rechazada hasta la primera recepción. Por FR-045 «Recibida parcialmente» y «Recibida» solo los asigna el registro de recepciones; «Pagada» se asigna al registrar una factura cuyo monto coincide con la recepción total."
+      "detalle": "El ciclo de vida canónico es Pendiente de aprobación → Aprobada → En cotización/Emitida → Recibida parcialmente → Recibida → Pagada, con Rechazada hasta la primera recepción. Por FR-045 «Recibida parcialmente» y «Recibida» solo los asigna el registro de recepciones; «Pagada» se asigna al registrar el pago; todo override se registra con motivo en auditoría."
     },
     {
       "tema": "Nombre de la tabla intermedia",
@@ -964,6 +1194,30 @@
     {
       "tema": "Línea de Recepción",
       "detalle": "spec.md describe una Línea de Recepción (cantidad conforme, rechazada y motivo). Queda fuera de este MER, que se limita a las entidades pedidas; es la siguiente extensión natural de RECEPCIÓN (1:N)."
+    },
+    {
+      "tema": "Auditoría",
+      "detalle": "EVENTO_DE_AUDITORIA se modela solo en el MER lógico porque no es un concepto del MER conceptual solicitado. Registra eventoId, timestamp, usuarioId, nombreUsuario, rol, accion, entidadTipo, entidadId, estadoAnterior, estadoNuevo, comentario y revision; es de solo lectura."
+    },
+    {
+      "tema": "Concurrencia",
+      "detalle": "Los registros persistentes incluyen revision y updatedAt. El storage relee antes de escribir y bloquea la mutación si la versión cambió; no se permite sobrescritura silenciosa."
+    },
+    {
+      "tema": "Exportación y respaldo",
+      "detalle": "El archivo JSON incluye schemaVersion, exportedAt, módulo, colecciones y eventos de auditoría; la restauración valida versión, colecciones obligatorias, RUT y unicidad de folio antes de reemplazar el estado."
+    },
+    {
+      "tema": "Seguridad solo-cliente",
+      "detalle": "La manipulación de localStorage no puede impedirse sin backend. El riesgo se acepta para la Prueba de Concepto y se compensa con validación de esquema, hash saltado, roles funcionales, auditoría y revisión optimista."
+    },
+    {
+      "tema": "Tiempo real y rendimiento",
+      "detalle": "Dashboard, alertas y presupuestos se actualizan por evento con staleness máxima de 2 s; las metas verificables son p95 ≤500 ms en búsqueda y render inicial ≤1.000 ms con 500 registros."
+    },
+    {
+      "tema": "Módulos huérfanos",
+      "detalle": "approval.js, components/approval-panel.js y components/user-profile.js se integran desde app.js/shell.js; user-management.js implementa la administración de usuarios de FR-016/FR-017."
     }
   ]
 }
