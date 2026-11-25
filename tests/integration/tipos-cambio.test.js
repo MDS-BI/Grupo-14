@@ -63,6 +63,22 @@ describe('Punto 6 - divisas y tipos de cambio en los documentos de compra', () =
     expect(saved.fechaEmision).toBe('2026-08-01');
   });
 
+  it('conserva la instantánea de divisa al editar el documento', () => {
+    fillDocument();
+    const saved = loadDocuments()[0];
+
+    qs('edit-document').value = saved.id;
+    qs('edit-document').dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    qs('notes').value = 'Nota actualizada';
+    qs('document-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+
+    const updated = loadDocuments()[0];
+    expect(updated.currency).toBe(saved.currency);
+    expect(updated.tipoCambio).toBe(saved.tipoCambio);
+    expect(updated.fechaEmision).toBe(saved.fechaEmision);
+    expect(updated.notes).toBe('Nota actualizada');
+  });
+
   it('exige la fecha de emisión para no perder la trazabilidad del tipo de cambio', () => {
     fillDocument({ fechaEmision: '' });
     expect(loadDocuments().length).toBe(0);

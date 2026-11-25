@@ -22,8 +22,8 @@ describe('user storage', () => {
     const user = addUser({ username: 'ana', name: 'Ana López', role: 'solicitante' });
     expect(user.id).toBeDefined();
     expect(loadUsers()).toHaveLength(1);
-    const updated = updateUser(user.id, { role: 'compras', name: 'Ana L.' });
-    expect(updated.role).toBe('compras');
+    const updated = updateUser(user.id, { role: 'encargado_compras', name: 'Ana L.' });
+    expect(updated.role).toBe('encargado_compras');
     expect(loadUsers()[0].name).toBe('Ana L.');
   });
 
@@ -34,7 +34,7 @@ describe('user storage', () => {
 
   it('rejects duplicated usernames', () => {
     addUser({ username: 'ana', name: 'Ana', role: 'solicitante' });
-    expect(() => addUser({ username: 'ANA', name: 'Otra', role: 'compras' })).toThrow(/existe/);
+    expect(() => addUser({ username: 'ANA', name: 'Otra', role: 'encargado_compras' })).toThrow(/existe/);
   });
 });
 

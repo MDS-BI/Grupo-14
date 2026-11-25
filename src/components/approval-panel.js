@@ -1,1 +1,1 @@
-export { createApprovalItem, renderApprovalQueue } from './approval-inbox.js';
+export { renderApprovalInbox, renderApprovalDetail } from './approval-inbox.js';

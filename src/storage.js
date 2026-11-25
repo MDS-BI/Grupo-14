@@ -1,4 +1,4 @@
-import { getConfig, computeSubtotalLinea, applyTotalesToCabecera, DEFAULT_TAX_RATE } from './module-config.js';
+import { getConfig, computeSubtotalLinea, subtotalFromLineas, applyTotalesToCabecera, DEFAULT_TAX_RATE } from './module-config.js';
 import { can, currentUser, isAdmin, ROLE_KEYS, PERMISSIONS } from './auth.js';
 import { cleanRut, validateRut } from './rut.js';
 
@@ -7,24 +7,29 @@ const DOCUMENTS_KEY = 'erp_base_module:documents';
 const USERS_KEY = 'erp_base_module:users';
 const REQUISITIONS_KEY = 'erp_base_module:requisitions';
 const RECEPTIONS_KEY = 'erp_base_module:receptions';
+const QUOTATIONS_KEY = 'erp_base_module:quotations';
 
 export const REQUISITION_STATUS = Object.freeze({
   PENDING: 'Pendiente de aprobación',
   APPROVED: 'Aprobada',
-  REJECTED: 'Rechazada'
+  REJECTED: 'Rechazada',
+  IN_QUOTATION: 'En cotización'
 });
+
+export const PENDING_STATUS = REQUISITION_STATUS.PENDING;
 
 export const DOCUMENT_STATUS = Object.freeze({
   APPROVED: 'Aprobada',
   ISSUED: 'Emitida',
   PARTIALLY_RECEIVED: 'Recibida parcialmente',
   REJECTED: 'Rechazada',
-  RECEIVED: 'Recibida'
+  RECEIVED: 'Recibida',
+  PAID: 'Pagada'
 });
 
 // "Órdenes emitidas" del panel: toda orden que llegó a emitirse y no fue rechazada.
 export const ISSUED_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.ISSUED, DOCUMENT_STATUS.PARTIALLY_RECEIVED, DOCUMENT_STATUS.RECEIVED]);
-export const FINAL_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.RECEIVED, DOCUMENT_STATUS.REJECTED]);
+export const FINAL_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.RECEIVED, DOCUMENT_STATUS.PAID, DOCUMENT_STATUS.REJECTED]);
 // Una orden con alguna recepción confirmada ya no puede rechazarse/cancelarse.
 export const NON_CANCELLABLE_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.PARTIALLY_RECEIVED, ...FINAL_ORDER_STATUSES]);
 
@@ -61,6 +66,15 @@ export function saveEntities(entities){ writeJson(ENTITIES_KEY, entities); }
 export function loadDocuments(){ return readJson(DOCUMENTS_KEY, []); }
 export function saveDocuments(documents){ writeJson(DOCUMENTS_KEY, documents); }
 
+export function searchDocuments(term){
+  const query = String(term || '').trim().toLowerCase();
+  if(!query) return [];
+  return loadDocuments().filter(d =>
+    [d.series, d.folio, d.justificacion, d.notes, d.status, d.entity_id]
+      .some(value => String(value ?? '').toLowerCase().includes(query))
+  );
+}
+
 export function loadUsers(){ return readJson(USERS_KEY, []); }
 export function saveUsers(users){ writeJson(USERS_KEY, users); }
 
@@ -69,6 +83,9 @@ export function saveRequisitions(requisitions){ writeJson(REQUISITIONS_KEY, requ
 
 export function loadReceptions(){ return readJson(RECEPTIONS_KEY, []); }
 export function saveReceptions(receptions){ writeJson(RECEPTIONS_KEY, receptions); }
+
+export function loadQuotations(){ return readJson(QUOTATIONS_KEY, []); }
+export function saveQuotations(quotations){ writeJson(QUOTATIONS_KEY, quotations); }
 
 function generateId(){
   return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
@@ -184,6 +201,12 @@ export function updateUser(id, updates){
   const idx = list.findIndex(u => u.id === id);
   if(idx === -1) throw new Error('Usuario no encontrado');
   const merged = { ...list[idx], ...updates };
+  if(merged.active === false){
+    const pending = usersWithPendingWork(id);
+    if(pending.requisitions > 0 || pending.documents > 0){
+      throw new Error('No se puede desactivar el usuario: tiene solicitudes u órdenes pendientes en su flujo. Reasigna o concluye esos trámites primero.');
+    }
+  }
   const check = validateUser(merged, id);
   if(!check.valid) throw new Error(Object.values(check.errors)[0]);
   list[idx] = {
@@ -203,10 +226,17 @@ export function updateUser(id, updates){
 
 export function usersWithPendingWork(userId){
   const requisitions = loadRequisitions().filter(r =>
-    r.requesterId === userId && r.status === REQUISITION_STATUS.PENDING
+    r.requesterId === userId && [REQUISITION_STATUS.PENDING, REQUISITION_STATUS.APPROVED, REQUISITION_STATUS.IN_QUOTATION].includes(r.status)
   );
-  const documents = loadDocuments().filter(d => d.createdBy === userId && !FINAL_ORDER_STATUSES.includes(d.status));
+  const documents = loadDocuments().filter(d =>
+    [d.createdBy, d.solicitante_id, d.requesterId].includes(userId) && !FINAL_ORDER_STATUSES.includes(d.status)
+  );
   return { requisitions: requisitions.length, documents: documents.length };
+}
+
+export function hasPendingWorkForUser(userId){
+  const pending = usersWithPendingWork(userId);
+  return pending.requisitions > 0 || pending.documents > 0;
 }
 
 export function setUserActive(id, active){
@@ -423,7 +453,23 @@ export function validateDocument(payload, currentStatus){
     && Number(discount) > Number(subtotal)){
     errors.discount = 'El descuento no puede superar el subtotal';
   }
-  validateLifecycleStatus((status||'').trim(), currentStatus, errors);
+  const lineas = Array.isArray(payload.lineasDetalle) ? payload.lineasDetalle : [];
+  if(lineas.length > 0 && !errors.discount && discount !== undefined && discount !== null && discount !== ''){
+    if(Number(discount) > subtotalFromLineas(lineas)){
+      errors.discount = 'El descuento no puede superar el subtotal derivado de las líneas';
+    }
+  }
+  if(!isEmpty(payload.tipoCambio)){
+    const tc = Number(payload.tipoCambio);
+    if(!Number.isFinite(tc) || tc < 0) errors.tipoCambio = 'El tipo de cambio debe ser un número no negativo';
+  }
+  const requiredFor = (getConfig().justificacion && getConfig().justificacion.requiredFor) || [];
+  if(requiredFor.includes(String(payload.tipoDocumento || '').trim()) && isEmpty(payload.justificacion)){
+    errors.justificacion = 'La justificación de la compra es obligatoria';
+  }
+  const requestPending = String(payload.tipoDocumento || '').trim() === 'Solicitud de Cotización'
+    && String(status || '').trim() === PENDING_STATUS;
+  if(!requestPending) validateLifecycleStatus((status||'').trim(), currentStatus, errors);
   if(Array.isArray(payload.lineasDetalle) && payload.lineasDetalle.length > 0){
     const lineCheck = validateLineasDetalle(payload.lineasDetalle);
     if(!lineCheck.valid) Object.assign(errors, lineCheck.errors);
@@ -450,6 +496,8 @@ function baseDocumentFields(payload, id, now){
     paymentTerms: (payload.paymentTerms||'').trim() || undefined,
     notes: (payload.notes||'').trim() || undefined,
     status: (payload.status||'').trim() || undefined,
+    justificacion: isEmpty(payload.justificacion) ? undefined : String(payload.justificacion).trim(),
+    solicitante_id: payload.solicitante_id || payload.requesterId || undefined,
     createdBy: user ? user.id : undefined,
     createdByName: user ? user.name : undefined,
     ...pickCustomFields('document', payload),
@@ -472,7 +520,7 @@ export function addDocument(payload){
   const document = baseDocumentFields(payload, id, now);
   if(Array.isArray(payload.lineasDetalle) && payload.lineasDetalle.length > 0){
     document.lineasDetalle = prepareLineas(payload.lineasDetalle, id);
-    Object.assign(document, applyTotalesToCabecera(document, DEFAULT_TAX_RATE));
+    Object.assign(document, applyTotalesToCabecera(document, getConfig().taxRate ?? DEFAULT_TAX_RATE));
   }
   const list = loadDocuments();
   list.push(document);
@@ -519,17 +567,20 @@ export function updateDocument(id, updates){
     discount: (isEmpty(merged.discount)) ? undefined : Number(merged.discount),
     taxAmount: (isEmpty(merged.taxAmount)) ? undefined : Number(merged.taxAmount),
     totalAmount: (isEmpty(merged.totalAmount)) ? undefined : Number(merged.totalAmount),
-    currency: (merged.currency||'').trim() || undefined,
+    currency: (prev.currency||'').trim() || undefined,
     paymentTerms: (merged.paymentTerms||'').trim() || undefined,
     notes: (merged.notes||'').trim() || undefined,
     status: updates.status !== undefined ? (updates.status||'').trim() : merged.status,
+    justificacion: isEmpty(merged.justificacion) ? undefined : String(merged.justificacion).trim(),
     ...pickCustomFields('document', { ...prev, ...updates }),
+    tipoCambio: prev.tipoCambio,
+    fechaEmision: prev.fechaEmision,
     updatedAt: new Date().toISOString()
   };
   if(updates.lineasDetalle !== undefined){
     if(Array.isArray(updates.lineasDetalle) && updates.lineasDetalle.length > 0){
       next.lineasDetalle = prepareLineas(updates.lineasDetalle, id);
-      Object.assign(next, applyTotalesToCabecera(next, DEFAULT_TAX_RATE));
+      Object.assign(next, applyTotalesToCabecera(next, getConfig().taxRate ?? DEFAULT_TAX_RATE));
     } else {
       delete next.lineasDetalle;
     }
@@ -611,6 +662,55 @@ export function cancelDocument(id){
   docs[idx] = { ...doc, status: DOCUMENT_STATUS.REJECTED, cancelledAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
   saveDocuments(docs);
   return docs[idx];
+}
+
+export function patchDocument(id, updates){
+  const docs = loadDocuments();
+  const idx = docs.findIndex(d => d.id === id);
+  if(idx === -1) throw new Error('Documento no encontrado');
+  docs[idx] = { ...docs[idx], ...updates, updatedAt: new Date().toISOString() };
+  saveDocuments(docs);
+  return docs[idx];
+}
+
+export function isRequestDocument(doc){
+  return Boolean(doc) && (doc.tipoDocumento === 'Solicitud de Cotización' || doc.status === PENDING_STATUS);
+}
+
+export function decideApproval(id, status, { userId, comment } = {}){
+  const doc = loadDocuments().find(d => d.id === id);
+  if(!doc) throw new Error('La solicitud no existe');
+  const decision = {
+    userId,
+    comment: String(comment || '').trim() || undefined,
+    status,
+    at: new Date().toISOString()
+  };
+  return patchDocument(id, {
+    status,
+    aprobaciones: [...(Array.isArray(doc.aprobaciones) ? doc.aprobaciones : []), decision]
+  });
+}
+
+export function payOrder(id, { factura, monto, fechaPago } = {}){
+  const doc = loadDocuments().find(d => d.id === id);
+  if(!doc) throw new Error('Orden de compra no encontrada');
+  if(doc.status !== DOCUMENT_STATUS.RECEIVED){
+    throw new Error(`Solo se puede pagar una orden recibida por completo (estado actual: "${doc.status || 'sin estado'}")`);
+  }
+  if(isEmpty(factura)) throw new Error('El folio de la factura es obligatorio');
+  if(!isValidDate(fechaPago)) throw new Error('La fecha de pago debe ser una fecha válida (YYYY-MM-DD)');
+  const amount = Number(monto);
+  if(!Number.isFinite(amount) || amount <= 0) throw new Error('El monto facturado debe ser un número positivo');
+  if(Math.abs(amount - Number(doc.totalAmount || 0)) > 0.01){
+    throw new Error('El monto facturado debe coincidir con el total recepcionado de la orden');
+  }
+  return patchDocument(id, {
+    status: DOCUMENT_STATUS.PAID,
+    factura: String(factura).trim(),
+    fechaPago,
+    montoPagado: amount
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -755,9 +855,91 @@ export function pendingRequisitionsForApprover(){
 export function budgetForDepartment(department){
   const total = Number(DEPARTMENT_BUDGETS[department] || 0);
   const used = loadRequisitions()
-    .filter(r => r.department === department && [REQUISITION_STATUS.PENDING, REQUISITION_STATUS.APPROVED].includes(r.status))
+    .filter(r => r.department === department && [REQUISITION_STATUS.PENDING, REQUISITION_STATUS.APPROVED, REQUISITION_STATUS.IN_QUOTATION].includes(r.status))
     .reduce((acc, r) => acc + requisitionTotal(r), 0);
   return { total, used, available: Math.max(total - used, 0) };
+}
+
+export function pendingQuotationRequisitions(){
+  const quoted = new Set(loadQuotations().map(q => q.requisitionId));
+  return loadRequisitions().filter(r => r.status === REQUISITION_STATUS.APPROVED && !quoted.has(r.id));
+}
+
+export function quotationsForRequisition(requisitionId){
+  return loadQuotations().filter(q => q.requisitionId === requisitionId);
+}
+
+export function validateQuotation(payload){
+  const errors = {};
+  const requisition = loadRequisitions().find(r => r.id === payload.requisitionId);
+  if(!requisition) errors.requisitionId = 'La solicitud autorizada no existe';
+  else if(quotationsForRequisition(requisition.id).length > 0) errors.requisitionId = 'Esta solicitud ya tiene una cotización generada';
+  else if(requisition.status !== REQUISITION_STATUS.APPROVED) errors.requisitionId = 'La solicitud no está autorizada para cotizar';
+
+  const entity = loadEntities().find(e => e.entity_id === payload.entityId);
+  if(!entity) errors.entityId = 'Selecciona un proveedor para la cotización';
+  else {
+    if(entity.active === false || String(entity.estado || '').toLowerCase() === 'inactivo') errors.entityId = 'El proveedor seleccionado no está activo';
+    const missing = ['taxId', 'categoriaProveedor', 'paymentTerms', 'creditLimit'].filter(key => isEmpty(entity[key]));
+    if(missing.length > 0) errors.entity = `Faltan datos comerciales del proveedor: ${missing.join(', ')}`;
+  }
+
+  const lineas = Array.isArray(payload.lineas) ? payload.lineas : [];
+  if(requisition && lineas.length !== (requisition.lineasDetalle || []).length){
+    errors.lineas = 'Indica el precio unitario de cada línea de la solicitud';
+  }
+  lineas.forEach((l, i) => {
+    const price = Number(l && l.precioUnitario);
+    if(!Number.isFinite(price) || price < 0) errors[`linea-${i}-precioUnitario`] = `Línea ${i + 1}: el precio unitario debe ser un número no negativo`;
+  });
+  return { valid: Object.keys(errors).length === 0, errors, requisition, entity };
+}
+
+export function createQuotation(payload){
+  const check = validateQuotation(payload);
+  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
+  const { requisition, entity } = check;
+  if(!can(PERMISSIONS.ORDERS_CREATE)) throw new Error('Tu rol no permite generar cotizaciones');
+  const user = currentUser();
+  const now = new Date().toISOString();
+  const lineas = payload.lineas.map((l, i) => {
+    const requisitionLine = requisition.lineasDetalle[i];
+    const precioUnitario = Number(l.precioUnitario);
+    return {
+      producto_id: requisitionLine.producto_id,
+      descripcion: requisitionLine.descripcion,
+      cantidad: Number(requisitionLine.cantidad),
+      unidadMedida: requisitionLine.unidadMedida,
+      precioUnitario,
+      subtotalLinea: computeSubtotalLinea({ cantidad: requisitionLine.cantidad, precioUnitario })
+    };
+  });
+  const quotation = {
+    id: generateId(),
+    folio: nextFolio('SC'),
+    series: 'SC',
+    requisitionId: requisition.id,
+    requisitionFolio: requisition.folio,
+    entityId: entity.entity_id,
+    proveedor: entity.name,
+    tipoDocumento: 'Solicitud de Cotización',
+    estado: REQUISITION_STATUS.IN_QUOTATION,
+    justificacion: requisition.justification,
+    departamento: requisition.department,
+    lineasDetalle: lineas,
+    createdBy: user ? user.id : undefined,
+    createdAt: now,
+    updatedAt: now
+  };
+  Object.assign(quotation, applyTotalesToCabecera(quotation, getConfig().taxRate ?? DEFAULT_TAX_RATE));
+  const list = loadQuotations();
+  list.push(quotation);
+  saveQuotations(list);
+  const requisitions = loadRequisitions();
+  const idx = requisitions.findIndex(r => r.id === requisition.id);
+  requisitions[idx] = { ...requisitions[idx], status: REQUISITION_STATUS.IN_QUOTATION, quotationId: quotation.id, updatedAt: now };
+  saveRequisitions(requisitions);
+  return quotation;
 }
 
 // ---------------------------------------------------------------------------
@@ -810,7 +992,7 @@ export function validateReception(payload){
     if(!Number.isFinite(recibida) || recibida < 0) errors[`linea-${i}-cantidadRecibida`] = `Línea ${n}: la cantidad recibida debe ser un número no negativo`;
     else if(recibida > pendiente) errors[`linea-${i}-cantidadRecibida`] = `Línea ${n}: la cantidad recibida (${recibida}) supera la pendiente (${pendiente})`;
     if(!Number.isFinite(rechazada) || rechazada < 0) errors[`linea-${i}-cantidadRechazada`] = `Línea ${n}: la cantidad rechazada debe ser un número no negativo`;
-    else if(Number.isFinite(recibida) && recibida + rechazada > Number(line.cantidad)) errors[`linea-${i}-cantidadRechazada`] = `Línea ${n}: recibida + rechazada supera la cantidad solicitada`;
+    else if(Number.isFinite(recibida) && recibida + rechazada > pendiente) errors[`linea-${i}-cantidadRechazada`] = `Línea ${n}: recibida + rechazada supera la cantidad pendiente (${pendiente})`;
     if(rechazada > 0 && isEmpty(l.motivoRechazo)) errors[`linea-${i}-motivoRechazo`] = `Línea ${n}: el motivo del rechazo es obligatorio`;
     if((Number.isFinite(recibida) && recibida > 0) || (Number.isFinite(rechazada) && rechazada > 0)) hasMovement = true;
   });
@@ -880,6 +1062,7 @@ export function clearAll(){
   saveUsers([]);
   saveRequisitions([]);
   saveReceptions([]);
+  saveQuotations([]);
 }
 
 export function searchEntities(term){

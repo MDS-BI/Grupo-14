@@ -40,7 +40,7 @@ describe('User Story 1 - users and permissions', () => {
 
     expect(loadUsers()).toHaveLength(1);
     expect(loadUsers()[0].role).toBe('solicitante');
-    expect(qs('user-list').textContent).toContain('Ana López');
+    expect(qs('users-list').textContent).toContain('Ana López');
   });
 
   it('rejects duplicated users with an explanation', () => {
@@ -52,7 +52,7 @@ describe('User Story 1 - users and permissions', () => {
 
     qs('user-username').value = 'ana';
     qs('user-name').value = 'Otra';
-    qs('user-role').value = 'compras';
+    qs('user-role').value = 'encargado_compras';
     qs('user-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
 
     expect(loadUsers()).toHaveLength(1);
@@ -67,10 +67,10 @@ describe('User Story 1 - users and permissions', () => {
     qs('user-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
     const user = loadUsers()[0];
 
-    const { login, can } = await import('../../src/auth.js');
-    login(user.id);
-    expect(can('users:manage')).toBe(false);
-    expect(can('request:create')).toBe(true);
+    const { setSession, can } = await import('../../src/auth.js');
+    setSession(user);
+    expect(can('users.manage')).toBe(false);
+    expect(can('requisitions.create')).toBe(true);
 
     qs('nav-users').click();
     expect(qs('view-dashboard').hidden).toBe(false);
@@ -81,10 +81,10 @@ describe('User Story 1 - users and permissions', () => {
     qs('nav-users').click();
     qs('user-username').value = 'xss';
     qs('user-name').value = '<img src=x onerror="alert(1)">';
-    qs('user-role').value = 'compras';
+    qs('user-role').value = 'encargado_compras';
     qs('user-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
 
-    const list = qs('user-list');
+    const list = qs('users-list');
     expect(list.querySelector('img')).toBeNull();
     expect(list.textContent).toContain('<img');
   });

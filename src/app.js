@@ -1,12 +1,13 @@
 import { loadModuleConfig, normalizeConfig, setActiveConfig, labelFor } from './module-config.js';
 import {
   loadEntities, addEntity, updateEntity, deleteEntity, validateEntity, searchEntities,
-  loadDocuments, addDocument, updateDocument, deleteDocument, validateDocument,
+  loadDocuments, addDocument, updateDocument, deleteDocument, validateDocument, searchDocuments,
   loadUsers, addUser, updateUser, setUserActive, touchUserAccess, validateUser,
   loadRequisitions, addRequisition, validateRequisition, approveRequisition, rejectRequisition,
-  pendingRequisitionsForApprover, budgetForDepartment,
+  pendingRequisitionsForApprover, budgetForDepartment, pendingQuotationRequisitions,
+  createQuotation,
   ordersPendingReception, addReception, validateReception,
-  approveDocument, cancelDocument
+  approveDocument, cancelDocument, payOrder
 } from './storage.js';
 import { can, isAdmin, setSession, resetSession, getSession, PERMISSIONS, roleLabel } from './auth.js';
 import { attachRutFormatting } from './rut.js';
@@ -92,12 +93,14 @@ function showModule(name, opts = {}){
   }
   if(name === 'search'){
     refreshSearch();
+    refreshDocumentSearch();
     if(opts.focusSearch) qs('search-input').focus();
   }
   if(name === 'requisitions'){
     populateDepartmentSelect(qs('requisition-department'));
     if(opts.newRecord) clearRequisitionForm();
     refreshRequisitions();
+    refreshQuotations();
   }
   if(name === 'approvals'){
     refreshApprovals();
@@ -167,6 +170,25 @@ function populateEditDocumentSelect(){
 
 function refreshSearch(){
   renderSearchResults(qs('search-results-list'), qs('search-empty'), searchEntities(qs('search-input').value), (e) => createEntityItem(e));
+}
+
+function createDocumentSearchItem(doc){
+  const li = document.createElement('li');
+  li.className = 'document-item';
+  const entity = loadEntities().find(e => e.entity_id === doc.entity_id);
+  const parts = [
+    `${doc.series ? `${doc.series}-` : ''}${doc.folio ?? ''}`.trim(),
+    entity ? entity.name : '',
+    doc.status || ''
+  ].filter(Boolean);
+  li.textContent = parts.join(' · ');
+  if(doc.justificacion) li.textContent += ` · Justificación: ${doc.justificacion}`;
+  return li;
+}
+
+function refreshDocumentSearch(){
+  if(!qs('doc-search-results-list')) return;
+  renderSearchResults(qs('doc-search-results-list'), qs('doc-search-empty'), searchDocuments(qs('doc-search-input').value), createDocumentSearchItem);
 }
 
 function refreshEntities(){
@@ -411,6 +433,103 @@ function refreshRequisitions(){
   renderRequisitionList(qs('requisitions-list'), qs('requisitions-empty'), list);
 }
 
+function activeProvidersForQuotation(){
+  return loadEntities().filter(e =>
+    e.active !== false && String(e.estado || '').toLowerCase() !== 'inactivo'
+    && ['taxId', 'categoriaProveedor', 'paymentTerms', 'creditLimit'].every(key => e[key] !== undefined && e[key] !== null && String(e[key]).trim() !== '')
+  );
+}
+
+function renderQuotationLines(){
+  const container = qs('quotation-lines');
+  if(!container) return;
+  container.innerHTML = '';
+  const requisition = loadRequisitions().find(r => r.id === qs('quotation-requisition').value);
+  if(!requisition) return;
+  (requisition.lineasDetalle || []).forEach((line, i) => {
+    const row = document.createElement('div');
+    row.className = 'field-grid';
+    const info = document.createElement('div');
+    info.textContent = `${line.descripcion || line.producto_id || `Línea ${i + 1}`} · ${line.cantidad} ${line.unidadMedida || ''}`.trim();
+    const inputWrap = document.createElement('div');
+    const label = document.createElement('label');
+    label.textContent = 'Precio unitario *';
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.step = '0.01';
+    input.dataset.quotationLine = String(i);
+    label.appendChild(input);
+    inputWrap.appendChild(label);
+    row.append(info, inputWrap);
+    container.appendChild(row);
+  });
+}
+
+function refreshQuotations(){
+  const card = qs('quotation-card');
+  if(!card) return;
+  card.hidden = !can(PERMISSIONS.ORDERS_CREATE);
+  if(card.hidden) return;
+  const pending = pendingQuotationRequisitions();
+  const listEl = qs('quotations-list');
+  listEl.innerHTML = '';
+  pending.forEach(r => {
+    const li = document.createElement('li');
+    li.className = 'quotation-item';
+    li.textContent = `${r.folio || r.id} · ${r.department || ''} · ${r.justification || ''} · ${(r.approvedAt || '').slice(0, 10)}`.replace(/\s+/g, ' ').trim();
+    listEl.appendChild(li);
+  });
+  qs('quotations-empty').hidden = pending.length > 0;
+
+  const select = qs('quotation-requisition');
+  select.innerHTML = '';
+  pending.forEach(r => {
+    const option = document.createElement('option');
+    option.value = r.id;
+    option.textContent = `${r.folio || r.id} · ${r.department || ''}`;
+    select.appendChild(option);
+  });
+
+  const providers = qs('quotation-entity');
+  providers.innerHTML = '';
+  activeProvidersForQuotation().forEach(e => {
+    const option = document.createElement('option');
+    option.value = e.entity_id;
+    option.textContent = e.name;
+    providers.appendChild(option);
+  });
+  renderQuotationLines();
+}
+
+function handleQuotationSubmit(ev){
+  ev.preventDefault();
+  const errorEl = qs('error-quotation');
+  errorEl.textContent = '';
+  if(!can(PERMISSIONS.ORDERS_CREATE)){
+    errorEl.textContent = 'Tu rol no permite generar cotizaciones.';
+    return;
+  }
+  const lineas = [...qs('quotation-lines').querySelectorAll('[data-quotation-line]')]
+    .map(input => ({ precioUnitario: input.value }));
+  try{
+    createQuotation({
+      requisitionId: qs('quotation-requisition').value,
+      entityId: qs('quotation-entity').value,
+      lineas
+    });
+    refreshQuotations();
+    refreshRequisitions();
+    refreshDashboardAfterChange();
+  }catch(e){
+    errorEl.textContent = e.message;
+  }
+}
+
+function refreshDashboardAfterChange(){
+  renderDashboard();
+}
+
 function handleRequisitionSubmit(ev){
   ev.preventDefault();
   if(!can(PERMISSIONS.REQUISITIONS_CREATE)){
@@ -452,6 +571,8 @@ function refreshApprovals(){
     qs('approval-detail').innerHTML = '<p class="muted">Selecciona una solicitud pendiente.</p>';
   }
   renderApprovalInbox(qs('approvals-list'), qs('approvals-empty'), pending, handleApprovalSelect);
+  const approvalEmptyAlias = qs('approval-empty');
+  if(approvalEmptyAlias) approvalEmptyAlias.hidden = pending.length > 0;
   if(selectedApprovalId){
     const selected = pending.find(r => r.id === selectedApprovalId);
     if(selected) renderApprovalDetail(qs('approval-detail'), selected, budgetForDepartment(selected.department));
@@ -561,11 +682,36 @@ function handleReceptionSubmit(){
   }
 }
 
+function handlePayDocument(){
+  const id = qs('document-id').value;
+  if(!id) return;
+  if(!can(PERMISSIONS.DOCUMENTS_MANAGE)){
+    qs('error-payment').textContent = 'Tu rol no permite registrar pagos.';
+    return;
+  }
+  try{
+    const doc = payOrder(id, {
+      factura: qs('payment-invoice').value,
+      monto: qs('payment-amount').value,
+      fechaPago: qs('payment-date').value
+    });
+    qs('error-payment').textContent = '';
+    startDocumentEdit(doc);
+    applyOrderActionPermissions();
+    populateEditDocumentSelect();
+    renderDashboard();
+  }catch(e){
+    qs('error-payment').textContent = e.message;
+  }
+}
+
 function applyOrderActionPermissions(){
   const approve = qs('document-approve');
   const cancel = qs('document-cancel');
+  const pay = qs('document-pay');
   if(approve && !can(PERMISSIONS.ORDERS_APPROVE)) approve.hidden = true;
   if(cancel && !can(PERMISSIONS.DOCUMENTS_MANAGE)) cancel.hidden = true;
+  if(pay && !can(PERMISSIONS.DOCUMENTS_MANAGE)) pay.hidden = true;
 }
 
 function handleApproveDocument(){
@@ -610,6 +756,7 @@ function afterSaveRefresh(){
   populateEditEntitySelect();
   populateEditDocumentSelect();
   refreshEntities();
+  refreshDocumentSearch();
 }
 
 function handleEntitySubmit(ev){
@@ -733,6 +880,7 @@ function wireEvents(){
   qs('add-detail-line').addEventListener('click', addDocumentDetailLine);
   qs('document-approve').addEventListener('click', handleApproveDocument);
   qs('document-cancel').addEventListener('click', handleCancelDocument);
+  qs('document-pay').addEventListener('click', handlePayDocument);
   qs('user-form').addEventListener('submit', handleUserSubmit);
   qs('user-cancel-edit').addEventListener('click', clearUserForm);
   qs('user-search').addEventListener('input', refreshUsers);
@@ -743,11 +891,14 @@ function wireEvents(){
   });
   qs('requisition-form').addEventListener('submit', handleRequisitionSubmit);
   qs('add-requisition-line').addEventListener('click', () => addRequisitionLine(qs('requisition-lines'), {}));
+  qs('quotation-requisition').addEventListener('change', renderQuotationLines);
+  qs('quotation-form').addEventListener('submit', handleQuotationSubmit);
   qs('reception-search').addEventListener('input', refreshReceptions);
   qs('reception-status-filter').addEventListener('change', refreshReceptions);
   qs('reception-submit-button').addEventListener('click', handleReceptionSubmit);
   qs('session-user').addEventListener('change', onSessionChange);
   setupSearchBar(qs('search-input'), () => refreshSearch());
+  setupSearchBar(qs('doc-search-input'), () => refreshDocumentSearch());
   qs('edit-entity').addEventListener('change', onEditEntityChange);
   qs('edit-document').addEventListener('change', onEditDocumentChange);
   qs('delete-entity').addEventListener('click', handleDeleteSelectedEntity);
@@ -776,7 +927,7 @@ export function initApp(resolved){
 
 export async function boot(overrideConfig, options = {}){
   const resolved = overrideConfig !== undefined ? normalizeConfig(overrideConfig) : await loadModuleConfig();
-  const shouldSeed = options.seedMockData ?? (import.meta.env?.MODE !== 'test');
+  const shouldSeed = options.seedMockData === true;
   const seeded = shouldSeed ? ensureMockData() : null;
   initApp(resolved);
   if(seeded) showMockDataMessage(seeded);

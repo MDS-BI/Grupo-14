@@ -4,6 +4,8 @@ import {
   addEntity, addDocument, loadDocuments, PENDING_STATUS
 } from '../../src/storage.js';
 import { validateApproval, approveRequest, rejectRequest } from '../../src/approval.js';
+import * as approvalPanel from '../../src/components/approval-panel.js';
+import * as userProfile from '../../src/components/user-profile.js';
 
 const store = new Map();
 globalThis.localStorage = {
@@ -89,5 +91,13 @@ describe('approval service', () => {
     expect(() => rejectRequest(doc.id, { userId: 'u1', comment: '' })).toThrow(/motivo/);
     const rejected = rejectRequest(doc.id, { userId: 'u1', comment: 'Sin presupuesto' });
     expect(rejected.status).toBe('Rechazada');
+  });
+
+  it('loads orphan modules without importing nonexistent APIs', () => {
+    expect(typeof approvalPanel.renderApprovalInbox).toBe('function');
+    expect(typeof approvalPanel.renderApprovalDetail).toBe('function');
+    expect(typeof userProfile.renderProfileSwitcher).toBe('function');
+    expect(typeof userProfile.renderProfileSnapshot).toBe('function');
+    expect(typeof userProfile.renderRoleCatalog).toBe('function');
   });
 });

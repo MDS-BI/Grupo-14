@@ -178,11 +178,12 @@ function renderTotalsBreakdown(cab){
   const container = qs('document-totals-breakdown');
   if(!container) return;
   const neto = Math.max(num(cab.subtotal) - num(cab.discount), 0);
+  const taxPercent = Math.round((getConfig().taxRate ?? DEFAULT_TAX_RATE) * 100);
   const rows = [
     ['Subtotal', cab.subtotal],
     ['Descuento total', cab.discount],
     ['Monto Neto', neto],
-    ['IVA (19%)', cab.taxAmount],
+    [`IVA (${taxPercent}%)`, cab.taxAmount],
     ['Total Final', cab.totalAmount]
   ];
   const list = document.createElement('dl');
@@ -207,14 +208,22 @@ export function syncDocumentTotalsFromLines(container){
   if(lineas.length === 0){
     const empty = qs('document-totals-breakdown');
     if(empty) empty.innerHTML = '<p class="muted">Agrega líneas para ver el desglose automático.</p>';
+    ['subtotal', 'taxAmount', 'totalAmount'].forEach(id => {
+      const input = qs(id);
+      if(input) input.readOnly = false;
+    });
     return;
   }
   const prepared = lineas.map(l => ({ ...l, subtotalLinea: computeSubtotalLinea(l) }));
   const discount = num(qs('discount') ? qs('discount').value : 0);
-  const cab = applyTotalesToCabecera({ lineasDetalle: prepared, discount }, DEFAULT_TAX_RATE);
-  if(qs('subtotal')) qs('subtotal').value = String(cab.subtotal);
-  if(qs('taxAmount')) qs('taxAmount').value = String(cab.taxAmount);
-  if(qs('totalAmount')) qs('totalAmount').value = String(cab.totalAmount);
+  const cab = applyTotalesToCabecera({ lineasDetalle: prepared, discount }, getConfig().taxRate ?? DEFAULT_TAX_RATE);
+  ['subtotal', 'taxAmount', 'totalAmount'].forEach(id => {
+    const input = qs(id);
+    if(input){
+      input.value = String(cab[id]);
+      input.readOnly = true;
+    }
+  });
   lineas.forEach((l, i) => {
     const row = container.querySelectorAll('.detail-line')[i];
     const out = row && row.querySelector('[data-field="subtotalLinea"]');

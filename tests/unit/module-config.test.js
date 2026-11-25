@@ -65,6 +65,15 @@ describe('module-config', () => {
     expect(errors.some(e => e.includes('choca con un campo base'))).toBe(true);
   });
 
+  it('rejects detail line extra fields colliding with base line fields', () => {
+    const { errors } = normalizeConfig({
+      lineasDetalle: {
+        camposExtra: [{ key: 'cantidad', label: 'Cantidad', type: 'text' }]
+      }
+    });
+    expect(errors.some(e => e.includes('lineasDetalle.camposExtra') && e.includes('choca con un campo base'))).toBe(true);
+  });
+
   it('rejects select fields without options', () => {
     const { errors } = normalizeConfig({
       customFields: [{ target: 'document', key: 'terms', label: 'Terms', type: 'select' }]
@@ -147,10 +156,11 @@ describe('module-config', () => {
     it('expone el ciclo de vida de estados del flujo de compras', async () => {
       const { config, errors } = await loadModuleConfig();
       expect(errors).toEqual([]);
-      expect(config.statusLifecycle.statuses).toEqual(['Aprobada', 'Emitida', 'Recibida parcialmente', 'Rechazada', 'Recibida']);
+      expect(config.statusLifecycle.statuses).toEqual(['Aprobada', 'Emitida', 'Recibida parcialmente', 'Rechazada', 'Recibida', 'Pagada']);
       expect(config.statusLifecycle.transitions.Aprobada).toEqual(['Emitida', 'Rechazada']);
       expect(config.statusLifecycle.transitions.Emitida).toEqual(['Recibida parcialmente', 'Recibida', 'Rechazada']);
       expect(config.statusLifecycle.transitions['Recibida parcialmente']).toEqual(['Recibida']);
+      expect(config.statusLifecycle.transitions.Recibida).toEqual(['Pagada']);
     });
   });
 

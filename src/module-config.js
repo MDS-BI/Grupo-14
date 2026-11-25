@@ -23,11 +23,13 @@
 //     // el costo histórico de la compra. `fechaEmision` es el día exacto en que
 //     // se fijó ese tipo de cambio y se creó el documento (trazabilidad).
 //     { target: 'document', key: 'tipoCambio', label: 'Tipo de cambio', type: 'number' },
-//     { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
+//     { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true },
+//     { target: 'document', key: 'departamento', label: 'Departamento', type: 'text' }
 //   ],
+//   justificacion: { requiredFor: ['Solicitud de Cotización'] },
 //   statusLifecycle: {
-//     statuses: ['Aprobada', 'Emitida', 'Recibida parcialmente', 'Rechazada', 'Recibida'],
-//     transitions: { Aprobada: ['Emitida', 'Rechazada'], Emitida: ['Recibida parcialmente', 'Recibida', 'Rechazada'], 'Recibida parcialmente': ['Recibida'], Rechazada: [], Recibida: [] }
+//     statuses: ['Aprobada', 'Emitida', 'Recibida parcialmente', 'Rechazada', 'Recibida', 'Pagada'],
+//     transitions: { Aprobada: ['Emitida', 'Rechazada'], Emitida: ['Recibida parcialmente', 'Recibida', 'Rechazada'], 'Recibida parcialmente': ['Recibida'], Rechazada: [], Recibida: ['Pagada'], Pagada: [] }
 //   },
 //   lineasDetalle: {
 //     // Etiqueta de la sección en la UI (opcional; por defecto "Líneas de detalle").
@@ -41,7 +43,9 @@
 //       { key: 'centroCosto', label: 'Centro de costo', type: 'text' }
 //     ]
 //   },
-//   theme: { accentColor: '#0f766e' }
+//   theme: { accentColor: '#0f766e' },
+//   taxRate: 0.19,
+//   monedaLocal: 'MXN'
 // }
 export const userConfig = {
   moduleName: 'Adquisiciones y Compras',
@@ -60,17 +64,20 @@ export const userConfig = {
     { target: 'document', key: 'prioridad', label: 'Prioridad', type: 'select', options: ['Normal', 'Urgente'] },
     // Divisas y tipos de cambio: congelan el costo de la compra y su trazabilidad
     { target: 'document', key: 'tipoCambio', label: 'Tipo de cambio', type: 'number' },
-    { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true }
+    { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true },
+    { target: 'document', key: 'departamento', label: 'Departamento', type: 'text' }
   ],
+  justificacion: { requiredFor: ['Solicitud de Cotización'] },
   statusLifecycle: {
-    statuses: ['Aprobada', 'Emitida', 'Recibida parcialmente', 'Rechazada', 'Recibida'],
+    statuses: ['Aprobada', 'Emitida', 'Recibida parcialmente', 'Rechazada', 'Recibida', 'Pagada'],
     transitions: {
       Aprobada: ['Emitida', 'Rechazada'],
       // Recibida parcialmente / Recibida solo se asignan al registrar recepciones (FR-045)
       Emitida: ['Recibida parcialmente', 'Recibida', 'Rechazada'],
       'Recibida parcialmente': ['Recibida'],
       Rechazada: [],
-      Recibida: []
+      Recibida: ['Pagada'],
+      Pagada: []
     }
   },
   lineasDetalle: {
@@ -81,7 +88,9 @@ export const userConfig = {
       { key: 'centroCosto', label: 'Centro de costo', type: 'text' }
     ]
   },
-  theme: { accentColor: '#0e6278' }
+  theme: { accentColor: '#0f766e' },
+  taxRate: 0.19,
+  monedaLocal: 'MXN'
 };
 
 // Tasa de impuesto aplicada en la cascada de totales de la cabecera
@@ -101,6 +110,7 @@ export const DEFAULT_CONFIG = Object.freeze({
     documents: 'Documentos'
   }),
   customFields: Object.freeze([]),
+  justificacion: Object.freeze({ requiredFor: Object.freeze([]) }),
   statusLifecycle: null,
   lineasDetalle: Object.freeze({
     label: 'Líneas de detalle',
@@ -108,7 +118,9 @@ export const DEFAULT_CONFIG = Object.freeze({
     maxPorcentajeDescuento: 100,
     camposExtra: Object.freeze([])
   }),
-  theme: Object.freeze({ accentColor: '#2563eb' })
+  theme: Object.freeze({ accentColor: '#2563eb' }),
+  taxRate: 0.19,
+  monedaLocal: 'MXN'
 });
 
 export const FIELD_TYPES = ['text', 'number', 'date', 'select'];
@@ -263,6 +275,23 @@ function validateTheme(raw, errors){
   return out;
 }
 
+export function validateJustificacion(raw, errors){
+  const base = { requiredFor: [] };
+  if(raw === null || raw === undefined) return base;
+  if(typeof raw !== 'object' || Array.isArray(raw)){
+    errors.push('justificacion debe ser un objeto');
+    return base;
+  }
+  if(raw.requiredFor !== undefined){
+    if(!Array.isArray(raw.requiredFor) || !raw.requiredFor.every(isNonEmptyString)){
+      errors.push('justificacion.requiredFor debe ser un arreglo de cadenas');
+    } else {
+      base.requiredFor = raw.requiredFor.map(v => v.trim());
+    }
+  }
+  return base;
+}
+
 export function normalizeConfig(raw){
   if(raw === null || raw === undefined){
     return { config: structuredClone(DEFAULT_CONFIG), errors: [] };
@@ -288,6 +317,16 @@ export function normalizeConfig(raw){
   }
   if(raw.customFields !== undefined && raw.customFields !== null){
     cfg.customFields = validateCustomFields(raw.customFields, errors);
+  }
+  cfg.justificacion = validateJustificacion(raw.justificacion, errors);
+  if(raw.taxRate !== undefined){
+    const n = Number(raw.taxRate);
+    if(!Number.isFinite(n) || n < 0 || n > 1) errors.push('taxRate debe ser una fracción entre 0 y 1');
+    else cfg.taxRate = n;
+  }
+  if(raw.monedaLocal !== undefined){
+    if(!isNonEmptyString(raw.monedaLocal)) errors.push('monedaLocal debe ser una cadena no vacía');
+    else cfg.monedaLocal = raw.monedaLocal.trim();
   }
   if(raw.statusLifecycle !== undefined){
     const lc = validateLifecycle(raw.statusLifecycle, errors);

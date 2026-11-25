@@ -504,6 +504,11 @@
                       <input id="docPaymentTerms" name="docPaymentTerms" placeholder="p. ej., contado, neto 30" />
                     </div>
                     <div class="span-full">
+                      <label for="justificacion">Justificación de la compra</label>
+                      <textarea id="justificacion" name="justificacion" rows="2"></textarea>
+                      <div class="error" id="error-justificacion" aria-live="polite"></div>
+                    </div>
+                    <div class="span-full">
                       <label for="notes">Notas</label>
                       <textarea id="notes" name="notes" rows="2"></textarea>
                     </div>
@@ -515,6 +520,28 @@
                   <div class="field-grid">
                     <div id="document-status-control"></div>
                     <div id="document-custom-fields" class="custom-fields-grid span-full"></div>
+                  </div>
+                </fieldset>
+
+                <fieldset class="form-group" id="payment-fields">
+                  <legend>Factura y pago</legend>
+                  <div class="field-grid field-grid-3">
+                    <div>
+                      <label for="payment-invoice">Folio de factura</label>
+                      <input id="payment-invoice" />
+                    </div>
+                    <div>
+                      <label for="payment-amount">Monto facturado</label>
+                      <input id="payment-amount" type="number" min="0" step="0.01" />
+                    </div>
+                    <div>
+                      <label for="payment-date">Fecha de pago</label>
+                      <input id="payment-date" type="date" />
+                    </div>
+                  </div>
+                  <div class="error" id="error-payment" aria-live="polite"></div>
+                  <div class="form-actions">
+                    <button type="button" id="document-pay" class="primary" hidden>Registrar pago</button>
                   </div>
                 </fieldset>
 
@@ -569,6 +596,16 @@
               <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
               <input id="search-input" name="search-input" placeholder="Buscar por nombre, código, categoría..." aria-label="Buscar entidades" />
             </div>
+          </section>
+
+          <section class="card card-search" aria-labelledby="doc-search-heading">
+            <h2 id="doc-search-heading">Buscar un documento</h2>
+            <div class="search-field">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+              <input id="doc-search-input" name="doc-search-input" placeholder="Buscar por folio, justificación o notas..." aria-label="Buscar documentos" />
+            </div>
+            <div id="doc-search-empty" class="empty empty-search" hidden>Sin coincidencias para tu búsqueda.</div>
+            <ul id="doc-search-results-list" class="record-list" aria-live="polite"></ul>
           </section>
 
           <section class="card" aria-labelledby="results-heading">
@@ -764,6 +801,32 @@
               <ul id="requisitions-list" class="record-list" aria-live="polite"></ul>
             </section>
           </div>
+
+          <section class="card" id="quotation-card" aria-labelledby="quotation-heading" hidden>
+            <h2 id="quotation-heading">Solicitudes autorizadas para cotizar</h2>
+            <div id="quotations-empty" class="empty-state compact" hidden>
+              <h3>No hay solicitudes autorizadas pendientes de cotización</h3>
+              <p class="muted">Cuando un jefe de área autorice una solicitud, aparecerá aquí para asignar proveedor y precios.</p>
+            </div>
+            <ul id="quotations-list" class="record-list" aria-live="polite"></ul>
+            <form id="quotation-form">
+              <div class="field-grid">
+                <div>
+                  <label for="quotation-requisition">Solicitud autorizada *</label>
+                  <select id="quotation-requisition"></select>
+                </div>
+                <div>
+                  <label for="quotation-entity">Proveedor activo *</label>
+                  <select id="quotation-entity"></select>
+                </div>
+              </div>
+              <div id="quotation-lines" class="quotation-lines"></div>
+              <div class="error" id="error-quotation" aria-live="polite"></div>
+              <div class="form-actions">
+                <button type="submit" id="quotation-submit" class="primary">Generar cotización</button>
+              </div>
+            </form>
+          </section>
         </section>
 
         <!-- ======================== Aprobaciones ========================= -->
@@ -789,7 +852,12 @@
                 <h3>No hay solicitudes pendientes</h3>
                 <p class="muted">Tu bandeja está al día. Las nuevas solicitudes de tu área llegarán aquí.</p>
               </div>
-              <ul id="approvals-list" class="record-list inbox-list" aria-live="polite"></ul>
+              <div id="approval-empty" class="empty-state compact" hidden>
+                <h3>No hay solicitudes pendientes</h3>
+              </div>
+              <div id="approval-list">
+                <ul id="approvals-list" class="record-list inbox-list" aria-live="polite"></ul>
+              </div>
             </section>
 
             <section class="card" aria-labelledby="approval-detail-heading">

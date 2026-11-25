@@ -33,6 +33,7 @@ function addDraft(entity, overrides = {}){
     endDate: '2026-01-10',
     status: 'Aprobada',
     tipoDocumento: 'Solicitud de Cotización',
+    justificacion: 'Caja para inventario',
     fechaEmision: '2026-01-01',
     lineasDetalle: [
       { producto_id: 'SKU-1', descripcion: 'Caja', cantidad: 2, unidadMedida: 'cajas', precioUnitario: 100 }

@@ -13,8 +13,9 @@ export function createDocumentItem(doc, entityName){
   const amount = (doc.totalAmount !== undefined) ? ` &middot; ${escapeHtml(String(doc.currency || ''))}${escapeHtml(String(doc.totalAmount))}` : '';
   const status = doc.status ? ` <span class="status-badge">${escapeHtml(doc.estadoVisible || doc.status)}</span>` : '';
   const info = document.createElement('span');
-  const lineas = Array.isArray(doc.lineasDetalle) && doc.lineasDetalle.length > 0
-    ? ` &middot; ${doc.lineasDetalle.length} línea(s)`
+  const lineasDetalle = Array.isArray(doc.lineasDetalle) ? doc.lineasDetalle : [];
+  const lineas = lineasDetalle.length > 0
+    ? ` &middot; ${lineasDetalle.length} línea(s) &middot; ${escapeHtml(lineasDetalle.map(l => `${l.descripcion}: ${l.subtotalLinea ?? 0}`).join('; '))}`
     : '';
   const tipo = doc.tipoDocumento ? ` &middot; ${escapeHtml(doc.tipoDocumento)}` : '';
   const justificacion = doc.justificacion

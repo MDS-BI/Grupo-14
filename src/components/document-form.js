@@ -1,9 +1,11 @@
 import { renderCustomFields, collectCustomFields, showCustomFieldErrors, clearCustomFieldErrors } from './custom-fields.js';
 import { renderDetailLines, collectDetailLines, addDetailLine, showDetailLineErrors, clearDetailLineErrors } from './detail-lines.js';
 import { getConfig } from '../module-config.js';
-import { DOCUMENT_STATUS, NON_CANCELLABLE_ORDER_STATUSES, RECEPTION_DERIVED_STATUSES } from '../storage.js';
+import { DOCUMENT_STATUS, NON_CANCELLABLE_ORDER_STATUSES, RECEPTION_DERIVED_STATUSES, PENDING_STATUS } from '../storage.js';
 
 function qs(id){ return document.getElementById(id); }
+
+const REQUEST_DOCUMENT_TYPE = 'Solicitud de Cotización';
 
 // Los estados de recepción solo los asigna el registro de recepciones, así que
 // no se ofrecen como opción manual (salvo para mostrar el estado actual).
@@ -73,7 +75,11 @@ export function clearDocumentForm(){
   qs('totalAmount').value = '';
   qs('currency').value = '';
   qs('docPaymentTerms').value = '';
+  if(qs('justificacion')) qs('justificacion').value = '';
   qs('notes').value = '';
+  if(qs('payment-invoice')) qs('payment-invoice').value = '';
+  if(qs('payment-amount')) qs('payment-amount').value = '';
+  if(qs('payment-date')) qs('payment-date').value = '';
   clearDocumentErrors();
   renderCustomFields(qs('document-custom-fields'), 'document');
   renderStatusControl('');
@@ -86,14 +92,17 @@ export function clearDocumentForm(){
 export function toggleOrderActions(doc){
   const approve = qs('document-approve');
   const cancel = qs('document-cancel');
+  const pay = qs('document-pay');
   const status = doc ? doc.status : '';
   const canApprove = Boolean(doc) && status === DOCUMENT_STATUS.APPROVED;
   const canCancel = Boolean(doc) && !NON_CANCELLABLE_ORDER_STATUSES.includes(status);
+  const canPay = Boolean(doc) && status === DOCUMENT_STATUS.RECEIVED;
   if(approve) approve.hidden = !canApprove;
   if(cancel) cancel.hidden = !canCancel;
+  if(pay) pay.hidden = !canPay;
 }
 
-const DOCUMENT_ERROR_FIELDS = ['entityId', 'folio', 'startDate', 'endDate', 'quantity', 'subtotal', 'discount', 'taxAmount', 'totalAmount', 'status'];
+const DOCUMENT_ERROR_FIELDS = ['entityId', 'folio', 'startDate', 'endDate', 'quantity', 'subtotal', 'discount', 'taxAmount', 'totalAmount', 'status', 'justificacion'];
 
 export function clearDocumentErrors(){
   DOCUMENT_ERROR_FIELDS.forEach(f => {
@@ -103,6 +112,8 @@ export function clearDocumentErrors(){
   });
   clearCustomFieldErrors(qs('document-custom-fields'));
   clearDetailLineErrors(qs('document-detail-lines'));
+  const paymentError = qs('error-payment');
+  if(paymentError) paymentError.textContent = '';
 }
 
 export function startDocumentEdit(doc){
@@ -122,7 +133,11 @@ export function startDocumentEdit(doc){
   qs('totalAmount').value = doc.totalAmount === undefined ? '' : doc.totalAmount;
   qs('currency').value = doc.currency || '';
   qs('docPaymentTerms').value = doc.paymentTerms || '';
+  if(qs('justificacion')) qs('justificacion').value = doc.justificacion || '';
   qs('notes').value = doc.notes || '';
+  if(qs('payment-invoice')) qs('payment-invoice').value = doc.factura || '';
+  if(qs('payment-amount')) qs('payment-amount').value = doc.montoPagado ?? '';
+  if(qs('payment-date')) qs('payment-date').value = doc.fechaPago || '';
   renderStatusControl(doc.status);
   setStatusValue(doc.status);
   clearDocumentErrors();
@@ -137,6 +152,8 @@ function setStatusValue(value){
 }
 
 export function collectDocumentPayload(){
+  const custom = collectCustomFields(qs('document-custom-fields'), 'document');
+  const status = qs('status') ? qs('status').value : '';
   return {
     entityId: qs('document-entity-id').value || qs('document-entity').value,
     series: qs('series').value,
@@ -150,10 +167,11 @@ export function collectDocumentPayload(){
     totalAmount: qs('totalAmount').value,
     currency: qs('currency').value,
     paymentTerms: qs('docPaymentTerms').value,
+    justificacion: qs('justificacion') ? qs('justificacion').value : '',
     notes: qs('notes').value,
-    status: qs('status') ? qs('status').value : '',
+    status: status || (custom.tipoDocumento === REQUEST_DOCUMENT_TYPE ? PENDING_STATUS : ''),
     lineasDetalle: collectDetailLines(qs('document-detail-lines')),
-    ...collectCustomFields(qs('document-custom-fields'), 'document')
+    ...custom
   };
 }
 

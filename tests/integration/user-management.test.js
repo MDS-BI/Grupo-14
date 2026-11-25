@@ -120,10 +120,10 @@ describe('User Story 1 - users and permissions', () => {
     expect(checks()).toEqual([true, false, false, false, false, false]);
 
     app.applySession(ROLE_FIXTURES.compras);
-    expect(checks()).toEqual([false, true, true, true, false, false]);
+    expect(checks()).toEqual([true, true, true, true, false, false]);
     const comprasRow = qs('permission-matrix-body').querySelector('[data-role="encargado_compras"]');
     expect([...comprasRow.querySelectorAll('input')].map(i => i.checked))
-      .toEqual([false, true, true, true, false, false]);
+      .toEqual([true, true, true, true, false, false]);
   });
 
   it('changes a user state from the table', () => {

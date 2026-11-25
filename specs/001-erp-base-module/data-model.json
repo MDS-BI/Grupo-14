@@ -939,15 +939,15 @@
     },
     {
       "tema": "PK de la Línea de Detalle",
-      "detalle": "LINEA_DETALLE_FIELDS no declara un campo id: hoy la línea se identifica por su posición dentro de documento.lineasDetalle. El MER lógico declara la PK id como requisito para persistirla como entidad intermedia; el storage aún no la genera."
+      "detalle": "El storage genera un id por línea al persistirla dentro de documento.lineasDetalle y asigna documento_id desde el documento padre; la relación 1:N queda materializada en cada línea."
     },
     {
       "tema": "PRODUCTO sin catálogo implementado",
       "detalle": "plan.md solo define producto_id como «referencia al catálogo de bienes/servicios (id o SKU)», de tipo texto y sin validación referencial. PRODUCTO y sus atributos (SKU / Código, Nombre_Producto, Unidad_Medida, Precio_Referencia) son el catálogo conceptual al que apunta esa referencia; la FK producto_id → ID_Producto es lógica y el storage todavía no la valida."
     },
     {
-      "tema": "lineasDetalle no está activo en userConfig",
-      "detalle": "El bloque lineasDetalle solo aparece en el comentario de ejemplo de module-config.js; el perfil activo no lo declara, por lo que se usan los valores por defecto (sin unidadesMedida, maxPorcentajeDescuento = 100) y unidadMedida se captura como texto."
+      "tema": "lineasDetalle activo en userConfig",
+      "detalle": "El perfil de Adquisiciones declara etiqueta, unidadesMedida, maxPorcentajeDescuento y camposExtra; el formulario usa selectores de unidad y el storage persiste y recalcula las líneas con esos límites."
     },
     {
       "tema": "Fechas base del Documento",
@@ -955,7 +955,7 @@
     },
     {
       "tema": "Estados en spec.md",
-      "detalle": "spec.md (HU2/HU6) menciona estados Emitida, Recibida parcialmente, Recibida y Pagada, El ciclo de vida implementado (module-config.js) usa directamente esos nombres: Aprobada → Emitida → Recibida parcialmente → Recibida, más Rechazada. Por FR-045 «Recibida parcialmente» es un estado de la orden (además de Estado_Recepcion = parcial) y, junto con Recibida, solo lo asigna el registro de recepciones. Pagada aún no está implementada."
+      "detalle": "spec.md (HU2/HU6/HU11) menciona Emitida, Recibida parcialmente, Recibida y Pagada. El ciclo de vida implementado en module-config.js es Aprobada → Emitida → Recibida parcialmente → Recibida → Pagada, con Rechazada hasta la primera recepción. Por FR-045 «Recibida parcialmente» y «Recibida» solo los asigna el registro de recepciones; «Pagada» se asigna al registrar una factura cuyo monto coincide con la recepción total."
     },
     {
       "tema": "Nombre de la tabla intermedia",

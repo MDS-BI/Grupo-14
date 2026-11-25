@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { clearAll, loadEntities, addEntity, updateEntity, deleteEntity, validateEntity, searchEntities, loadDocuments, addDocument, updateDocument, deleteDocument, deleteDocumentsForEntity, validateDocument } from '../../src/storage.js';
-import { setActiveConfig } from '../../src/module-config.js';
+import { setActiveConfig, userConfig, normalizeConfig } from '../../src/module-config.js';
 
 const store = new Map();
 globalThis.localStorage = {
@@ -201,6 +201,18 @@ describe('document storage', () => {
     expect(validateDocument({...base, subtotal:100, discount:200}).valid).toBe(false);
     expect(validateDocument({...base, subtotal:100, discount:150}).errors.discount).toContain('superar el subtotal');
     expect(validateDocument({...base, subtotal:100, discount:16, taxAmount:13.44, totalAmount:97.44}).valid).toBe(true);
+  });
+
+  it('valida fecha de emisión, tipo de cambio y descuento frente a las líneas', () => {
+    const config = normalizeConfig(userConfig).config;
+    setActiveConfig(config);
+    const base = { entityId:entity.entity_id, folio:5, startDate:'2026-08-01', endDate:'2026-08-05', tipoDocumento:'Orden de Compra' };
+    expect(validateDocument({...base, fechaEmision:''}).errors.fechaEmision).toContain('obligatorio');
+    expect(validateDocument({...base, fechaEmision:'2026-08-01', tipoCambio:-1}).errors.tipoCambio).toContain('no negativo');
+    const lineas = [
+      { producto_id:'A', descripcion:'Uno', cantidad:2, unidadMedida:'unidades', precioUnitario:100 }
+    ];
+    expect(validateDocument({...base, fechaEmision:'2026-08-01', discount:250, lineasDetalle:lineas}).errors.discount).toContain('derivado de las líneas');
   });
 
   it('adds and loads documents linked by entity_id', () => {

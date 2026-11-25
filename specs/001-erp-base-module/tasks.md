@@ -3,12 +3,12 @@
 **Entrada**: Documentos de diseño desde `/specs/001-erp-base-module/`
 **Prerrequisitos**: plan.md (obligatorio), spec.md (obligatorio para las historias de usuario), research.md, data-model.md, contracts/
 
-**Nota de reorganización**: esta lista se alinea con las historias de usuario vigentes en `spec.md` (HU1, HU2, HU3, HU4, HU6, HU7 y HU8). No existe una HU5 en `spec.md`; por eso la numeración de historias salta de US4 a US6. Las tareas base ya entregadas se conservan marcadas como completadas para mantener la trazabilidad.
+**Nota de reorganización**: esta lista se alinea con las historias de usuario vigentes en `spec.md` (HU1, HU2, HU3, HU4, HU5, HU6, HU7, HU8 y HU11). La numeración US5 se conserva para la historia de solicitudes de cotización. Las tareas base ya entregadas se conservan marcadas como completadas para mantener la trazabilidad.
 
 ## Formato: `[ID] [P?] [Historia] Descripción`
 
 - **[P]**: Puede ejecutarse en paralelo (archivos distintos, sin dependencias)
-- **[Historia]**: Historia de usuario a la que pertenece la tarea (US1, US2, US3, US4, US6, US7, US8)
+- **[Historia]**: Historia de usuario a la que pertenece la tarea (US1, US2, US3, US4, US5, US6, US7, US8, US11)
 - Incluir rutas de archivo exactas en las descripciones
 
 ## Convenciones de Rutas
@@ -231,7 +231,7 @@
 - [X] T076 [P] Revisar accesibilidad de las vistas nuevas (etiquetas, foco de teclado, ARIA) en `index.html` y `src/styles.css`
 - [X] T077 [P] Actualizar `README.md` y `specs/001-erp-base-module/quickstart.md` con los flujos de usuarios/roles, solicitudes, órdenes y recepción
 - [X] T078 Ejecutar la suite completa de Vitest y la compilación de producción; corregir regresiones en `tests/` y `src/`
-- [ ] T079 Validar manualmente el flujo de extremo a extremo de cada historia según `specs/001-erp-base-module/quickstart.md`
+- [X] T079 Validar manualmente el flujo de extremo a extremo de cada historia según `specs/001-erp-base-module/quickstart.md`
 
 ---
 
@@ -323,51 +323,13 @@ Task: "Marcado de la vista de usuarios en index.html"
 
 - `[P]` indica tareas en archivos distintos y sin dependencias entre sí
 - `[Historia]` mapea cada tarea a la historia de usuario de `spec.md` para trazabilidad
-- No existe HU5 en `spec.md`; la secuencia de etiquetas es US1, US2, US3, US4, US6, US7, US8
-- El ciclo de vida implementado sigue `plan.md` (`Aprobada → Emitida → Recibida parcialmente → Recibida`, con `Rechazada` hasta la primera recepción) y usa los nombres de estado de `spec.md`; Pagada aún no está implementada (ver `data-model.md`, nota 12)
+- La secuencia de etiquetas es US1, US2, US3, US4, US5, US6, US7, US8 y US11
+- El ciclo de vida implementado sigue `plan.md` y `spec.md` (`Aprobada → Emitida → Recibida parcialmente → Recibida → Pagada`, con `Rechazada` hasta la primera recepción); `Pagada` se asigna al registrar la factura y el pago (ver `data-model.md`, nota 12)
 - `data-model.md` define RECEPCIÓN como entidad propia; las tareas de US6 la implementan como colección separada, no como `tipoDocumento`
 - Verificar que las pruebas fallen antes de implementar
 - Confirmar después de cada tarea o grupo lógico
 - Detenerse en cada punto de control para validar la historia de forma independiente
 - Evitar tareas vagas, conflictos en un mismo archivo y dependencias entre historias que rompan su independencia
-
----
-
-
-## Dependencias y Orden de Ejecución
-
-### Dependencias entre Fases
-
-- Configuración (Fase 1): Sin dependencias
-- Fundacional (Fase 2): Depende de completar Configuración
-- Historia de Usuario 1 (Fase 3): Depende de completar Fundacional
-- Historia de Usuario 2 (Fase 4): Depende de completar la implementación de la Historia de Usuario 1
-- Historia de Usuario 3 (Fase 5): Depende de completar Fundacional
-- Historia de Usuario 4 (Fase 6): Depende de completar la Historia de Usuario 3 y se beneficia de que los formularios de las Historias de Usuario 1-2 estén disponibles
-- Historia de Usuario 5 (Fase 7): Depende de completar Fundacional; desbloquea HU6, HU7, HU12
-- Historia de Usuario 6 (Fase 8): Depende de completar la Historia de Usuario 5
-- Historia de Usuario 7 (Fase 9): Depende de completar la Historia de Usuario 5
-- Historia de Usuario 8 (Fase 10): Depende de completar Fundacional y puede proceder después de la Historia de Usuario 1
-- Historia de Usuario 9 (Fase 11): Depende de completar Fundacional y puede proceder después de la Historia de Usuario 1
-- Historia de Usuario 10 (Fase 12): Depende de completar la implementación de la Historia de Usuario 1 y del campo entity_id
-- Historia de Usuario 11 (Fase 13): Depende de la Historia de Usuario 8 (lógica de búsqueda) y la Historia de Usuario 3 (navegación)
-- Historia de Usuario 12 (Fase 14): Depende de la Historia de Usuario 5 (configuración) y la Historia de Usuario 10 (documentos)
-- Pulido (Fase 15): Depende de que todas las historias de usuario deseadas estén completas
-- Historia de Usuario 13 (Fase 16): Depende de que las Fases 1-15 estén completas; reestructura la navegación entregada por HU3/HU4 dentro del marco
-- Historia de Usuario 3 revisada (Fase 17): Depende de la Fase 16 (el enrutamiento por barra lateral debe existir antes de que las acciones del panel lo usen)
-- Pulido Aspecto ERP (Fase 18): Depende de que las Fases 16 y 17 estén completas
-
-### Oportunidades Paralelas
-
-- T003 puede ejecutarse en paralelo con las tareas de configuración
-- T007 puede completarse junto al trabajo de almacenamiento y esqueleto de la aplicación
-- Las pruebas de cada historia pueden crearse en paralelo con las tareas de implementación de la misma historia
-- Después de la Fase 7 (perfil de configuración), HU6 (Fase 8) y HU7 (Fase 9) pueden proceder en paralelo
-- HU8 (Fase 10) y HU9 (Fase 11) son independientes y pueden proceder en paralelo después de la Historia de Usuario 1
-- En la Fase 15, T058-T060 pueden ejecutarse en paralelo antes de las tareas finales de verificación T061-T063
-- En la Fase 16, T064-T067 y T069 pueden ejecutarse en paralelo; T072 aterriza junto al cambio de enrutamiento T068
-- En la Fase 17, T073/T074/T077 pueden ejecutarse en paralelo con T075/T076
-- En la Fase 18, T078 y T079 pueden ejecutarse en paralelo antes de la verificación final T080-T081
 
 ---
 
@@ -379,19 +341,19 @@ Task: "Marcado de la vista de usuarios en index.html"
 
 ### Pruebas para Líneas de Detalle
 
-- [ ] T082 [P] Añadir pruebas unitarias para la validación del sub-esquema de líneas y para la colisión de campos extra en tests/unit/module-config.test.js y tests/unit/storage.test.js
-- [ ] T083 [P] Añadir pruebas unitarias para `computeSubtotalLinea`, `subtotalFromLineas` y `applyTotalesToCabecera` en tests/unit/module-config.test.js
-- [ ] T084 [P] Añadir pruebas de integración para crear, editar y eliminar líneas dentro de un documento en tests/integration/document-lineas.test.js
+- [X] T082 [P] Añadir pruebas unitarias para la validación del sub-esquema de líneas y para la colisión de campos extra en tests/unit/module-config.test.js y tests/unit/storage.test.js
+- [X] T083 [P] Añadir pruebas unitarias para `computeSubtotalLinea`, `subtotalFromLineas` y `applyTotalesToCabecera` en tests/unit/module-config.test.js
+- [X] T084 [P] Añadir pruebas de integración para crear, editar y eliminar líneas dentro de un documento en tests/integration/document-lineas.test.js
 
 ### Implementación de Líneas de Detalle
 
-- [ ] T085 Activar en el perfil de adquisiciones `lineasDetalle` con etiqueta, unidades de medida, descuento máximo y campos extra definidos en src/module-config.js
-- [ ] T086 Añadir el campo persistido `lineasDetalle` al modelo de `Document` y documentar su relación 1 a N con `documento_id` en specs/001-erp-base-module/data-model.md
-- [ ] T087 Implementar validación y normalización de líneas en src/storage.js: clave foránea, producto, descripción, cantidad, unidad, precio, descuento y campos extra
-- [ ] T088 Persistir `lineasDetalle` al crear y actualizar documentos, asignar `documento_id` al identificador del documento y eliminar las líneas junto con el documento en src/storage.js
-- [ ] T089 Crear la interfaz editable de líneas dentro de src/components/document-form.js, con añadir/quitar líneas, campos obligatorios, controles de unidad y campos extra configurados
-- [ ] T090 Conectar los cambios de las líneas al recálculo en vivo de `subtotalLinea`, `subtotal`, `discount`, `taxAmount` y `totalAmount` en src/components/document-form.js y src/storage.js
-- [ ] T091 Mostrar las líneas y sus subtotales en la lista o detalle de documentos en src/components/document-list.js y src/app.js
+- [X] T085 Activar en el perfil de adquisiciones `lineasDetalle` con etiqueta, unidades de medida, descuento máximo y campos extra definidos en src/module-config.js
+- [X] T086 Añadir el campo persistido `lineasDetalle` al modelo de `Document` y documentar su relación 1 a N con `documento_id` en specs/001-erp-base-module/data-model.md
+- [X] T087 Implementar validación y normalización de líneas en src/storage.js: clave foránea, producto, descripción, cantidad, unidad, precio, descuento y campos extra
+- [X] T088 Persistir `lineasDetalle` al crear y actualizar documentos, asignar `documento_id` al identificador del documento y eliminar las líneas junto con el documento en src/storage.js
+- [X] T089 Crear la interfaz editable de líneas dentro de src/components/document-form.js, con añadir/quitar líneas, campos obligatorios, controles de unidad y campos extra configurados
+- [X] T090 Conectar los cambios de las líneas al recálculo en vivo de `subtotalLinea`, `subtotal`, `discount`, `taxAmount` y `totalAmount` en src/components/document-form.js y src/storage.js
+- [X] T091 Mostrar las líneas y sus subtotales en la lista o detalle de documentos en src/components/document-list.js y src/app.js
 
 ---
 
@@ -403,15 +365,15 @@ Task: "Marcado de la vista de usuarios en index.html"
 
 ### Pruebas
 
-- [ ] T092 [P] Ampliar tests/unit/storage.test.js para validar fecha de emisión obligatoria, tipo de cambio numérico y descuento global no superior al subtotal derivado de líneas
-- [ ] T093 [P] Ampliar tests/integration/tipos-cambio.test.js para comprobar que moneda, tipo de cambio y fecha permanecen congelados tras editar el documento
-- [ ] T094 [P] Añadir pruebas de cálculo de impuestos y descuentos globales con líneas en tests/integration/document-lineas.test.js
+- [X] T092 [P] Ampliar tests/unit/storage.test.js para validar fecha de emisión obligatoria, tipo de cambio numérico y descuento global no superior al subtotal derivado de líneas
+- [X] T093 [P] Ampliar tests/integration/tipos-cambio.test.js para comprobar que moneda, tipo de cambio y fecha permanecen congelados tras editar el documento
+- [X] T094 [P] Añadir pruebas de cálculo de impuestos y descuentos globales con líneas en tests/integration/document-lineas.test.js
 
 ### Implementación
 
-- [ ] T095 Conservar `currency`, `tipoCambio` y `fechaEmision` como instantánea del documento y validar que el tipo de cambio sea numérico no negativo en src/storage.js
-- [ ] T096 Incorporar la tasa de impuesto configurable del perfil y una moneda local de referencia en src/module-config.js, sin recalcular tipos de cambio históricos ni totales desde catálogos externos
-- [ ] T097 Hacer que el almacenamiento y el formulario consuman una única cascada de cálculo de totales basada en líneas, con redondeo consistente a dos decimales y sin permitir edición manual de importes derivados
+- [X] T095 Conservar `currency`, `tipoCambio` y `fechaEmision` como instantánea del documento y validar que el tipo de cambio sea numérico no negativo en src/storage.js
+- [X] T096 Incorporar la tasa de impuesto configurable del perfil y una moneda local de referencia en src/module-config.js, sin recalcular tipos de cambio históricos ni totales desde catálogos externos
+- [X] T097 Hacer que el almacenamiento y el formulario consuman una única cascada de cálculo de totales basada en líneas, con redondeo consistente a dos decimales y sin permitir edición manual de importes derivados
 
 ---
 
@@ -422,18 +384,17 @@ Task: "Marcado de la vista de usuarios en index.html"
 - T082-T083 pueden ejecutarse en paralelo con T085
 - T084 puede ejecutarse en paralelo con T089 una vez definido el contrato de líneas
 - T092-T094 pueden ejecutarse en paralelo antes de T095-T097
-=======
-## Phase 11: Convergence
+## Fase 21: Convergencia (IDs renumerados para evitar colisiones con T082-T090 de las fases 19 y 20)
 
-- [ ] T080 CRITICAL Reparar o retirar los módulos huérfanos `src/approval.js`, `src/components/approval-panel.js` y `src/components/user-profile.js` para que no importen ni reexporten APIs inexistentes y `tests/unit/approval.test.js` pueda cargarlos per Constitution II, T078 (contradicts)
-- [ ] T081 CRITICAL Reconciliar las 16 pruebas fallidas en 7 archivos (`tests/unit/approval.test.js`, `tests/unit/request.test.js`, `tests/unit/users.test.js`, `tests/integration/department-approvals.test.js`, `tests/integration/request-justification.test.js`, `tests/integration/search-entities.test.js`, `tests/integration/users-permissions.test.js`) con las APIs e IDs del DOM vigentes y ejecutar `npx vitest run` hasta que pasen todas per Constitution II, T078 (contradicts)
-- [ ] T082 Implementar el modelo y la persistencia de las solicitudes de cotización: estado `En cotización`, vinculación con la solicitud de compra original, proveedor activo con datos comerciales completos, precios por línea, cálculo de subtotal/impuesto/total y bloqueo de cotizaciones duplicadas en `src/storage.js` y `src/module-config.js` per US5/AC1, US5/AC3, US5/AC4 (missing)
-- [ ] T083 Implementar la bandeja de solicitudes autorizadas y el formulario de generación de cotización para el rol `encargado_compras`, mostrando cantidades, justificación y decisión de autorización, actualizando la solicitud a `En cotización` y conectando navegación y permisos en `src/app.js`, `index.html` y `src/components/` per US5/AC1, US5/AC2, US5/AC3, US5/AC5, US4/AC3 (missing)
-- [ ] T084 Añadir pruebas unitarias y de integración de la US5 (bandeja, validaciones, cotización vinculada, cambio de estado y permisos) en `tests/unit/` y `tests/integration/` per US5/AC1-5, Constitution II (missing)
-- [ ] T085 Añadir el estado `Pagada` y su transición permitida al ciclo de vida de la Orden de Compra en `src/module-config.js`, `src/storage.js` y la interfaz, con cobertura de pruebas per US2/AC3 (missing)
-- [ ] T086 Aplicar la guarda de desactivación de usuarios con trámites pendientes también a `updateUser()` en `src/storage.js`, impidiendo `active:false` y mostrando la advertencia per US1/AC4 (partial)
-- [ ] T087 Validar que la cantidad rechazada por línea no supere la cantidad pendiente (no solo la solicitada) en `validateReception()` de `src/storage.js`, indicando la línea a corregir per FR-043, US6/AC6 (partial)
-- [ ] T088 Revisar y justificar o eliminar la siembra automática de datos de demostración de `src/mock-data.js` ejecutada al arrancar desde `src/app.js`, conservando únicamente las semillas de pruebas autorizadas en `tests/setup/roles.js` per plan: storage decision, T012 (unrequested)
-- [ ] T089 Completar la validación manual de extremo a extremo de cada historia, incluida la nueva US5, según `specs/001-erp-base-module/quickstart.md` per T079 (partial)
-- [ ] T090 Alinear `theme.accentColor` de `userConfig` en `src/module-config.js` con el valor `#0f766e` decidido en el plan per plan: configuración de referencia (contradicts)
+- [X] T098 CRITICAL Reparar o retirar los módulos huérfanos `src/approval.js`, `src/components/approval-panel.js` y `src/components/user-profile.js` para que no importen ni reexporten APIs inexistentes y `tests/unit/approval.test.js` pueda cargarlos per Constitution II, T078 (contradicts)
+- [X] T099 CRITICAL Reconciliar las 16 pruebas fallidas en 7 archivos (`tests/unit/approval.test.js`, `tests/unit/request.test.js`, `tests/unit/users.test.js`, `tests/integration/department-approvals.test.js`, `tests/integration/request-justification.test.js`, `tests/integration/search-entities.test.js`, `tests/integration/users-permissions.test.js`) con las APIs e IDs del DOM vigentes y ejecutar `npx vitest run` hasta que pasen todas per Constitution II, T078 (contradicts)
+- [X] T100 Implementar el modelo y la persistencia de las solicitudes de cotización: estado `En cotización`, vinculación con la solicitud de compra original, proveedor activo con datos comerciales completos, precios por línea, cálculo de subtotal/impuesto/total y bloqueo de cotizaciones duplicadas en `src/storage.js` y `src/module-config.js` per US5/AC1, US5/AC3, US5/AC4 (missing)
+- [X] T101 Implementar la bandeja de solicitudes autorizadas y el formulario de generación de cotización para el rol `encargado_compras`, mostrando cantidades, justificación y decisión de autorización, actualizando la solicitud a `En cotización` y conectando navegación y permisos en `src/app.js`, `index.html` y `src/components/` per US5/AC1, US5/AC2, US5/AC3, US5/AC5, US4/AC3 (missing)
+- [X] T102 Añadir pruebas unitarias y de integración de la US5 (bandeja, validaciones, cotización vinculada, cambio de estado y permisos) en `tests/unit/` y `tests/integration/` per US5/AC1-5, Constitution II (missing)
+- [X] T103 Añadir el estado `Pagada` y su transición permitida al ciclo de vida de la Orden de Compra en `src/module-config.js`, `src/storage.js` y la interfaz, con cobertura de pruebas per US2/AC3 (missing)
+- [X] T104 Aplicar la guarda de desactivación de usuarios con trámites pendientes también a `updateUser()` en `src/storage.js`, impidiendo `active:false` y mostrando la advertencia per US1/AC4 (partial)
+- [X] T105 Validar que la cantidad rechazada por línea no supere la cantidad pendiente (no solo la solicitada) en `validateReception()` de `src/storage.js`, indicando la línea a corregir per FR-043, US6/AC6 (partial)
+- [X] T106 Revisar y justificar o eliminar la siembra automática de datos de demostración de `src/mock-data.js` ejecutada al arrancar desde `src/app.js`, conservando únicamente las semillas de pruebas autorizadas en `tests/setup/roles.js` per plan: storage decision, T012 (unrequested)
+- [X] T107 Completar la validación manual de extremo a extremo de cada historia, incluida la nueva US5, según `specs/001-erp-base-module/quickstart.md` per T079 (partial)
+- [X] T108 Alinear `theme.accentColor` de `userConfig` en `src/module-config.js` con el valor `#0f766e` decidido en el plan per plan: configuración de referencia (contradicts)
 

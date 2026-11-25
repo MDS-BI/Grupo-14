@@ -1,6 +1,4 @@
-import {
-  ROLE_KEYS, roleLabel, roleDescription, roleStory, roleCapabilities, isBootstrapProfile
-} from '../auth.js';
+import { ROLE_KEYS, roleLabel, permissionsFor } from '../auth.js';
 import { escapeHtml } from '../dom.js';
 
 export function renderProfileSwitcher(select, profiles, currentUser){
@@ -29,13 +27,13 @@ export function renderProfileSnapshot(container, user){
     ['Nombre', user.name],
     ['Usuario', user.username],
     ['Rol', roleLabel(user.role)],
-    ['Departamento', user.departamento || 'No asignado'],
+    ['Permisos', permissionsFor(user.role).length],
     ['Estado', user.active === false ? 'Inactivo' : 'Activo'],
-    ['Tipo', isBootstrapProfile(user) ? 'Perfil del sistema' : 'Usuario registrado']
+    ['Tipo', user.system ? 'Perfil del sistema' : 'Usuario registrado']
   ];
   container.innerHTML = `<dl class="profile-facts">${
     rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')
-  }</dl><p class="muted">${escapeHtml(roleStory(user.role))}: ${escapeHtml(roleDescription(user.role))}</p>`;
+  }</dl>`;
 }
 
 export function renderRoleCatalog(listEl, activeRole){
@@ -45,12 +43,12 @@ export function renderRoleCatalog(listEl, activeRole){
     const item = document.createElement('li');
     item.className = 'profile-role-item' + (roleKey === activeRole ? ' active' : '');
     item.dataset.role = roleKey;
-    const capabilities = roleCapabilities(roleKey)
+    const capabilities = permissionsFor(roleKey)
       .map(capability => `<li>${escapeHtml(capability)}</li>`)
       .join('');
     item.innerHTML = `<div class="profile-role-head"><strong>${escapeHtml(roleLabel(roleKey))}</strong>${
       roleKey === activeRole ? ' <span class="status-badge">perfil activo</span>' : ''
-    }</div><div class="muted">${escapeHtml(roleStory(roleKey))}</div><p>${escapeHtml(roleDescription(roleKey))}</p>${
+    }</div>${
       capabilities ? `<ul class="profile-role-capabilities">${capabilities}</ul>` : ''
     }`;
     listEl.appendChild(item);
