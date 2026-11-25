@@ -45,7 +45,7 @@
 //   },
 //   theme: { accentColor: '#0f766e' },
 //   taxRate: 0.19,
-//   monedaLocal: 'MXN'
+//   monedaLocal: 'CLP'
 // }
 export const userConfig = {
   moduleName: 'Adquisiciones y Compras',
@@ -65,7 +65,11 @@ export const userConfig = {
     // Divisas y tipos de cambio: congelan el costo de la compra y su trazabilidad
     { target: 'document', key: 'tipoCambio', label: 'Tipo de cambio', type: 'number' },
     { target: 'document', key: 'fechaEmision', label: 'Fecha de emisión', type: 'date', required: true },
-    { target: 'document', key: 'departamento', label: 'Departamento', type: 'text' }
+    { target: 'document', key: 'departamento', label: 'Departamento', type: 'text' },
+    // Entrega (US18): se captura al emitir y se conserva en la orden.
+    { target: 'document', key: 'fechaEstimadaEntrega', label: 'Fecha estimada de entrega', type: 'date' },
+    { target: 'document', key: 'direccionEntrega', label: 'Dirección de entrega', type: 'text' },
+    { target: 'document', key: 'instruccionesDespacho', label: 'Instrucciones de despacho', type: 'text' }
   ],
   justificacion: { requiredFor: ['Solicitud de Cotización'] },
   statusLifecycle: {

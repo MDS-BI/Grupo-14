@@ -82,7 +82,8 @@ export function permissionsFor(role){
 }
 
 export function setSession(user){
-  session = user ? {
+  if(!user){ session = null; return; }
+  session = {
     id: user.id,
     username: user.username,
     name: user.name,
@@ -90,7 +91,21 @@ export function setSession(user){
     department: user.department ? String(user.department).trim() : undefined,
     active: user.active !== false,
     system: Boolean(user.system)
-  } : null;
+  };
+}
+
+export function login(username, password, users = []){
+  const name = String(username || '').trim().toLowerCase();
+  if(!name || !String(password || '').trim()) throw new Error('Usuario y contraseña son obligatorios');
+  const user = users.find(u => String(u.username || '').trim().toLowerCase() === name);
+  if(!user) throw new Error('Credenciales inválidas');
+  if(user.active === false) throw new Error('El usuario está desactivado');
+  setSession(user);
+  return getSession();
+}
+
+export function logout(){
+  session = null;
 }
 
 export function getSession(){

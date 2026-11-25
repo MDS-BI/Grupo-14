@@ -404,8 +404,8 @@ Como Encargado de Compras, quiero emitir la Orden de Compra a partir de la cotiz
 
 ### Casos Límite
 
-- ¿Qué ocurre cuando un usuario intenta guardar una entidad sin nombre o código obligatorio?
-- ¿Cómo gestiona el sistema una búsqueda que no devuelve coincidencias?
+- Al guardar una entidad sin nombre o código, el sistema bloquea el guardado, muestra el error bajo cada campo obligatorio y conserva los valores capturados para corregirlos.
+- Una búsqueda sin coincidencias muestra el estado vacío “Sin coincidencias para tu búsqueda.”, conserva el término escrito y no altera los registros almacenados.
 - Si un usuario intenta editar o eliminar una entidad que ya no existe, la operación se bloquea, se recarga el snapshot y se muestra un estado vacío claro.
 - Las fechas `targetDate`, `fechaEmision`, `fechaEstimadaEntrega`, `startDate` y `endDate` se rechazan si no son fechas de calendario válidas `YYYY-MM-DD`; el mensaje se muestra bajo el campo correspondiente.
 - Al eliminar una entidad se eliminan sus Documentos de Compra asociados y sus `lineasDetalle` en cascada.
@@ -417,12 +417,12 @@ Como Encargado de Compras, quiero emitir la Orden de Compra a partir de la cotiz
 - El botón atrás del navegador no puede eludir el guard de sesión; con sesión activa vuelve a la vista previa y conserva entidades y Documentos de Compra.
 - Si un formulario tiene cambios sin guardar, al salir se muestra confirmación para descartar o continuar editando.
 - Las entidades y los Documentos de Compra permanecen intactos al navegar entre panel, gestión y búsqueda.
-- ¿Qué ocurre cuando el panel se abre con cero entidades o cero documentos (valores estadísticos)?
-- ¿Qué ocurre cuando el color de acento configurado no es un valor de color válido?
-- ¿Cómo mantiene la barra lateral contraída las etiquetas de módulo accesibles en ventanas gráficas estrechas?
-- ¿Qué ocurre cuando el proveedor entrega más unidades de las solicitadas en la Orden de Compra?
-- ¿Qué ocurre si se intenta registrar una recepción sobre una Orden de Compra que ya está Recibida por completo, anulada o aún no emitida?
-- ¿Qué ocurre cuando una entrega llega en varias partes en días distintos?
+- Con cero entidades o cero documentos, el panel muestra `0` en las tarjetas de estadísticas, el estado vacío correspondiente en cada listado y las alertas operativas vacías; no muestra valores `NaN` ni `undefined`.
+- Si `theme.accentColor` no es un color válido, el cargador conserva el color integrado, informa el error en el banner de configuración y continúa con la interfaz operativa.
+- En ventanas estrechas la barra lateral se contrae a iconos con `aria-label` y `title` equivalentes a la etiqueta textual; al expandirse se restauran las etiquetas sin perder el foco ni el estado activo.
+- Si el proveedor entrega más unidades de las solicitadas, la recepción se rechaza con el detalle de la línea y la cantidad pendiente; el excedente no se persiste.
+- Una recepción sobre una orden Recibida, Rechazada o no emitida se bloquea con un mensaje de estado; no se crea la recepción ni cambia el estado de la orden.
+- Una entrega en varias partes crea una recepción por fecha, acumula cantidades por línea y mantiene la orden en `Recibida parcialmente` hasta que todas las líneas alcanzan su cantidad solicitada.
 - Antes de guardar una recepción, el sistema relee el snapshot y compara `revision`/`updatedAt`; si difiere del valor cargado, bloquea la escritura, muestra conflicto y exige recargar o reintentar.
 - Si una solicitud ya tiene una cotización, una segunda cotización se bloquea por regla de dominio, independientemente de la revisión.
 - Si dos encargados abren la misma solicitud autorizada, ambos pueden verla, pero el primero que persista incrementa `revision`; el segundo recibe conflicto antes de guardar.

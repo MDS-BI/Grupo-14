@@ -1,6 +1,8 @@
 import { getConfig, computeSubtotalLinea, subtotalFromLineas, applyTotalesToCabecera, DEFAULT_TAX_RATE } from './module-config.js';
-import { can, currentUser, isAdmin, ROLE_KEYS, PERMISSIONS } from './auth.js';
-import { cleanRut, validateRut } from './rut.js';
+import { can, currentUser, isAdmin, roleLabel, ROLE_KEYS, PERMISSIONS } from './auth.js';
+import { cleanRut, formatRut, validateRut } from './rut.js';
+
+export const SCHEMA_VERSION = 2;
 
 const ENTITIES_KEY = 'erp_base_module:entities';
 const DOCUMENTS_KEY = 'erp_base_module:documents';
@@ -8,6 +10,17 @@ const USERS_KEY = 'erp_base_module:users';
 const REQUISITIONS_KEY = 'erp_base_module:requisitions';
 const RECEPTIONS_KEY = 'erp_base_module:receptions';
 const QUOTATIONS_KEY = 'erp_base_module:quotations';
+const DEPARTMENTS_KEY = 'erp_base_module:departments';
+const CATALOG_KEY = 'erp_base_module:catalog';
+const BUDGETS_KEY = 'erp_base_module:budgets';
+const AUDIT_KEY = 'erp_base_module:audit_events';
+const DOMAIN_EVENT = 'erp-base-module:change';
+
+const COLLECTION_KEYS = Object.freeze([
+  ENTITIES_KEY, DOCUMENTS_KEY, USERS_KEY, REQUISITIONS_KEY,
+  RECEPTIONS_KEY, QUOTATIONS_KEY, DEPARTMENTS_KEY, CATALOG_KEY,
+  BUDGETS_KEY, AUDIT_KEY
+]);
 
 export const REQUISITION_STATUS = Object.freeze({
   PENDING: 'Pendiente de aprobación',
@@ -91,6 +104,87 @@ function generateId(){
   return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
 }
 
+function roundMoney(value){
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
+export function subscribeChanges(listener){
+  if(typeof listener !== 'function') return () => {};
+  const target = typeof window !== 'undefined' ? window : globalThis;
+  if(target.addEventListener){
+    target.addEventListener(DOMAIN_EVENT, listener);
+    return () => target.removeEventListener(DOMAIN_EVENT, listener);
+  }
+  return () => {};
+}
+
+export function emitChange(type, detail = {}){
+  const target = typeof window !== 'undefined' ? window : globalThis;
+  const payload = { ...detail, at: new Date().toISOString() };
+  if(target.dispatchEvent){
+    const EventConstructor = target.Event || globalThis.Event;
+    if(EventConstructor){
+      const event = new EventConstructor(DOMAIN_EVENT);
+      Object.assign(event, { detail: payload, domainType: type });
+      target.dispatchEvent(event);
+    }
+  }
+  return { domainType: type, detail: payload };
+}
+
+function actorInfo(){
+  const user = currentUser();
+  return {
+    userId: user ? user.id : undefined,
+    nombre: user ? user.name : undefined,
+    rol: user ? roleLabel(user.role) : undefined
+  };
+}
+
+export function appendAudit(event){
+  if(!event || !event.action) throw new Error('El evento de auditoría debe indicar una acción');
+  const now = new Date().toISOString();
+  const actor = actorInfo();
+  const record = {
+    id: generateId(),
+    tipo: 'EVENTO_DE_AUDITORIA',
+    entidadTipo: event.entityType || 'documento',
+    entidadId: event.entityId,
+    accion: String(event.action),
+    estadoAnterior: event.fromStatus,
+    estadoNuevo: event.toStatus,
+    revision: Number(event.revision || 1),
+    motivo: event.reason ? String(event.reason).trim() : undefined,
+    ...actor,
+    at: now,
+    createdAt: now
+  };
+  const list = loadAuditEvents();
+  list.push(record);
+  saveAuditEvents(list);
+  emitChange('audit', { entityType: record.entidadTipo, entityId: record.entidadId });
+  return record;
+}
+
+export function loadAuditEvents(){ return readJson(AUDIT_KEY, []); }
+export function saveAuditEvents(events){ writeJson(AUDIT_KEY, events); }
+
+export function auditForEntity(entityType, entityId){
+  return loadAuditEvents()
+    .filter(e => (!entityType || e.entidadTipo === entityType) && (!entityId || e.entidadId === entityId))
+    .sort((a, b) => String(a.at).localeCompare(String(b.at)));
+}
+
+export function assertFresh(current, expected, label = 'registro'){
+  if(expected === undefined || expected === null || expected === '') return;
+  if(Number(current && current.revision) !== Number(expected)){
+    const error = new Error(`El ${label} cambió desde que lo abriste. Recarga o reintenta con la revisión vigente.`);
+    error.code = 'REVISION_CONFLICT';
+    error.current = current;
+    throw error;
+  }
+}
+
 function declaredFields(target){
   return getConfig().customFields.filter(f => f.target === target);
 }
@@ -146,6 +240,202 @@ function isValidEmail(value){
 }
 
 // ---------------------------------------------------------------------------
+// Departamentos, presupuestos y catálogo (US16 / US10 / US17)
+// ---------------------------------------------------------------------------
+
+export function loadDepartments(){ return readJson(DEPARTMENTS_KEY, []); }
+export function saveDepartments(departments){ writeJson(DEPARTMENTS_KEY, departments); }
+
+export function listDepartments(){
+  const stored = loadDepartments().filter(d => d.active !== false);
+  const names = stored.length ? stored.map(d => d.name) : DEPARTMENTS;
+  return [...new Set(names)];
+}
+
+export function departmentOptions(){
+  return loadDepartments().filter(d => d.active !== false).map(d => ({ value: d.name, label: d.name, approverId: d.approverId }));
+}
+
+export function approverForDepartment(department){
+  const d = loadDepartments().find(x => x.name === department && x.active !== false);
+  return d ? d.approverId : undefined;
+}
+
+export function validateDepartment(payload, existingId){
+  const errors = {};
+  const name = String(payload.name || '').trim();
+  const code = String(payload.code || '').trim();
+  if(!name) errors.name = 'El nombre del departamento es obligatorio';
+  if(!code) errors.code = 'El código del departamento es obligatorio';
+  else if(loadDepartments().some(d => d.id !== existingId && d.code.toUpperCase() === code.toUpperCase())){
+    errors.code = 'El código del departamento ya está registrado';
+  }
+  if(payload.approverId && !loadUsers().some(u => u.id === payload.approverId && u.active !== false)){
+    errors.approverId = 'El jefe aprobador debe ser un usuario activo';
+  }
+  return { valid: Object.keys(errors).length === 0, errors };
+}
+
+export function addDepartment(payload){
+  const check = validateDepartment(payload);
+  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
+  const now = new Date().toISOString();
+  const department = {
+    id: generateId(),
+    name: String(payload.name).trim(),
+    code: String(payload.code).trim().toUpperCase(),
+    approverId: payload.approverId || undefined,
+    active: true,
+    revision: 1,
+    createdAt: now,
+    updatedAt: now
+  };
+  const list = loadDepartments();
+  list.push(department);
+  saveDepartments(list);
+  appendAudit({ entityType: 'departamento', entityId: department.id, action: 'crear', toStatus: 'Activo', revision: 1 });
+  emitChange('department', { id: department.id });
+  return department;
+}
+
+export function updateDepartment(id, updates){
+  const list = loadDepartments();
+  const idx = list.findIndex(d => d.id === id);
+  if(idx === -1) throw new Error('Departamento no encontrado');
+  assertFresh(list[idx], updates.revision, 'departamento');
+  const merged = { ...list[idx], ...updates };
+  const check = validateDepartment(merged, id);
+  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
+  if(merged.active === false) assertDepartmentCanDeactivate(id);
+  list[idx] = {
+    ...list[idx],
+    name: String(merged.name).trim(),
+    code: String(merged.code).trim().toUpperCase(),
+    approverId: merged.approverId || undefined,
+    active: merged.active !== false,
+    revision: Number(list[idx].revision || 1) + 1,
+    updatedAt: new Date().toISOString()
+  };
+  saveDepartments(list);
+  appendAudit({ entityType: 'departamento', entityId: id, action: merged.active === false ? 'desactivar' : 'editar', revision: list[idx].revision });
+  emitChange('department', { id });
+  return list[idx];
+}
+
+export function assertDepartmentCanDeactivate(id){
+  const department = loadDepartments().find(d => d.id === id);
+  if(!department) throw new Error('Departamento no encontrado');
+  if(loadUsers().some(u => u.department === department.name && u.active !== false)){
+    throw new Error('No se puede desactivar el departamento: tiene usuarios activos asignados');
+  }
+  if(loadRequisitions().some(r => r.department === department.name && [REQUISITION_STATUS.PENDING, REQUISITION_STATUS.APPROVED, REQUISITION_STATUS.IN_QUOTATION].includes(r.status))){
+    throw new Error('No se puede desactivar el departamento: tiene solicitudes en curso');
+  }
+  if(Number((loadBudgets().find(b => b.department === department.name) || {}).committed || 0) > 0){
+    throw new Error('No se puede desactivar el departamento: tiene presupuesto comprometido');
+  }
+}
+
+export function loadBudgets(){ return readJson(BUDGETS_KEY, []); }
+export function saveBudgets(budgets){ writeJson(BUDGETS_KEY, budgets); }
+
+export function setDepartmentBudget(department, total, reason){
+  const name = String(department || '').trim();
+  const amount = Number(total);
+  if(!name) throw new Error('El departamento es obligatorio');
+  if(!Number.isFinite(amount) || amount < 0) throw new Error('El presupuesto debe ser un número no negativo');
+  const list = loadBudgets();
+  const idx = list.findIndex(b => b.department === name);
+  const current = idx === -1 ? { department: name, total: 0, revision: 0 } : list[idx];
+  assertFresh(current, current.revision, 'presupuesto');
+  const next = { ...current, total: amount, revision: Number(current.revision || 1) + 1, updatedAt: new Date().toISOString() };
+  if(idx === -1) list.push(next); else list[idx] = next;
+  saveBudgets(list);
+  appendAudit({ entityType: 'presupuesto', entityId: name, action: 'ajustar', reason, revision: next.revision, metadata: { total: amount } });
+  emitChange('budget', { department: name });
+  return next;
+}
+
+export function loadCatalog(){ return readJson(CATALOG_KEY, []); }
+export function saveCatalog(items){ writeJson(CATALOG_KEY, items); }
+
+export function validateCatalogItem(payload, existingId){
+  const errors = {};
+  const code = String(payload.code || '').trim();
+  if(!code) errors.code = 'El código del producto es obligatorio';
+  else if(loadCatalog().some(p => p.id !== existingId && p.code.toUpperCase() === code.toUpperCase())) errors.code = 'El código del producto ya está registrado';
+  if(!String(payload.descripcion || '').trim()) errors.descripcion = 'La descripción es obligatoria';
+  if(!String(payload.unidadMedida || '').trim()) errors.unidadMedida = 'La unidad de medida es obligatoria';
+  const price = Number(payload.precioReferencia);
+  if(!Number.isFinite(price) || price < 0) errors.precioReferencia = 'El precio de referencia debe ser un número no negativo';
+  return { valid: Object.keys(errors).length === 0, errors };
+}
+
+export function addCatalogItem(payload){
+  const check = validateCatalogItem(payload);
+  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
+  const now = new Date().toISOString();
+  const item = {
+    id: generateId(),
+    code: String(payload.code).trim().toUpperCase(),
+    producto_id: String(payload.producto_id || payload.code).trim(),
+    descripcion: String(payload.descripcion).trim(),
+    categoria: String(payload.categoria || '').trim() || undefined,
+    unidadMedida: String(payload.unidadMedida).trim(),
+    precioReferencia: Number(payload.precioReferencia),
+    active: true,
+    revision: 1,
+    createdAt: now,
+    updatedAt: now
+  };
+  const list = loadCatalog();
+  list.push(item);
+  saveCatalog(list);
+  appendAudit({ entityType: 'catalogo', entityId: item.id, action: 'crear', revision: 1 });
+  emitChange('catalog', { id: item.id });
+  return item;
+}
+
+export function updateCatalogItem(id, updates){
+  const list = loadCatalog();
+  const idx = list.findIndex(p => p.id === id);
+  if(idx === -1) throw new Error('Producto no encontrado');
+  assertFresh(list[idx], updates.revision, 'producto');
+  const merged = { ...list[idx], ...updates };
+  const check = validateCatalogItem(merged, id);
+  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
+  list[idx] = {
+    ...list[idx],
+    code: String(merged.code).trim().toUpperCase(),
+    descripcion: String(merged.descripcion).trim(),
+    categoria: String(merged.categoria || '').trim() || undefined,
+    unidadMedida: String(merged.unidadMedida).trim(),
+    precioReferencia: Number(merged.precioReferencia),
+    active: merged.active !== false,
+    revision: Number(list[idx].revision || 1) + 1,
+    updatedAt: new Date().toISOString()
+  };
+  saveCatalog(list);
+  emitChange('catalog', { id });
+  return list[idx];
+}
+
+export function findCatalogItem(code){
+  const key = String(code || '').trim().toUpperCase();
+  if(!key) return undefined;
+  return loadCatalog().find(p => p.active !== false && (p.code.toUpperCase() === key || String(p.producto_id).toUpperCase() === key));
+}
+
+export function duplicateCatalogRequests(lines){
+  const counts = new Map();
+  (lines || []).forEach(line => {
+    const key = String(line.producto_id || '').trim().toUpperCase();
+    if(key) counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  return [...counts.entries()].filter(([, count]) => count > 1).map(([key]) => key);
+}
+
+// ---------------------------------------------------------------------------
 // Usuarios y permisos (HU1)
 // ---------------------------------------------------------------------------
 
@@ -169,7 +459,7 @@ export function validateUser(payload, existingId){
     if(!validateRut(rut)) errors.rut = 'El RUT no es válido';
     else if(loadUsers().some(u => u.id !== existingId && cleanRut(u.rut) === cleanRut(rut))) errors.rut = 'El RUT ya está registrado';
   }
-  if(department && !DEPARTMENTS.includes(department)) errors.department = `El departamento debe ser uno de: ${DEPARTMENTS.join(', ')}`;
+  if(department && !listDepartments().includes(department)) errors.department = `El departamento debe ser uno de: ${listDepartments().join(', ')}`;
   return { valid: Object.keys(errors).length === 0, errors };
 }
 
@@ -186,6 +476,7 @@ export function addUser(payload){
     department: String(payload.department || '').trim(),
     role: String(payload.role).trim(),
     active: payload.active !== false,
+    revision: 1,
     lastAccess: now,
     createdAt: now,
     updatedAt: now
@@ -193,6 +484,8 @@ export function addUser(payload){
   const list = loadUsers();
   list.push(user);
   saveUsers(list);
+  appendAudit({ entityType: 'usuario', entityId: user.id, action: 'crear', revision: 1 });
+  emitChange('user', { id: user.id });
   return user;
 }
 
@@ -200,6 +493,7 @@ export function updateUser(id, updates){
   const list = loadUsers();
   const idx = list.findIndex(u => u.id === id);
   if(idx === -1) throw new Error('Usuario no encontrado');
+  assertFresh(list[idx], updates.revision, 'usuario');
   const merged = { ...list[idx], ...updates };
   if(merged.active === false){
     const pending = usersWithPendingWork(id);
@@ -218,9 +512,12 @@ export function updateUser(id, updates){
     department: String(merged.department || '').trim(),
     role: String(merged.role).trim(),
     active: merged.active !== false,
+    revision: Number(list[idx].revision || 1) + 1,
     updatedAt: new Date().toISOString()
   };
   saveUsers(list);
+  appendAudit({ entityType: 'usuario', entityId: id, action: merged.active === false ? 'desactivar' : 'editar', revision: list[idx].revision });
+  emitChange('user', { id });
   return list[idx];
 }
 
@@ -250,8 +547,10 @@ export function setUserActive(id, active){
       throw new Error('No se puede desactivar el usuario: tiene solicitudes u órdenes pendientes en su flujo. Reasigna o concluye esos trámites primero.');
     }
   }
-  list[idx] = { ...list[idx], active: next, updatedAt: new Date().toISOString() };
+  list[idx] = { ...list[idx], active: next, revision: Number(list[idx].revision || 1) + 1, updatedAt: new Date().toISOString() };
   saveUsers(list);
+  appendAudit({ entityType: 'usuario', entityId: id, action: next ? 'activar' : 'desactivar', revision: list[idx].revision });
+  emitChange('user', { id });
   return list[idx];
 }
 
@@ -301,6 +600,34 @@ function pickCustomFields(target, data){
   return out;
 }
 
+export function activeEntities(){
+  return loadEntities().filter(e => e.active !== false && String(e.estado || '').toLowerCase() !== 'inactivo');
+}
+
+export function assertEntityCanDeactivate(id){
+  const entity = loadEntities().find(e => e.id === id);
+  if(!entity) throw new Error('Entidad no encontrada');
+  const active = loadDocuments().filter(d =>
+    [DOCUMENT_STATUS.ISSUED, DOCUMENT_STATUS.PARTIALLY_RECEIVED].includes(d.status)
+  );
+  if(active.some(d => d.entity_id === entity.entity_id)){
+    throw new Error('No se puede desactivar el proveedor: tiene Órdenes de Compra emitidas o recibidas parcialmente');
+  }
+}
+
+export function setEntityActive(id, active){
+  const next = Boolean(active);
+  if(!next) assertEntityCanDeactivate(id);
+  return updateEntity(id, { active: next, estado: next ? 'Activo' : 'Inactivo' });
+}
+
+function storedRut(value){
+  const text = String(value || '').trim();
+  if(!text) return undefined;
+  const profileActive = getConfig().customFields.some(f => f.key === 'categoriaProveedor');
+  return profileActive && validateRut(text) ? formatRut(text) : text;
+}
+
 export function addEntity(payload){
   const now = new Date().toISOString();
   const entity = {
@@ -308,7 +635,7 @@ export function addEntity(payload){
     entity_id: generateId(),
     name: (payload.name||'').trim(),
     code: (payload.code||'').trim(),
-    taxId: (payload.taxId||'').trim() || undefined,
+    taxId: storedRut(payload.taxId),
     email: (payload.email||'').trim() || undefined,
     phone: (payload.phone||'').trim() || undefined,
     address: (payload.address||'').trim() || undefined,
@@ -318,13 +645,17 @@ export function addEntity(payload){
     creditLimit: isEmpty(payload.creditLimit) ? undefined : Number(payload.creditLimit),
     paymentTerms: (payload.paymentTerms||'').trim() || undefined,
     estado: (payload.estado||'Activo').trim() || 'Activo',
+    active: payload.active !== false,
     ...pickCustomFields('entity', payload),
+    revision: 1,
     createdAt: now,
     updatedAt: now
   };
   const list = loadEntities();
   list.push(entity);
   saveEntities(list);
+  appendAudit({ entityType: 'proveedor', entityId: entity.id, action: 'crear', toStatus: entity.estado, revision: 1 });
+  emitChange('entity', { id: entity.id });
   return entity;
 }
 
@@ -332,12 +663,13 @@ export function updateEntity(id, updates){
   const list = loadEntities();
   const idx = list.findIndex(e => e.id === id);
   if(idx === -1) throw new Error('Entidad no encontrada');
+  assertFresh(list[idx], updates.revision, 'proveedor');
   const merged = { ...list[idx], ...updates };
   list[idx] = {
     ...list[idx],
     name: (merged.name||'').trim(),
     code: (merged.code||'').trim(),
-    taxId: (merged.taxId||'').trim() || undefined,
+    taxId: storedRut(merged.taxId),
     email: (merged.email||'').trim() || undefined,
     phone: (merged.phone||'').trim() || undefined,
     address: (merged.address||'').trim() || undefined,
@@ -347,10 +679,14 @@ export function updateEntity(id, updates){
     creditLimit: isEmpty(merged.creditLimit) ? undefined : Number(merged.creditLimit),
     paymentTerms: (merged.paymentTerms||'').trim() || undefined,
     estado: (merged.estado||'Activo').trim() || 'Activo',
+    active: merged.active !== false && String(merged.estado || '').toLowerCase() !== 'inactivo',
     ...pickCustomFields('entity', merged),
+    revision: Number(list[idx].revision || 1) + 1,
     updatedAt: new Date().toISOString()
   };
   saveEntities(list);
+  appendAudit({ entityType: 'proveedor', entityId: id, action: list[idx].active === false ? 'desactivar' : 'editar', toStatus: list[idx].estado, revision: list[idx].revision });
+  emitChange('entity', { id });
   return list[idx];
 }
 
@@ -359,7 +695,11 @@ export function deleteEntity(id){
   const entity = list.find(e => e.id === id);
   const newList = list.filter(e => e.id !== id);
   saveEntities(newList);
-  if(entity) deleteDocumentsForEntity(entity.entity_id);
+  if(entity){
+    deleteDocumentsForEntity(entity.entity_id);
+    appendAudit({ entityType: 'proveedor', entityId: id, action: 'eliminar', revision: Number(entity.revision || 1) });
+    emitChange('entity', { id });
+  }
   return newList;
 }
 
@@ -463,6 +803,12 @@ export function validateDocument(payload, currentStatus){
     const tc = Number(payload.tipoCambio);
     if(!Number.isFinite(tc) || tc < 0) errors.tipoCambio = 'El tipo de cambio debe ser un número no negativo';
   }
+  const deliveryDate = payload.fechaEstimadaEntrega;
+  if(!isEmpty(deliveryDate)){
+    if(!isValidDate(deliveryDate)) errors.fechaEstimadaEntrega = 'La fecha estimada de entrega debe ser una fecha válida (YYYY-MM-DD)';
+    else if(isValidDate(startDate) && deliveryDate < startDate) errors.fechaEstimadaEntrega = 'La fecha estimada de entrega no puede ser anterior a la fecha de inicio';
+    else if(isValidDate(endDate) && deliveryDate > endDate) errors.fechaEstimadaEntrega = 'La fecha estimada de entrega no puede ser posterior a la fecha de fin';
+  }
   const requiredFor = (getConfig().justificacion && getConfig().justificacion.requiredFor) || [];
   if(requiredFor.includes(String(payload.tipoDocumento || '').trim()) && isEmpty(payload.justificacion)){
     errors.justificacion = 'La justificación de la compra es obligatoria';
@@ -501,6 +847,7 @@ function baseDocumentFields(payload, id, now){
     createdBy: user ? user.id : undefined,
     createdByName: user ? user.name : undefined,
     ...pickCustomFields('document', payload),
+    revision: 1,
     createdAt: now,
     updatedAt: now
   };
@@ -525,6 +872,8 @@ export function addDocument(payload){
   const list = loadDocuments();
   list.push(document);
   saveDocuments(list);
+  appendAudit({ entityType: 'documento', entityId: id, action: 'crear', toStatus: document.status, revision: 1 });
+  emitChange('document', { id });
   return document;
 }
 
@@ -533,8 +882,13 @@ export function updateDocument(id, updates){
   const idx = list.findIndex(d => d.id === id);
   if(idx === -1) throw new Error('Documento no encontrado');
   const prev = list[idx];
+  assertFresh(prev, updates.revision, 'documento');
+  if(prev.status === DOCUMENT_STATUS.PAID) throw new Error('La orden está Pagada y no permite edición posterior');
   const merged = { ...prev, ...updates };
   const nextStatus = updates.status !== undefined ? (updates.status||'').trim() : merged.status;
+  if(updates.fechaEstimadaEntrega !== undefined && updates.fechaEstimadaEntrega !== prev.fechaEstimadaEntrega && isEmpty(updates.motivoCambioEntrega)){
+    throw new Error('El cambio de fecha estimada de entrega requiere un motivo');
+  }
   if(nextStatus !== prev.status && RECEPTION_DERIVED_STATUSES.includes(nextStatus)){
     throw new Error(`El estado "${nextStatus}" solo se asigna al registrar recepciones de la orden`);
   }
@@ -575,6 +929,7 @@ export function updateDocument(id, updates){
     ...pickCustomFields('document', { ...prev, ...updates }),
     tipoCambio: prev.tipoCambio,
     fechaEmision: prev.fechaEmision,
+    revision: Number(prev.revision || 1) + 1,
     updatedAt: new Date().toISOString()
   };
   if(updates.lineasDetalle !== undefined){
@@ -587,13 +942,23 @@ export function updateDocument(id, updates){
   }
   list[idx] = next;
   saveDocuments(list);
+  appendAudit({ entityType: 'documento', entityId: id, action: 'editar', fromStatus: prev.status, toStatus: next.status, reason: updates.motivoCambioEntrega, revision: next.revision });
+  if(prev.fechaEstimadaEntrega !== next.fechaEstimadaEntrega){
+    appendAudit({ entityType: 'documento', entityId: id, action: 'cambiar_fecha_entrega', fromStatus: prev.fechaEstimadaEntrega, toStatus: next.fechaEstimadaEntrega, reason: updates.motivoCambioEntrega, revision: next.revision });
+  }
+  emitChange('document', { id });
   return list[idx];
 }
 
 export function deleteDocument(id){
   const list = loadDocuments();
+  const doc = list.find(d => d.id === id);
   const newList = list.filter(d => d.id !== id);
   saveDocuments(newList);
+  if(doc){
+    appendAudit({ entityType: 'documento', entityId: id, action: 'eliminar', fromStatus: doc.status, revision: Number(doc.revision || 1) });
+    emitChange('document', { id });
+  }
   return newList;
 }
 
@@ -645,9 +1010,13 @@ export function approveDocument(id){
     series: 'OC',
     folio: nextFolio('OC'),
     approvedAt: new Date().toISOString(),
+    fechaEmision: doc.fechaEmision || new Date().toISOString().slice(0, 10),
+    revision: Number(doc.revision || 1) + 1,
     updatedAt: new Date().toISOString()
   };
   saveDocuments(docs);
+  appendAudit({ entityType: 'documento', entityId: id, action: 'aprobar_emision', fromStatus: DOCUMENT_STATUS.APPROVED, toStatus: DOCUMENT_STATUS.ISSUED, revision: docs[idx].revision });
+  emitChange('document', { id });
   return docs[idx];
 }
 
@@ -659,8 +1028,16 @@ export function cancelDocument(id){
   if(NON_CANCELLABLE_ORDER_STATUSES.includes(doc.status)){
     throw new Error(`No se puede rechazar un documento en estado "${doc.status}"`);
   }
-  docs[idx] = { ...doc, status: DOCUMENT_STATUS.REJECTED, cancelledAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  docs[idx] = {
+    ...doc,
+    status: DOCUMENT_STATUS.REJECTED,
+    cancelledAt: new Date().toISOString(),
+    revision: Number(doc.revision || 1) + 1,
+    updatedAt: new Date().toISOString()
+  };
   saveDocuments(docs);
+  appendAudit({ entityType: 'documento', entityId: id, action: 'cancelar', fromStatus: doc.status, toStatus: DOCUMENT_STATUS.REJECTED, revision: docs[idx].revision });
+  emitChange('document', { id });
   return docs[idx];
 }
 
@@ -668,8 +1045,11 @@ export function patchDocument(id, updates){
   const docs = loadDocuments();
   const idx = docs.findIndex(d => d.id === id);
   if(idx === -1) throw new Error('Documento no encontrado');
-  docs[idx] = { ...docs[idx], ...updates, updatedAt: new Date().toISOString() };
+  const prev = docs[idx];
+  docs[idx] = { ...prev, ...updates, revision: Number(prev.revision || 1) + 1, updatedAt: new Date().toISOString() };
   saveDocuments(docs);
+  appendAudit({ entityType: 'documento', entityId: id, action: updates.status && updates.status !== prev.status ? 'cambiar_estado' : 'actualizar', fromStatus: prev.status, toStatus: updates.status, revision: docs[idx].revision });
+  emitChange('document', { id });
   return docs[idx];
 }
 
@@ -692,9 +1072,39 @@ export function decideApproval(id, status, { userId, comment } = {}){
   });
 }
 
-export function payOrder(id, { factura, monto, fechaPago } = {}){
+export function creditUsedForEntity(entityId){
+  const entity = loadEntities().find(e => e.entity_id === entityId);
+  if(!entity) return 0;
+  return loadDocuments()
+    .filter(d => d.entity_id === entityId && [DOCUMENT_STATUS.ISSUED, DOCUMENT_STATUS.PARTIALLY_RECEIVED, DOCUMENT_STATUS.RECEIVED, DOCUMENT_STATUS.PAID].includes(d.status))
+    .reduce((acc, d) => acc + (Number(d.montoPagado ?? d.totalAmount ?? d.subtotal ?? 0) || 0), 0);
+}
+
+export function availableCreditForEntity(entityId){
+  const entity = loadEntities().find(e => e.entity_id === entityId);
+  if(!entity) return 0;
+  return Math.max(Number(entity.creditLimit || 0) - creditUsedForEntity(entityId), 0);
+}
+
+export function receivedTotalForOrder(order){
+  if(!order) return 0;
+  const receptions = loadReceptions().filter(r => r.orderId === order.id);
+  if(receptions.length === 0) return Number(order.totalAmount ?? order.subtotal ?? 0);
+  const lineas = Array.isArray(order.lineasDetalle) ? order.lineasDetalle : [];
+  return roundMoney(receptions.reduce((acc, reception) => {
+    return acc + (reception.lineas || []).reduce((sum, line) => {
+      const orderLine = lineas[Number(line.ordenLineaIndex)] || {};
+      const price = Number(orderLine.precioUnitario || 0);
+      const net = Number(line.cantidadRecibida || 0) - Number(line.cantidadRechazada || 0);
+      return sum + net * price;
+    }, 0);
+  }, 0));
+}
+
+export function payOrder(id, { factura, monto, fechaPago, nota, revision } = {}){
   const doc = loadDocuments().find(d => d.id === id);
   if(!doc) throw new Error('Orden de compra no encontrada');
+  assertFresh(doc, revision, 'orden de compra');
   if(doc.status !== DOCUMENT_STATUS.RECEIVED){
     throw new Error(`Solo se puede pagar una orden recibida por completo (estado actual: "${doc.status || 'sin estado'}")`);
   }
@@ -702,14 +1112,19 @@ export function payOrder(id, { factura, monto, fechaPago } = {}){
   if(!isValidDate(fechaPago)) throw new Error('La fecha de pago debe ser una fecha válida (YYYY-MM-DD)');
   const amount = Number(monto);
   if(!Number.isFinite(amount) || amount <= 0) throw new Error('El monto facturado debe ser un número positivo');
-  if(Math.abs(amount - Number(doc.totalAmount || 0)) > 0.01){
-    throw new Error('El monto facturado debe coincidir con el total recepcionado de la orden');
+  const expected = receivedTotalForOrder(doc);
+  const difference = roundMoney(amount - expected);
+  if(Math.abs(difference) > 0.01 && isEmpty(nota)){
+    throw new Error(`El monto facturado debe coincidir con el total recepcionado; diferencia de ${Math.abs(difference).toFixed(2)} CLP. Corrige el monto o registra una nota de ajuste.`);
   }
   return patchDocument(id, {
     status: DOCUMENT_STATUS.PAID,
     factura: String(factura).trim(),
     fechaPago,
-    montoPagado: amount
+    montoPagado: amount,
+    totalRecepcionado: expected,
+    diferenciaPago: difference,
+    notaAjuste: isEmpty(nota) ? undefined : String(nota).trim()
   });
 }
 
@@ -776,12 +1191,15 @@ export function addRequisition(payload){
     lineasDetalle: normalizeRequisitionLines(payload.lineasDetalle),
     status: REQUISITION_STATUS.PENDING,
     rejectionReason: undefined,
+    revision: 1,
     createdAt: now,
     updatedAt: now
   };
   const list = loadRequisitions();
   list.push(requisition);
   saveRequisitions(list);
+  appendAudit({ entityType: 'solicitud', entityId: requisition.id, action: 'crear', toStatus: REQUISITION_STATUS.PENDING, revision: 1 });
+  emitChange('requisition', { id: requisition.id });
   return requisition;
 }
 
@@ -790,28 +1208,54 @@ export function addRequisition(payload){
 function assertCanDecideRequisition(requisition){
   if(!can(PERMISSIONS.REQUISITIONS_APPROVE)) throw new Error('Tu rol no permite aprobar o rechazar solicitudes');
   if(isAdmin()) return;
-  const department = String((currentUser() || {}).department || '').trim();
+  const user = currentUser() || {};
+  const department = String(user.department || '').trim();
   if(!department) throw new Error('Tu usuario no tiene un departamento asignado');
   if(requisition.department !== department){
     throw new Error('Solo puedes aprobar o rechazar solicitudes de tu departamento');
   }
+  const approverId = approverForDepartment(department);
+  if(approverId && approverId !== user.id){
+    throw new Error('No eres el jefe aprobador asignado a este departamento');
+  }
 }
 
-export function approveRequisition(id){
+export function approveRequisition(id, options = {}){
+  const { overrideReason } = options;
   const list = loadRequisitions();
   const idx = list.findIndex(r => r.id === id);
   if(idx === -1) throw new Error('Solicitud no encontrada');
   assertCanDecideRequisition(list[idx]);
+  assertFresh(list[idx], options.revision, 'solicitud');
   if(list[idx].status !== REQUISITION_STATUS.PENDING){
     throw new Error(`Solo se pueden aprobar solicitudes pendientes (estado actual: ${list[idx].status})`);
+  }
+  const total = requisitionTotal(list[idx]);
+  const budget = budgetForDepartment(list[idx].department);
+  const overBudget = total > budget.available;
+  if(overBudget){
+    if(!isAdmin()) throw new Error('El departamento no tiene saldo disponible; se requiere override administrativo');
+    if(isEmpty(overrideReason)) throw new Error('El override administrativo requiere un motivo');
   }
   list[idx] = {
     ...list[idx],
     status: REQUISITION_STATUS.APPROVED,
     approvedAt: new Date().toISOString(),
+    budgetOverride: overBudget ? String(overrideReason).trim() : undefined,
+    revision: Number(list[idx].revision || 1) + 1,
     updatedAt: new Date().toISOString()
   };
   saveRequisitions(list);
+  appendAudit({
+    entityType: 'solicitud',
+    entityId: id,
+    action: overBudget ? 'aprobar_con_override' : 'aprobar',
+    fromStatus: REQUISITION_STATUS.PENDING,
+    toStatus: REQUISITION_STATUS.APPROVED,
+    reason: overBudget ? overrideReason : undefined,
+    revision: list[idx].revision
+  });
+  emitChange('requisition', { id });
   return list[idx];
 }
 
@@ -829,9 +1273,20 @@ export function rejectRequisition(id, reason){
     status: REQUISITION_STATUS.REJECTED,
     rejectionReason: String(reason).trim(),
     rejectedAt: new Date().toISOString(),
+    revision: Number(list[idx].revision || 1) + 1,
     updatedAt: new Date().toISOString()
   };
   saveRequisitions(list);
+  appendAudit({
+    entityType: 'solicitud',
+    entityId: id,
+    action: 'rechazar',
+    fromStatus: REQUISITION_STATUS.PENDING,
+    toStatus: REQUISITION_STATUS.REJECTED,
+    reason,
+    revision: list[idx].revision
+  });
+  emitChange('requisition', { id });
   return list[idx];
 }
 
@@ -853,11 +1308,18 @@ export function pendingRequisitionsForApprover(){
 }
 
 export function budgetForDepartment(department){
-  const total = Number(DEPARTMENT_BUDGETS[department] || 0);
+  const configured = loadBudgets().find(b => b.department === department);
+  const hasBudget = Boolean(configured) || DEPARTMENT_BUDGETS[department] !== undefined;
+  const total = Number(configured ? configured.total : (DEPARTMENT_BUDGETS[department] || 0));
   const used = loadRequisitions()
     .filter(r => r.department === department && [REQUISITION_STATUS.PENDING, REQUISITION_STATUS.APPROVED, REQUISITION_STATUS.IN_QUOTATION].includes(r.status))
     .reduce((acc, r) => acc + requisitionTotal(r), 0);
-  return { total, used, available: Math.max(total - used, 0) };
+  const available = hasBudget ? Math.max(total - used, 0) : 0;
+  return { total, used, available, overBudget: hasBudget && used > total, committed: used };
+}
+
+export function isOverBudget(department){
+  return budgetForDepartment(department).overBudget;
 }
 
 export function pendingQuotationRequisitions(){
@@ -899,6 +1361,7 @@ export function createQuotation(payload){
   const check = validateQuotation(payload);
   if(!check.valid) throw new Error(Object.values(check.errors)[0]);
   const { requisition, entity } = check;
+  assertFresh(requisition, payload.revision, 'solicitud');
   if(!can(PERMISSIONS.ORDERS_CREATE)) throw new Error('Tu rol no permite generar cotizaciones');
   const user = currentUser();
   const now = new Date().toISOString();
@@ -928,6 +1391,7 @@ export function createQuotation(payload){
     departamento: requisition.department,
     lineasDetalle: lineas,
     createdBy: user ? user.id : undefined,
+    revision: 1,
     createdAt: now,
     updatedAt: now
   };
@@ -937,8 +1401,24 @@ export function createQuotation(payload){
   saveQuotations(list);
   const requisitions = loadRequisitions();
   const idx = requisitions.findIndex(r => r.id === requisition.id);
-  requisitions[idx] = { ...requisitions[idx], status: REQUISITION_STATUS.IN_QUOTATION, quotationId: quotation.id, updatedAt: now };
+  requisitions[idx] = {
+    ...requisitions[idx],
+    status: REQUISITION_STATUS.IN_QUOTATION,
+    quotationId: quotation.id,
+    revision: Number(requisitions[idx].revision || 1) + 1,
+    updatedAt: now
+  };
   saveRequisitions(requisitions);
+  appendAudit({
+    entityType: 'solicitud',
+    entityId: requisition.id,
+    action: 'generar_cotizacion',
+    fromStatus: REQUISITION_STATUS.APPROVED,
+    toStatus: REQUISITION_STATUS.IN_QUOTATION,
+    revision: requisitions[idx].revision
+  });
+  appendAudit({ entityType: 'cotizacion', entityId: quotation.id, action: 'crear', revision: 1 });
+  emitChange('quotation', { id: quotation.id });
   return quotation;
 }
 
@@ -971,6 +1451,10 @@ export function validateReception(payload){
   const errors = {};
   if(!can(PERMISSIONS.RECEPTIONS_MANAGE)) errors.role = 'Tu rol no permite registrar recepciones';
   const docs = loadDocuments();
+  const current = docs.find(d => d.id === payload.orderId);
+  if(current && payload.revision !== undefined && payload.revision !== null && payload.revision !== ''){
+    assertFresh(current, payload.revision, 'orden de compra');
+  }
   const order = docs.find(d => d.id === payload.orderId);
   if(!order) errors.orderId = 'La Orden de Compra no existe';
   else if(!RECEPTION_ORDER_STATUSES.includes(order.status)){
@@ -1030,13 +1514,25 @@ export function addReception(payload){
     observaciones: (payload.observaciones || '').trim() || undefined,
     estado: 'parcial',
     lineas,
+    revision: 1,
     createdAt: now
   };
   const list = loadReceptions();
   list.push(reception);
   saveReceptions(list);
   updateOrderReceptionStatus(order.id);
-  return loadReceptions().find(r => r.id === reception.id);
+  const saved = loadReceptions().find(r => r.id === reception.id);
+  const updatedOrder = loadDocuments().find(d => d.id === order.id);
+  appendAudit({
+    entityType: 'documento',
+    entityId: order.id,
+    action: 'registrar_recepcion',
+    fromStatus: order.status,
+    toStatus: updatedOrder ? updatedOrder.status : undefined,
+    revision: updatedOrder ? Number(updatedOrder.revision || 1) : 1
+  });
+  emitChange('reception', { id: saved.id });
+  return saved;
 }
 
 export function updateOrderReceptionStatus(orderId){
@@ -1051,18 +1547,14 @@ export function updateOrderReceptionStatus(orderId){
     ...order,
     status: complete ? DOCUMENT_STATUS.RECEIVED : DOCUMENT_STATUS.PARTIALLY_RECEIVED,
     recepcionEstado: complete ? 'completa' : 'parcial',
+    revision: Number(order.revision || 1) + 1,
     updatedAt: new Date().toISOString()
   };
   saveDocuments(docs);
 }
 
 export function clearAll(){
-  saveEntities([]);
-  saveDocuments([]);
-  saveUsers([]);
-  saveRequisitions([]);
-  saveReceptions([]);
-  saveQuotations([]);
+  COLLECTION_KEYS.forEach(key => localStorage.removeItem(key));
 }
 
 export function searchEntities(term){
@@ -1070,4 +1562,113 @@ export function searchEntities(term){
   if(!q) return loadEntities();
   const fields = ['name', 'code', 'taxId', 'email', 'phone', 'address', 'category', 'description', 'targetDate', 'paymentTerms', ...declaredFields('entity').map(f => f.key)];
   return loadEntities().filter(e => fields.some(f => String(e[f] ?? '').toLowerCase().includes(q)));
+}
+
+// ---------------------------------------------------------------------------
+// Entrega, exportación y respaldo (US18 / US14)
+// ---------------------------------------------------------------------------
+
+export function isOrderOverdue(order, now = new Date()){
+  const date = order && order.fechaEstimadaEntrega;
+  if(!isValidDate(date)) return false;
+  if(FINAL_ORDER_STATUSES.includes(order.status)) return false;
+  const today = typeof now === 'string' ? now.slice(0, 10) : new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  return date < today;
+}
+
+export function overdueOrders(now){
+  return loadDocuments().filter(d => ISSUED_ORDER_STATUSES.includes(d.status) && isOrderOverdue(d, now));
+}
+
+export function monthSpend(now = new Date()){
+  const prefix = (typeof now === 'string' ? now : new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString()).slice(0, 7);
+  return roundMoney(loadDocuments()
+    .filter(d => [DOCUMENT_STATUS.ISSUED, DOCUMENT_STATUS.PARTIALLY_RECEIVED, DOCUMENT_STATUS.RECEIVED, DOCUMENT_STATUS.PAID].includes(d.status)
+      && String(d.createdAt || '').slice(0, 7) === prefix)
+    .reduce((acc, d) => acc + Number(d.totalAmount ?? d.subtotal ?? 0), 0));
+}
+
+export function dashboardMetrics(now){
+  const docs = loadDocuments();
+  return {
+    entities: loadEntities().length,
+    documents: docs.length,
+    pendingApprovals: pendingRequisitionsForApprover().length,
+    issuedOrders: docs.filter(d => ISSUED_ORDER_STATUSES.includes(d.status)).length,
+    overdueOrders: overdueOrders(now).length,
+    monthSpend: monthSpend(now),
+    pendingReceptions: ordersPendingReception().length
+  };
+}
+
+function csvCell(value){
+  const text = String(value ?? '');
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+export function exportDocumentsCsv(documents = loadDocuments()){
+  const header = ['serie', 'folio', 'proveedor', 'estado', 'fechaInicio', 'fechaFin', 'fechaEntrega', 'subtotal', 'descuento', 'impuesto', 'total', 'factura', 'fechaPago'];
+  const rows = documents.map(doc => {
+    const entity = loadEntities().find(e => e.entity_id === doc.entity_id);
+    return [
+      doc.series, doc.folio, entity ? entity.name : '', doc.status,
+      doc.startDate, doc.endDate, doc.fechaEstimadaEntrega,
+      doc.subtotal, doc.discount, doc.taxAmount, doc.totalAmount,
+      doc.factura, doc.fechaPago
+    ];
+  });
+  return '\uFEFF' + [header, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
+}
+
+export function printableDocument(orderId){
+  const doc = loadDocuments().find(d => d.id === orderId);
+  if(!doc) throw new Error('Documento no encontrado');
+  const entity = loadEntities().find(e => e.entity_id === doc.entity_id);
+  const esc = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  const lineas = (doc.lineasDetalle || []).map(l => `<tr><td>${esc(l.producto_id)}</td><td>${esc(l.descripcion)}</td><td>${esc(l.cantidad)}</td><td>${esc(l.unidadMedida)}</td><td>${esc(l.precioUnitario)}</td><td>${esc(l.subtotalLinea)}</td></tr>`).join('');
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(`${doc.series || ''}-${doc.folio || ''}`)}</title></head><body><h1>${esc(doc.series || 'Documento')} ${esc(doc.folio || '')}</h1><p>Proveedor: ${esc(entity ? entity.name : '')}</p><p>Estado: ${esc(doc.status || '')}</p><p>Fecha estimada de entrega: ${esc(doc.fechaEstimadaEntrega || 'No registrada')}</p><p>Dirección: ${esc(doc.direccionEntrega || 'No registrada')}</p><p>Instrucciones: ${esc(doc.instruccionesDespacho || 'No registradas')}</p><table><thead><tr><th>Producto</th><th>Descripción</th><th>Cantidad</th><th>Unidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>${lineas}</tbody></table><p>Total: ${esc(doc.totalAmount ?? doc.subtotal ?? 0)}</p></body></html>`;
+}
+
+export function createBackup(){
+  const backup = { schemaVersion: SCHEMA_VERSION, exportedAt: new Date().toISOString() };
+  COLLECTION_KEYS.forEach(key => { backup[key] = readJson(key, []); });
+  return backup;
+}
+
+function backupCollection(backup, key){
+  if(!Array.isArray(backup[key])) throw new Error(`El respaldo no contiene una colección válida: ${key}`);
+  return backup[key];
+}
+
+export function validateBackup(backup){
+  if(!backup || typeof backup !== 'object') throw new Error('El respaldo debe ser un objeto JSON');
+  if(Number(backup.schemaVersion) !== SCHEMA_VERSION) throw new Error(`Versión de esquema no soportada: ${backup.schemaVersion}`);
+  COLLECTION_KEYS.forEach(key => backupCollection(backup, key));
+  const entities = backup[ENTITIES_KEY];
+  const seenRuts = new Set();
+  entities.forEach(e => {
+    if(!e || !e.name || !e.code) throw new Error('El respaldo contiene proveedores incompletos');
+    if(e.taxId){
+      const rut = cleanRut(e.taxId);
+      if(!validateRut(rut)) throw new Error(`El respaldo contiene un RUT inválido: ${e.taxId}`);
+      if(seenRuts.has(rut)) throw new Error('El respaldo contiene RUT duplicados');
+      seenRuts.add(rut);
+    }
+  });
+  const folios = new Set();
+  backup[DOCUMENTS_KEY].forEach(d => {
+    if(!d || !Number.isInteger(Number(d.folio))) throw new Error('El respaldo contiene folios inválidos');
+    const key = `${d.series || ''}-${d.folio}`;
+    if(folios.has(key)) throw new Error('El respaldo contiene folios duplicados');
+    folios.add(key);
+    if(d.entity_id && !entities.some(e => e.entity_id === d.entity_id)) throw new Error('El respaldo contiene documentos huérfanos');
+  });
+  return backup;
+}
+
+export function restoreBackup(backup){
+  validateBackup(backup);
+  COLLECTION_KEYS.forEach(key => writeJson(key, backup[key]));
+  emitChange('restore', {});
+  return true;
 }

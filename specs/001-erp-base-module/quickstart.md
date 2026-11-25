@@ -48,30 +48,54 @@ Los m贸dulos ERP personalizados adaptan la base mediante un 煤nico archivo de co
 
 La generaci贸n de identidad, marcas de tiempo, integridad referencial entre entidades y documentos, eliminaci贸n en cascada, navegaci贸n y b煤squeda siguen siendo gestionadas por el m贸dulo base. Sin archivo de configuraci贸n, la aplicaci贸n se ejecuta con el comportamiento predeterminado Entidad/Documento. Consulte `specs/001-erp-base-module/` para la especificaci贸n completa.
 
-## Administraci髇 de usuarios y permisos
+## Administraci贸n de usuarios y permisos
 
 1. Abra **Usuarios** en la barra lateral (visible para el rol administrador).
-2. Cree usuarios con nombre, cuenta y rol; use **Editar** para cambiar el rol.
-3. Un usuario con documentos pendientes asignados no puede desactivarse: el sistema explica el motivo.
-4. Al iniciar sesi髇 como un rol distinto, las vistas y acciones no autorizadas quedan fuera de alcance.
+2. Cree usuarios con nombre, cuenta, RUT, rol y departamento; use **Editar** para cambiar el rol o el 谩rea.
+3. Un usuario con documentos o solicitudes pendientes no puede desactivarse: el sistema explica el motivo.
+4. Al iniciar sesi贸n como un rol distinto, las vistas y acciones no autorizadas quedan fuera de alcance; sin sesi贸n, un enlace profundo o una recarga vuelve al login.
 
-## Orden de compra con l韓eas de detalle
+## Orden de compra con l铆neas de detalle
 
-1. Abra **觬denes de Compra** y seleccione un proveedor.
-2. Agregue una o m醩 l韓eas con producto, descripci髇, cantidad, unidad, precio y descuento.
-3. El subtotal, impuesto y total se calculan en cascada al guardar; las l韓eas quedan persistidas dentro del documento.
+1. Abra **脫rdenes de Compra** y seleccione un proveedor activo con datos comerciales completos.
+2. Agregue una o m谩s l铆neas con producto, descripci贸n, cantidad, unidad, precio y descuento.
+3. El subtotal, impuesto y total se calculan en cascada al guardar; las l铆neas quedan persistidas dentro del documento.
+4. La emisi贸n asigna el folio `OC-XXXX`, conserva moneda, tipo de cambio y fecha de emisi贸n como instant谩nea y permite registrar fecha estimada de entrega, direcci贸n e instrucciones de despacho.
 
-## Aprobaciones y justificaci髇
+## Aprobaciones y justificaci贸n
 
-1. Registre una **Solicitud de Cotizaci髇**; la justificaci髇 y el departamento son obligatorios.
-2. La solicitud se guarda en estado **pendiente de aprobaci髇**.
-3. En **Aprobaciones** revise la justificaci髇 y las l韓eas antes de decidir.
-4. Aprobar valida identificaci髇 fiscal, categor韆, condiciones de pago y l韒ite de cr閐ito del proveedor, y asigna el folio oficial `OC-XXXX`.
-5. Rechazar exige un motivo, que queda registrado en el historial.
+1. Registre una **Solicitud de Cotizaci贸n**; la justificaci贸n y el departamento son obligatorios.
+2. La solicitud se guarda en estado **Pendiente de aprobaci贸n** y compromete el presupuesto del departamento.
+3. En **Aprobaciones** revise la justificaci贸n, las l铆neas y el saldo presupuestario antes de decidir.
+4. Aprobar valida RUT, categor铆a, condiciones de pago y l铆mite de cr茅dito del proveedor, y asigna el folio oficial `OC-XXXX`. Un sobregiro solo se autoriza con override administrativo y motivo.
+5. Rechazar exige un motivo; el rechazo libera el presupuesto comprometido y queda registrado en el historial.
+6. El encargado de compras genera una cotizaci贸n vinculada desde la bandeja de solicitudes autorizadas; la solicitud pasa a **En cotizaci贸n** y no admite una segunda cotizaci贸n.
 
-## Recepci髇 de productos
+## Recepci贸n y pago
 
-1. Abra **Recepci髇** y seleccione una orden aprobada con l韓eas.
-2. Registre cantidades recibidas por l韓ea; el sistema muestra solicitado, recibido acumulado y pendiente.
-3. Una recepci髇 parcial mantiene la orden en estado aprobado; al completar todas las l韓eas cambia a **recibido**.
-4. Cada recepci髇 conserva fecha, cantidades, observaciones y motivo de rechazo por l韓ea.
+1. Abra **Recepci贸n** y seleccione una orden emitida o parcialmente recibida con fecha de entrega vigente o atrasada.
+2. Registre cantidades recibidas y rechazadas por l铆nea; el sistema muestra solicitado, acumulado y pendiente, e impide exceder la cantidad pendiente.
+3. Una recepci贸n parcial mantiene la orden en **Recibida parcialmente**; al completar todas las l铆neas cambia a **Recibida**.
+4. Cada recepci贸n conserva fecha, cantidades, observaciones y motivo de rechazo por l铆nea.
+5. Desde el detalle de una orden **Recibida**, registre factura, monto y fecha de pago. El monto debe coincidir con lo recepcionado con tolerancia de 0,01 CLP; la orden pasa a **Pagada** y queda en modo solo lectura.
+
+## Maestros, trazabilidad y respaldo
+
+1. En **Proveedores** valide el RUT chileno con m贸dulo 11, c贸digo 煤nico y datos comerciales. No se puede desactivar un proveedor con 贸rdenes emitidas o parcialmente recibidas.
+2. Administre departamentos con c贸digo 煤nico y jefe aprobador; las solicitudes se enrutan al aprobador del 谩rea y el presupuesto se recalcula por evento.
+3. Mantenga el cat谩logo de productos y servicios con c贸digo 煤nico, unidad, categor铆a y precio de referencia; al elegir un producto se completan unidad y precio y se advierten compras duplicadas simult谩neas.
+4. El detalle de cada orden muestra la bit谩cora cronol贸gica de creaci贸n, aprobaci贸n, emisi贸n, recepci贸n y pago sin controles de edici贸n o eliminaci贸n.
+5. El panel muestra KPIs, gasto del mes y alertas de 贸rdenes atrasadas; las tarjetas abren bandejas filtradas y se refrescan por evento en menos de 2 segundos.
+6. Use **Exportar CSV**, **Imprimir**, **Respaldar JSON** y **Restaurar JSON** desde el detalle de documentos. Un respaldo inv谩lido se rechaza sin mezclar datos.
+
+## Verificaci贸n
+
+- Ejecute `npm run test`, `npm run lint`, `npm run build` y `npm run mer` antes de cerrar cualquier entrega.
+- Verifique que las fechas inv谩lidas y los rangos invertidos muestran el error bajo el campo correspondiente y bloquean el guardado.
+- Verifique que un snapshot obsoleto produce conflicto con opciones **Recargar** y **Reintentar**, sin sobrescritura silenciosa.
+- Verifique que en ventanas estrechas la barra lateral se contrae a iconos con etiqueta accesible y que la navegaci贸n por iconos abre la vista correcta.
+- Verifique que una adaptaci贸n completa mediante configuraci贸n renombra m贸dulo, entidades, documentos y navegaci贸n sin editar archivos centrales.
+
+## Limitaci贸n de seguridad aceptada
+
+Esta fase opera solo en el navegador con `localStorage`; no hay backend de autenticaci贸n. La sesi贸n, los roles y la segregaci贸n son una simulaci贸n de producto aceptada expl铆citamente en la especificaci贸n (I9). No introduce credenciales ni secretos.

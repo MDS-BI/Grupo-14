@@ -60,23 +60,34 @@ src/
 ├── main.js                       (punto de entrada; redirección a login cuando no hay sesión)
 ├── styles.css                    (tokens de diseño y estilos ERP compartidos)
 ├── app.js                        (enrutador de vistas y composición del shell)
-├── auth.js                       (sesión, roles, permisos y segregación funcional)
-├── storage.js                    (CRUD, esquema, revision/updatedAt, backup/restore, auditoría)
+├── auth.js                       (sesión, roles, permisos, resolución de responsable y segregación funcional)
+├── storage.js                    (CRUD, esquema, revision/updatedAt, backup/restore, auditoría, eventos y reglas de dominio)
 ├── module-config.js              (perfil activo, terminología, campos, ciclo de vida, líneas de detalle y totales)
-├── rut.js                        (validación módulo 11 y formato XX.XXX.XXX-X)
-├── dom.js                        (helpers DOM, focus/ARIA y escape de texto)
-├── format.js                     (formato CLP, fechas YYYY-MM-DD y números)
-├── data.js                       (semilla/fixtures sintéticas; sin proveedor real)
+├── rut.js                        (normalización, validación módulo 11 y formato XX.XXX.XXX-X)
+├── dom.js                        (helpers DOM, focus/ARIA, escape de texto y confirmación de cambios sin guardar)
+├── mock-data.js                  (fixtures sintéticas autorizadas; sin proveedor real)
 ├── approval.js                   (reglas de aprobación reutilizadas por bandeja y panel)
-├── vendor-form.js                (formulario de proveedor con RUT y categoría)
 └── components/
     ├── shell.js                  (barra superior, logotipo SVG y barra lateral persistentes)
-    ├── dashboard.js              (acciones rápidas, KPI y alertas por evento)
-    ├── entity-form.js            (formulario base reutilizable de datos maestros)
-    ├── document-form.js          (documentos, estado y líneas de detalle)
-    ├── approval-panel.js         (panel de aprobación usado por la bandeja)
-    ├── user-management.js        (alta/edición de usuarios y asignación de roles)
-    └── user-profile.js           (perfil de usuario visible desde el shell)
+    ├── dashboard.js              (acciones rápidas, KPI y alertas operativas)
+    ├── dashboard-activity.js     (alertas navegables y línea de actividad reciente)
+    ├── approval-inbox.js         (bandeja de aprobaciones por departamento)
+    ├── approval-panel.js         (reexportación de compatibilidad de la bandeja de aprobaciones)
+    ├── custom-fields.js          (render/colección/validación de campos configurados)
+    ├── detail-lines.js           (editor y cálculo en vivo de líneas de detalle)
+    ├── document-form.js          (documentos, estado, entrega, pago y líneas de detalle)
+    ├── document-list.js          (listado, detalle, bitácora y acciones de exportación/impresión)
+    ├── entity-form.js            (formulario base de datos maestros y maestros auxiliares)
+    ├── entity-list.js            (listado y detalle de entidades)
+    ├── reception-form.js         (captura de recepciones parciales y rechazos)
+    ├── reception-list.js         (bandeja de órdenes por recibir)
+    ├── requisition-form.js       (solicitudes con justificación, departamento y catálogo)
+    ├── requisition-list.js       (historial de solicitudes y cotizaciones)
+    ├── search-bar.js             (búsqueda incremental con estado vacío)
+    ├── user-form.js              (formulario de usuarios)
+    ├── user-list.js              (listado y filtros de usuarios)
+    ├── user-management.js        (administración de usuarios y matriz de permisos)
+    └── user-profile.js           (perfil y permisos de la sesión activa)
 
 tests/
 ├── unit/
@@ -86,7 +97,7 @@ tests/
 └── setup/
 ```
 
-**Decisión de Estructura**: Una aplicación Vite simple con un único punto de entrada HTML, un pequeño conjunto de módulos JavaScript y CSS en un archivo separado. Se usará localStorage para la persistencia de modo que la aplicación permanezca ligera y autónoma. Los componentes se dividen en pares de entidad (datos maestros) y documento (transaccional) que reflejan los dos conceptos centrales del módulo base, de modo que un módulo personalizado pueda renombrar o extender cada par de forma independiente. `shell.js` posee el marco del espacio de trabajo ERP — un logotipo monograma SVG en línea derivado del nombre del módulo, la barra superior y la barra lateral de módulos — envolviendo todas las vistas para que la marca y la navegación permanezcan consistentes sin duplicar marcado. `dashboard.js` renderiza los botones de acción rápida y las tarjetas de estadísticas de la pantalla de entrada, leyendo los recuentos del almacenamiento cada vez que se vuelve visible. `module-config.js` centraliza todos los puntos de adaptación — nombre del módulo, etiquetas de términos, definiciones de campos personalizados, ciclo de vida de estados y color de acento — manteniendo la personalización del dominio fuera del código central; el estilo se controla mediante propiedades personalizadas de CSS (tokens de diseño) en `styles.css` para que el color de acento configurado se aplique globalmente. `auth.js` separa sesión/roles del storage, `rut.js` y `format.js` concentran validación/formatos, y `dom.js` evita duplicar manejo de foco y escape. Los archivos antes huérfanos `approval.js`, `components/approval-panel.js` y `components/user-profile.js` quedan conectados desde `app.js`/`shell.js` y cubiertos por pruebas; `user-management.js` implementa la administración de usuarios de FR-016/FR-017.
+**Decisión de Estructura**: Una aplicación Vite simple con un único punto de entrada HTML, un pequeño conjunto de módulos JavaScript y CSS en un archivo separado. Se usará localStorage para la persistencia de modo que la aplicación permanezca ligera y autónoma. Los componentes se dividen en pares de entidad (datos maestros) y documento (transaccional) que reflejan los dos conceptos centrales del módulo base, de modo que un módulo personalizado pueda renombrar o extender cada par de forma independiente. `shell.js` posee el marco del espacio de trabajo ERP — un logotipo monograma SVG en línea derivado del nombre del módulo, la barra superior y la barra lateral de módulos — envolviendo todas las vistas para que la marca y la navegación permanezcan consistentes sin duplicar marcado. `dashboard.js` renderiza los botones de acción rápida y las tarjetas de estadísticas de la pantalla de entrada, leyendo los recuentos del almacenamiento cada vez que se vuelve visible. `module-config.js` centraliza todos los puntos de adaptación — nombre del módulo, etiquetas de términos, definiciones de campos personalizados, ciclo de vida de estados y color de acento — manteniendo la personalización del dominio fuera del código central; el estilo se controla mediante propiedades personalizadas de CSS (tokens de diseño) en `styles.css` para que el color de acento configurado se aplique globalmente. `auth.js` separa sesión/roles del storage, `rut.js` concentra validación/formato del RUT chileno y `dom.js` evita duplicar foco, escape y confirmación de cambios sin guardar. `mock-data.js` aísla las fixtures sintéticas autorizadas. Los módulos `approval.js`, `components/approval-panel.js`, `components/user-profile.js`, `components/dashboard-activity.js`, `components/search-bar.js`, `components/detail-lines.js`, `components/entity-list.js`, `components/document-list.js`, `components/requisition-*`, `components/reception-*`, `components/user-list.js` y `components/user-form.js` quedan conectados desde `app.js`/`shell.js` y cubiertos por pruebas; `user-management.js` implementa la administración de usuarios de FR-016/FR-017.
 
 ## Configuración de Referencia: Módulo Adquisiciones y Compras 
 

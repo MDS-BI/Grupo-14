@@ -30,6 +30,9 @@ export function validateRut(value){
   return rutVerificador(clean.slice(0, -1)) === clean.slice(-1);
 }
 
+export const normalizeRut = cleanRut;
+export const isValidRut = validateRut;
+
 export function attachRutFormatting(input){
   if(!input) return;
   const handle = () => {
