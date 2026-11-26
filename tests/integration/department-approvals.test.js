@@ -81,6 +81,61 @@ describe('User Story 4 - department approval inbox', () => {
   });
 });
 
+describe('User Story 10 - alerta de presupuesto y override administrativo', () => {
+  async function seedOverBudget(){
+    const storage = await import('../../src/storage.js');
+    storage.setDepartmentBudget('Producción', 1000, 'Presupuesto reducido');
+    const requisition = storage.addRequisition({
+      department: 'Producción',
+      justification: 'Reposición urgente de insumos',
+      requesterName: 'Ana Solicitante',
+      lineasDetalle: [
+        { descripcion: 'Insumos', cantidad: 1, unidadMedida: 'cajas', precioEstimado: 1500 }
+      ]
+    });
+    return { storage, requisition };
+  }
+
+  it('muestra el saldo disponible en cero y bloquea la autorización del aprobador', async () => {
+    const { storage, requisition } = await seedOverBudget();
+    const auth = await import('../../src/auth.js');
+    auth.setSession({
+      id: 'u-apr-prod', username: 'apr-prod', name: 'Aprobador Producción',
+      role: 'aprobador', department: 'Producción', active: true
+    });
+    expect(storage.budgetForDepartment('Producción')).toMatchObject({
+      total: 1000, used: 1500, available: 0, overBudget: true
+    });
+
+    qs('nav-approvals').click();
+    selectFirstRequest();
+    expect(qs('approval-detail').textContent).toContain('Disponible: 0');
+
+    qs('approve-requisition').click();
+    expect(qs('error-rejection-reason').textContent).toMatch(/se requiere override administrativo/);
+    expect(storage.loadRequisitions().find(r => r.id === requisition.id).status).toBe(REQUISITION_STATUS.PENDING);
+    auth.resetSession();
+  });
+
+  it('exige motivo en el override y deja un evento de auditoría', async () => {
+    const { storage, requisition } = await seedOverBudget();
+    expect(() => storage.approveRequisition(requisition.id)).toThrow(/motivo/);
+
+    const reason = 'Compra crítica aprobada por dirección';
+    const approved = storage.approveRequisition(requisition.id, { overrideReason: reason });
+    expect(approved.status).toBe(REQUISITION_STATUS.APPROVED);
+    expect(approved.budgetOverride).toBe(reason);
+
+    const event = storage.auditForEntity('solicitud', requisition.id)
+      .find(e => e.accion === 'aprobar_con_override');
+    expect(event).toBeDefined();
+    expect(event.motivo).toBe(reason);
+    expect(event.estadoAnterior).toBe(REQUISITION_STATUS.PENDING);
+    expect(event.estadoNuevo).toBe(REQUISITION_STATUS.APPROVED);
+    expect(event.rol).toBe('Administrador');
+  });
+});
+
 describe('T134 - enrutamiento automático al jefe aprobador', () => {
   async function api(){
     return import('../../src/storage.js');
@@ -132,6 +187,7 @@ describe('T134 - enrutamiento automático al jefe aprobador', () => {
       expect(() => storage.approveRequisition(request.id)).toThrow(/jefe aprobador/);
       setSession(jefe);
       expect(storage.approveRequisition(request.id).status).toBe(REQUISITION_STATUS.APPROVED);
+      console.log('DEBUG_AUDIT', storage.loadAuditEvents().map(e => [e.entityId === request.id, e.accion === 'aprobar', typeof e.entityId, typeof request.id, e.entityId, request.id]));
       expect(storage.loadAuditEvents().some(e => e.entityId === request.id && e.accion === 'aprobar')).toBe(true);
     }finally{
       resetSession();

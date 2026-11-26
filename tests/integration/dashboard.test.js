@@ -3,7 +3,15 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
 import { normalizeConfig } from '../../src/module-config.js';
-import { addEntity, addDocument, loadEntities } from '../../src/storage.js';
+import {
+  addEntity,
+  addDocument,
+  emitChange,
+  loadEntities,
+  saveDocuments,
+  subscribeChanges
+} from '../../src/storage.js';
+import { renderDashboard } from '../../src/components/dashboard.js';
 
 const html = fs.readFileSync(fileURLToPath(new URL('../../index.html', import.meta.url)), 'utf8');
 
@@ -36,6 +44,13 @@ async function bootWith(configOverride){
   vi.resetModules();
   const { initApp } = await import('../../src/app.js');
   await initApp(normalizeConfig(configOverride));
+}
+
+async function bootWithSession(configOverride, user){
+  vi.resetModules();
+  const { initApp, applySession } = await import('../../src/app.js');
+  await initApp(normalizeConfig(configOverride));
+  applySession(user);
 }
 
 describe('User Story 3 - home dashboard with quick actions and record stats', () => {
@@ -115,5 +130,49 @@ describe('User Story 3 - home dashboard with quick actions and record stats', ()
     qs('action-find').click();
     expect(qs('view-search').hidden).toBe(false);
     expect(document.activeElement).toBe(qs('search-input'));
+  });
+});
+
+describe('T124 - actualización por evento y navegación filtrada del panel', () => {
+  it('refresca las tarjetas por evento en menos de 2 segundos, sin sondeo continuo', async () => {
+    await bootWith(undefined);
+    const seen = [];
+    const unsubscribe = subscribeChanges((event) => {
+      seen.push(event.domainType);
+      renderDashboard();
+    });
+
+    try {
+      const started = Date.now();
+      addEntity({ name: 'Acme', code: 'AC-001' });
+      expect(Date.now() - started).toBeLessThanOrEqual(2000);
+
+      expect(seen).toEqual(['entity']);
+      expect(qs('stat-entities').textContent).toBe('1');
+
+      saveDocuments([{ id: 'doc-1', entity_id: 'prov-1', folio: 1001, status: 'Emitida' }]);
+      emitChange('document', { id: 'doc-1' });
+
+      expect(seen).toEqual(['entity', 'document']);
+      expect(qs('stat-documents').textContent).toBe('1');
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it('filtra los destinos de enlace profundo según los permisos de la sesión', async () => {
+    const solicitante = { id: 'u-sol', username: 'sol', name: 'Sofía Solicitante', role: 'solicitante', active: true };
+    await bootWithSession(undefined, solicitante);
+
+    expect(qs('nav-users').hidden).toBe(true);
+    expect(qs('nav-requisitions').hidden).toBe(false);
+
+    qs('nav-users').click();
+    expect(qs('view-users').hidden).toBe(true);
+    expect(qs('view-dashboard').hidden).toBe(false);
+
+    qs('nav-requisitions').click();
+    expect(qs('view-requisitions').hidden).toBe(false);
+    expect(qs('view-dashboard').hidden).toBe(true);
   });
 });

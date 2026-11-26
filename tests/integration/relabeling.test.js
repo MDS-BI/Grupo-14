@@ -138,7 +138,7 @@ describe('User Story 6 - relabel screens from configuration', () => {
 
     expect(document.title).toBe('Taller de Ventas');
     expect(qs('brand-name').textContent).toBe('Taller de Ventas');
-    expect(qs('logo-mark').querySelector('svg text').textContent).toBe('TV');
+    expect(qs('logo-mark').querySelector('svg text').textContent).toBe('TD');
     expect(qs('dashboard-heading').textContent).toBe('Taller de Ventas');
     expect(qs('dashboard-subtitle').textContent).toContain('clientes');
     expect(qs('dashboard-subtitle').textContent).toContain('pedidos');
