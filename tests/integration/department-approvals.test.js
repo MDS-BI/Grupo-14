@@ -80,3 +80,80 @@ describe('User Story 4 - department approval inbox', () => {
     expect(loadRequisitions()[0].status).toBe(REQUISITION_STATUS.REJECTED);
   });
 });
+
+describe('T134 - enrutamiento automático al jefe aprobador', () => {
+  async function api(){
+    return import('../../src/storage.js');
+  }
+
+  function requestIn(department, storage){
+    return storage.addRequisition({
+      department,
+      justification: `Compra del área ${department}`,
+      lineasDetalle: [{ descripcion: 'Artículo', cantidad: 1, unidadMedida: 'unidades', precioEstimado: 100 }]
+    });
+  }
+
+  it('muestra y aprueba la solicitud solo al jefe asignado al departamento', async () => {
+    const app = await import('../../src/app.js');
+    const storage = await api();
+    const { resetSession } = await import('../../src/auth.js');
+    try{
+      const jefe = storage.addUser({ username: 'jefe.ti', name: 'Jefe TI', role: 'aprobador', department: 'TI', active: true });
+      const otro = storage.addUser({ username: 'jefe.ops', name: 'Jefe Ops', role: 'aprobador', department: 'Operaciones', active: true });
+      storage.addDepartment({ name: 'TI', code: 'TI', approverId: jefe.id });
+      const request = requestIn('TI', storage);
+
+      app.applySession(otro);
+      qs('nav-approvals').click();
+      expect(qs('approvals-list').textContent).not.toContain(request.folio);
+
+      app.applySession(jefe);
+      qs('nav-approvals').click();
+      expect(qs('approvals-list').textContent).toContain(request.folio);
+      qs('approvals-list').querySelector('button').click();
+      qs('approve-requisition').click();
+      expect(loadRequisitions().find(r => r.id === request.id).status).toBe(REQUISITION_STATUS.APPROVED);
+    }finally{
+      resetSession();
+    }
+  });
+
+  it('impide decidir a otro aprobador del mismo departamento', async () => {
+    const storage = await api();
+    const { setSession, resetSession } = await import('../../src/auth.js');
+    try{
+      const jefe = storage.addUser({ username: 'jefe', name: 'Jefe', role: 'aprobador', department: 'TI', active: true });
+      const suplente = storage.addUser({ username: 'suplente', name: 'Suplente', role: 'aprobador', department: 'TI', active: true });
+      storage.addDepartment({ name: 'TI', code: 'TI', approverId: jefe.id });
+      const request = requestIn('TI', storage);
+
+      setSession(suplente);
+      expect(() => storage.approveRequisition(request.id)).toThrow(/jefe aprobador/);
+      setSession(jefe);
+      expect(storage.approveRequisition(request.id).status).toBe(REQUISITION_STATUS.APPROVED);
+      expect(storage.loadAuditEvents().some(e => e.entityId === request.id && e.accion === 'aprobar')).toBe(true);
+    }finally{
+      resetSession();
+    }
+  });
+
+  it('recupera el departamento de la sesión y lo conserva en la solicitud', async () => {
+    const storage = await api();
+    const { setSession, resetSession } = await import('../../src/auth.js');
+    try{
+      const requester = storage.addUser({ username: 'sol', name: 'Sol', role: 'solicitante', department: 'Compras', active: true });
+      setSession(requester);
+      const request = storage.addRequisition({
+        department: requester.department,
+        justification: 'Renovación de equipos',
+        lineasDetalle: [{ descripcion: 'Laptop', cantidad: 1, unidadMedida: 'unidades', precioEstimado: 1000 }]
+      });
+      expect(request.department).toBe('Compras');
+      expect(storage.budgetForDepartment('Compras').used).toBe(1000);
+      expect(storage.pendingRequisitionsForDepartment('Compras').map(r => r.id)).toEqual([request.id]);
+    }finally{
+      resetSession();
+    }
+  });
+});

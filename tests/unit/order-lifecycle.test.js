@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   addEntity, addDocument, approveDocument, cancelDocument, updateDocument,
   addReception, loadDocuments, saveDocuments, saveRequisitions, saveReceptions,
+  validateDocument, auditForEntity, isOrderOverdue, overdueOrders,
   REQUISITION_STATUS, DOCUMENT_STATUS
 } from '../../src/storage.js';
 import { setActiveConfig, userConfig, getConfig } from '../../src/module-config.js';
@@ -153,5 +154,93 @@ describe('contadores del panel', () => {
     expect(counts.requisitions).toBe(2);
     expect(counts.receptions).toBe(3);
     expect(counts.documents).toBe(statuses.length);
+  });
+});
+
+describe('T139 - fecha estimada y dirección de entrega', () => {
+  function payload(extra = {}){
+    return {
+      entityId: addEntity({ name: 'Proveedor', code: 'P-1' }).entity_id,
+      folio: 1001,
+      startDate: '2026-01-01',
+      endDate: '2026-01-10',
+      status: APPROVED,
+      ...FORM_FIELDS,
+      ...extra
+    };
+  }
+
+  it('valida formato y límites de la fecha estimada', () => {
+    expect(validateDocument(payload({ fechaEstimadaEntrega: '2026-01-05' })).valid).toBe(true);
+    expect(validateDocument(payload({ fechaEstimadaEntrega: '2025-12-31' })).errors.fechaEstimadaEntrega).toMatch(/anterior/);
+    expect(validateDocument(payload({ fechaEstimadaEntrega: '2026-01-11' })).errors.fechaEstimadaEntrega).toMatch(/posterior/);
+    expect(validateDocument(payload({ fechaEstimadaEntrega: '2026-02-30' })).errors.fechaEstimadaEntrega).toMatch(/válida/);
+  });
+
+  it('conserva la dirección y las instrucciones de despacho', () => {
+    const doc = addDocument(payload({
+      fechaEstimadaEntrega: '2026-01-05',
+      direccionEntrega: 'Bodega norte',
+      instruccionesDespacho: 'Llamar al vigilante'
+    }));
+    expect(doc.fechaEstimadaEntrega).toBe('2026-01-05');
+    expect(doc.direccionEntrega).toBe('Bodega norte');
+    expect(doc.instruccionesDespacho).toBe('Llamar al vigilante');
+  });
+
+  it('exige motivo y audita el cambio de fecha', () => {
+    const doc = order(APPROVED);
+    expect(() => updateDocument(doc.id, { ...FORM_FIELDS, fechaEstimadaEntrega: '2026-01-05' })).toThrow(/motivo/);
+
+    const updated = updateDocument(doc.id, {
+      ...FORM_FIELDS,
+      fechaEstimadaEntrega: '2026-01-05',
+      direccionEntrega: 'Bodega sur',
+      motivoCambioEntrega: 'Cambio confirmado por el proveedor'
+    });
+    expect(updated.fechaEstimadaEntrega).toBe('2026-01-05');
+    expect(updated.direccionEntrega).toBe('Bodega sur');
+    expect(updated.revision).toBe(2);
+    const change = auditForEntity('documento', doc.id).find(e => e.accion === 'cambiar_fecha_entrega');
+    expect(change).toMatchObject({
+      entidadTipo: 'documento',
+      entidadId: doc.id,
+      estadoNuevo: '2026-01-05',
+      motivo: 'Cambio confirmado por el proveedor',
+      revision: 2
+    });
+  });
+
+  it('detecta atrasos solo en estados operativos', () => {
+    const doc = order(APPROVED);
+    const updated = updateDocument(doc.id, {
+      ...FORM_FIELDS,
+      fechaEstimadaEntrega: '2026-01-05',
+      motivoCambioEntrega: 'Fecha acordada'
+    });
+    expect(isOrderOverdue(updated, '2026-01-06')).toBe(true);
+    expect(isOrderOverdue(updated, '2026-01-05')).toBe(false);
+    expect(isOrderOverdue({ status: ISSUED, fechaEstimadaEntrega: 'no-fecha' }, '2026-01-10')).toBe(false);
+    forceStatus(doc.id, RECEIVED);
+    expect(isOrderOverdue(loadDocuments()[0], '2026-01-10')).toBe(false);
+  });
+
+  it('enumera solo órdenes vencidas emitidas o recibidas parcialmente', () => {
+    const issued = order(APPROVED);
+    updateDocument(issued.id, { ...FORM_FIELDS, fechaEstimadaEntrega: '2026-01-05', motivoCambioEntrega: 'Fecha acordada' });
+    approveDocument(issued.id);
+
+    const partial = order(APPROVED);
+    updateDocument(partial.id, { ...FORM_FIELDS, fechaEstimadaEntrega: '2026-01-05', motivoCambioEntrega: 'Fecha acordada' });
+    approveDocument(partial.id);
+    receive(partial.id, 4);
+
+    const received = order(APPROVED);
+    updateDocument(received.id, { ...FORM_FIELDS, fechaEstimadaEntrega: '2026-01-05', motivoCambioEntrega: 'Fecha acordada' });
+    forceStatus(received.id, RECEIVED);
+
+    const overdue = overdueOrders('2026-02-01').map(d => d.id);
+    expect(overdue).toEqual(expect.arrayContaining([issued.id, partial.id]));
+    expect(overdue).not.toContain(received.id);
   });
 });

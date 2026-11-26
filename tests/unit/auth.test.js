@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ROLES, ROLE_KEYS, PERMISSIONS, can, setSession, resetSession, currentUser } from '../../src/auth.js';
+import {
+  ROLES, ROLE_KEYS, PERMISSIONS, can, setSession, resetSession, currentUser,
+  login, logout, getSession, permissionsFor, roleLabel, isAdmin
+} from '../../src/auth.js';
 import {
   validateUser, addUser, updateUser, deactivateUser, loadUsers,
   addEntity, addDocument, addRequisition, clearAll
@@ -110,5 +113,68 @@ describe('clearAll', () => {
     addRequisition({ department: 'TI', justification: 'Motivo', lineasDetalle: [{ descripcion: 'A', cantidad: 1 }] });
     clearAll();
     expect(loadUsers()).toEqual([]);
+  });
+});
+
+describe('T130 - login y logout', () => {
+  it('inicia sesión con el usuario registrado sin distinguir mayúsculas', () => {
+    const user = addUser({ username: 'sol', name: 'Sol', role: 'solicitante' });
+    const session = login(' SOL ', 'clave', loadUsers());
+    expect(session.id).toBe(user.id);
+    expect(session.username).toBe('sol');
+    expect(getSession().id).toBe(user.id);
+    expect(roleLabel('solicitante')).toBe('Solicitante');
+    expect(can(PERMISSIONS.REQUISITIONS_CREATE)).toBe(true);
+  });
+
+  it('rechaza credenciales inválidas y campos vacíos', () => {
+    addUser({ username: 'sol', name: 'Sol', role: 'solicitante' });
+    expect(() => login('otro', 'clave', loadUsers())).toThrow('Credenciales inválidas');
+    expect(() => login('', 'clave', loadUsers())).toThrow(/obligatorios/);
+    expect(() => login('sol', '   ', loadUsers())).toThrow(/obligatorios/);
+  });
+
+  it('rechaza un usuario desactivado', () => {
+    addUser({ username: 'baja', name: 'Baja', role: 'aprobador', active: false });
+    expect(() => login('baja', 'clave', loadUsers())).toThrow('El usuario está desactivado');
+    expect(getSession().role).toBe('administrador');
+  });
+
+  it('cierra la sesión y revoca todos los permisos', () => {
+    setSession(ROLE_FIXTURES.admin);
+    expect(isAdmin()).toBe(true);
+    logout();
+    expect(getSession()).toBeNull();
+    expect(currentUser()).toBeNull();
+    expect(isAdmin()).toBe(false);
+    expect(can(PERMISSIONS.DASHBOARD_VIEW)).toBe(false);
+    expect(can(PERMISSIONS.USERS_MANAGE)).toBe(false);
+  });
+
+  it('conserva el departamento de la sesión y respeta el estado inactivo', () => {
+    setSession({ ...ROLE_FIXTURES.aprobador, department: ' TI ', active: false });
+    expect(currentUser().department).toBe('TI');
+    expect(permissionsFor('aprobador')).toContain(PERMISSIONS.REQUISITIONS_APPROVE);
+    expect(can(PERMISSIONS.REQUISITIONS_APPROVE)).toBe(false);
+  });
+});
+
+describe('T130 - segregación de funciones', () => {
+  it.each([
+    ['solicitante', PERMISSIONS.REQUISITIONS_CREATE, PERMISSIONS.ORDERS_APPROVE],
+    ['aprobador', PERMISSIONS.REQUISITIONS_APPROVE, PERMISSIONS.REQUISITIONS_CREATE],
+    ['encargado_compras', PERMISSIONS.ORDERS_CREATE, PERMISSIONS.USERS_MANAGE],
+    ['encargado_recepcion', PERMISSIONS.RECEPTIONS_MANAGE, PERMISSIONS.DOCUMENTS_MANAGE]
+  ])('el rol %s solo ejecuta sus acciones permitidas', (role, allowed, denied) => {
+    setSession(ROLE_FIXTURES[role === 'encargado_compras' ? 'compras' : role === 'encargado_recepcion' ? 'recepcion' : role]);
+    expect(can(allowed)).toBe(true);
+    expect(can(denied)).toBe(false);
+  });
+
+  it('no permite administrar usuarios a los roles operativos', () => {
+    for(const key of ['solicitante', 'aprobador', 'compras', 'recepcion']){
+      setSession(ROLE_FIXTURES[key]);
+      expect(can(PERMISSIONS.USERS_MANAGE)).toBe(false);
+    }
   });
 });

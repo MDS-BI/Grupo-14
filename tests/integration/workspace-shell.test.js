@@ -6,6 +6,7 @@ import { normalizeConfig } from '../../src/module-config.js';
 import { addEntity, addDocument, loadEntities, loadDocuments } from '../../src/storage.js';
 
 const html = fs.readFileSync(fileURLToPath(new URL('../../index.html', import.meta.url)), 'utf8');
+const css = fs.readFileSync(fileURLToPath(new URL('../../src/styles.css', import.meta.url)), 'utf8');
 
 let dom;
 
@@ -131,5 +132,61 @@ describe('User Story 13 - branded ERP workspace shell', () => {
   it('falls back to the default accent when the color is invalid', async () => {
     await bootWith({ moduleName: 'X', theme: { accentColor: 'not-a-color' } });
     expect(document.documentElement.style.getPropertyValue('--accent')).toBe('#2563eb');
+  });
+
+  it('collapses to an icon rail on narrow windows while keeping module names in the accessibility tree', async () => {
+    await bootWith(undefined);
+    Object.defineProperty(dom.window, 'innerWidth', { configurable: true, value: 900 });
+    dom.window.dispatchEvent(new dom.window.Event('resize'));
+
+    const narrowBlock = css.slice(
+      css.indexOf('@media (max-width: 1180px)'),
+      css.indexOf('@media (max-width: 1024px)')
+    );
+    expect(narrowBlock).toContain('--sidebar-w: 76px');
+    expect(narrowBlock).toContain('.nav-label');
+    expect(narrowBlock).toContain('clip: rect(0 0 0 0)');
+
+    const nav = document.querySelector('.side-nav');
+    expect(nav.getAttribute('aria-label')).toBe('Módulos');
+
+    const buttons = [...document.querySelectorAll('.nav-module, .nav-module-extra')];
+    expect(buttons).toHaveLength(8);
+    buttons.forEach(btn => {
+      expect(btn.querySelector('svg.i')).not.toBeNull();
+      const label = btn.querySelector('.nav-label');
+      expect(label).not.toBeNull();
+      expect(label.textContent.trim().length).toBeGreaterThan(0);
+      expect(label.hasAttribute('hidden')).toBe(false);
+      expect(label.getAttribute('aria-hidden')).toBeNull();
+      expect(btn.textContent).toContain(label.textContent.trim());
+    });
+  });
+
+  it('keeps every module icon operable and marks the active one with ARIA in a narrow window', async () => {
+    await bootWith(undefined);
+    Object.defineProperty(dom.window, 'innerWidth', { configurable: true, value: 900 });
+    dom.window.dispatchEvent(new dom.window.Event('resize'));
+
+    const views = {
+      dashboard: 'view-dashboard',
+      entities: 'view-entities',
+      documents: 'view-documents',
+      search: 'view-search',
+      requisitions: 'view-requisitions',
+      approvals: 'view-approvals',
+      receptions: 'view-receptions',
+      users: 'view-users'
+    };
+
+    for(const [module, viewId] of Object.entries(views)){
+      const btn = document.querySelector(`.nav-module[data-module="${module}"], .nav-module-extra[data-module="${module}"]`);
+      expect(btn).not.toBeNull();
+      expect(btn.querySelector('svg.i')).not.toBeNull();
+      btn.click();
+      expect(qs(viewId).hidden).toBe(false);
+      expect(btn.getAttribute('aria-current')).toBe('page');
+      expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+    }
   });
 });

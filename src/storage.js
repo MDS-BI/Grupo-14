@@ -1230,9 +1230,8 @@ export function approveRequisition(id, options = {}){
   if(list[idx].status !== REQUISITION_STATUS.PENDING){
     throw new Error(`Solo se pueden aprobar solicitudes pendientes (estado actual: ${list[idx].status})`);
   }
-  const total = requisitionTotal(list[idx]);
   const budget = budgetForDepartment(list[idx].department);
-  const overBudget = total > budget.available;
+  const overBudget = budget.overBudget;
   if(overBudget){
     if(!isAdmin()) throw new Error('El departamento no tiene saldo disponible; se requiere override administrativo');
     if(isEmpty(overrideReason)) throw new Error('El override administrativo requiere un motivo');

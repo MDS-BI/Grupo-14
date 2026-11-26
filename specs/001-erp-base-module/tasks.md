@@ -232,8 +232,8 @@
 - [X] T077 [P] Actualizar `README.md` y `specs/001-erp-base-module/quickstart.md` con los flujos de usuarios/roles, solicitudes, órdenes y recepción
 - [X] T078 Ejecutar la suite completa de Vitest y la compilación de producción; corregir regresiones en `tests/` y `src/`
 - [X] T079 Validar manualmente el flujo de extremo a extremo de cada historia según `specs/001-erp-base-module/quickstart.md`
-- [ ] T080 [P] Documentar y verificar la cobertura de FR-001..FR-051, SC-001..SC-013 y US1..US18 en `specs/001-erp-base-module/tasks.md`, sustituyendo cualquier marcador informal por IDs canónicos
-- [ ] T081 Cerrar en `specs/001-erp-base-module/spec.md`, `specs/001-erp-base-module/plan.md`, `specs/001-erp-base-module/data-model.json` y `specs/001-erp-base-module/tasks.md` las brechas de trazabilidad detectadas por `speckit-analyze` antes de declarar completada la fase de pulido
+- [X] T080 [P] Documentar y verificar la cobertura de FR-001..FR-051, SC-001..SC-013 y US1..US18 en `specs/001-erp-base-module/tasks.md`, sustituyendo cualquier marcador informal por IDs canónicos
+- [X] T081 Cerrar en `specs/001-erp-base-module/spec.md`, `specs/001-erp-base-module/plan.md`, `specs/001-erp-base-module/data-model.json` y `specs/001-erp-base-module/tasks.md` las brechas de trazabilidad detectadas por `speckit-analyze` antes de declarar completada la fase de pulido
 
 ---
 

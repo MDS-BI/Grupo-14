@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
-import { loadEntities } from '../../src/storage.js';
+import { loadEntities, loadDocuments } from '../../src/storage.js';
 
 const html = fs.readFileSync(fileURLToPath(new URL('../../index.html', import.meta.url)), 'utf8');
 
@@ -111,6 +111,67 @@ describe('User Story 1 - create and organize entities', () => {
 
     expect(loadEntities()).toHaveLength(0);
     expect(qs('error-taxId').textContent).toContain('no es válido');
+  });
+
+  it('reports a missing required custom field on its own error element', () => {
+    qs('nav-entities').click();
+    qs('name').value = 'Acme';
+    qs('code').value = 'AC-001';
+    qs('entity-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+
+    expect(loadEntities()).toHaveLength(0);
+    expect(qs('error-cf-categoriaProveedor').textContent).toContain('obligatorio');
+    expect(qs('error-name').textContent).toBe('');
+    expect(qs('error-code').textContent).toBe('');
+  });
+
+  it('reports invalid email and negative credit limit independently', () => {
+    qs('nav-entities').click();
+    qs('name').value = 'Acme';
+    qs('code').value = 'AC-001';
+    qs('cf-categoriaProveedor').value = 'Servicios';
+    qs('email').value = 'correo-invalido';
+    qs('creditLimit').value = '-5';
+    qs('entity-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+
+    expect(loadEntities()).toHaveLength(0);
+    expect(qs('error-email').textContent).toContain('correo electrónico');
+    expect(qs('error-creditLimit').textContent).toContain('no negativo');
+    expect(qs('error-name').textContent).toBe('');
+  });
+
+  it('shows an impossible target date error on the date field only', () => {
+    qs('nav-entities').click();
+    Object.defineProperty(qs('targetDate'), 'value', { configurable: true, value: '2026-02-30' });
+    qs('name').value = 'Acme';
+    qs('code').value = 'AC-001';
+    qs('cf-categoriaProveedor').value = 'Servicios';
+    qs('entity-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+
+    expect(loadEntities()).toHaveLength(0);
+    expect(qs('error-targetDate').textContent).toContain('fecha válida');
+    expect(qs('error-name').textContent).toBe('');
+    expect(qs('error-code').textContent).toBe('');
+  });
+
+  it('shows an inverted document date range on the end-date field only', () => {
+    qs('nav-entities').click();
+    qs('name').value = 'Acme';
+    qs('code').value = 'AC-001';
+    qs('cf-categoriaProveedor').value = 'Servicios';
+    qs('entity-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    expect(loadEntities()).toHaveLength(1);
+
+    qs('nav-documents').click();
+    qs('document-entity').value = loadEntities()[0].entity_id;
+    qs('folio').value = '1001';
+    qs('startDate').value = '2026-08-10';
+    qs('endDate').value = '2026-08-01';
+    qs('document-form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+
+    expect(loadDocuments()).toHaveLength(0);
+    expect(qs('error-endDate').textContent).toContain('posterior a la fecha de inicio');
+    expect(qs('error-startDate').textContent).toBe('');
   });
 
   it('explains when the provider RUT is already registered', () => {

@@ -84,3 +84,55 @@ describe('User Story 7 - requisitions with justification', () => {
     expect(qs('requisitions-list').textContent).toContain('Compra urgente por auditoría externa');
   });
 });
+
+describe('T137 - catálogo en solicitudes de compra', () => {
+  it('complete una línea con los datos devueltos por el catálogo', () => {
+    storage.addCatalogItem({
+      code: 'LAP-01', producto_id: 'LAP-01', descripcion: 'Laptop 14 pulgadas',
+      unidadMedida: 'unidades', precioReferencia: 15000
+    });
+    const item = storage.findCatalogItem('lap-01');
+    expect(item).toBeDefined();
+
+    app.applySession(ROLE_FIXTURES.solicitante);
+    qs('nav-requisitions').click();
+    setLine(0, 'descripcion', item.descripcion);
+    setLine(0, 'cantidad', '2');
+    setLine(0, 'unidadMedida', item.unidadMedida);
+    setLine(0, 'precioEstimado', String(item.precioReferencia));
+    qs('requisition-justification').value = 'Renovación del equipo de soporte';
+    submit(qs('requisition-form'));
+
+    const saved = storage.loadRequisitions()[0];
+    expect(saved.lineasDetalle[0]).toMatchObject({
+      descripcion: 'Laptop 14 pulgadas',
+      cantidad: 2,
+      unidadMedida: 'unidades',
+      precioEstimado: 15000
+    });
+    expect(storage.requisitionTotal(saved)).toBe(30000);
+  });
+
+  it('excluya productos inactivos del catálogo', () => {
+    const item = storage.addCatalogItem({
+      code: 'MOB-01', producto_id: 'MOB-01', descripcion: 'Silla oficina',
+      unidadMedida: 'unidades', precioReferencia: 5000
+    });
+    expect(storage.findCatalogItem('MOB-01').descripcion).toBe('Silla oficina');
+
+    storage.updateCatalogItem(item.id, { active: false, revision: item.revision });
+    expect(storage.findCatalogItem('MOB-01')).toBeUndefined();
+  });
+
+  it('advierta productos duplicados en las líneas de la solicitud', () => {
+    expect(storage.duplicateCatalogRequests([
+      { producto_id: 'LAP-01' },
+      { producto_id: 'lap-01' },
+      { producto_id: 'MOB-01' }
+    ])).toEqual(['LAP-01']);
+    expect(storage.duplicateCatalogRequests([
+      { producto_id: 'LAP-01' },
+      { producto_id: 'MOB-01' }
+    ])).toEqual([]);
+  });
+});
