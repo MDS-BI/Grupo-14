@@ -6,7 +6,8 @@
 //   - el buscador de la barra superior (abre Búsqueda con el término escrito);
 //   - las iniciales de la sesión activa y la fecha del panel;
 //   - el color de las etiquetas de estado según su texto.
-import { loadEntities, loadDocuments, loadRequisitions, loadReceptions, REQUISITION_STATUS } from '../storage.js';
+import { currentUser } from '../auth.js';
+import { loadEntities, loadDocuments, loadReceptions, listRequisitionsForUser, REQUISITION_STATUS } from '../storage.js';
 import { labelFor } from '../module-config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -66,8 +67,17 @@ function renderPending(){
   const list = $('dash-pending-list');
   const empty = $('dash-pending-empty');
   if(!list || !empty) return;
-  const pending = loadRequisitions()
-    .filter(r => r.status === REQUISITION_STATUS.PENDING)
+  const user = currentUser();
+  const heading = $('dash-pending-heading');
+  if(heading) heading.textContent = user?.role === 'solicitante' ? 'Mis solicitudes' : 'Solicitudes pendientes';
+  if(user?.role === 'solicitante'){
+    const title = empty.querySelector('h3');
+    const copy = empty.querySelector('p');
+    if(title) title.textContent = 'Todavía no tienes solicitudes';
+    if(copy) copy.textContent = 'Cuando envíes tu primera solicitud aparecerá aquí con su estado.';
+  }
+  const scoped = listRequisitionsForUser(user);
+  const pending = (user?.role === 'solicitante' ? scoped : scoped.filter(r => r.status === REQUISITION_STATUS.PENDING))
     .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
     .slice(0, 5);
 
@@ -99,7 +109,7 @@ function collectEvents(){
   const entityLabel = labelFor('entity');
   const documentLabel = labelFor('document');
 
-  for(const r of loadRequisitions()){
+  for(const r of listRequisitionsForUser()){
     events.push({ at: r.createdAt, tone: 'amber', title: `Nueva solicitud ${r.folio || ''}`, meta: [r.requesterName, r.department].filter(Boolean).join(' · ') });
     if(r.approvedAt) events.push({ at: r.approvedAt, tone: 'green', title: `Solicitud ${r.folio || ''} aprobada`, meta: r.department });
     if(r.rejectedAt) events.push({ at: r.rejectedAt, tone: 'red', title: `Solicitud ${r.folio || ''} rechazada`, meta: r.rejectionReason || r.department });
@@ -176,8 +186,12 @@ function wireGlobalSearch(){
     const target = $('search-input');
     if(!isVisible(nav) || !target) return;
     if($('view-search').hidden) nav.click();
-    target.value = input.value;
-    target.dispatchEvent(new Event('input', { bubbles: true }));
+    ['entity-table-search', 'search-input', 'doc-search-input'].forEach(id => {
+      const mirror = $(id);
+      if(!mirror) return;
+      mirror.value = input.value;
+      mirror.dispatchEvent(new Event('input', { bubbles: true }));
+    });
   };
 
   input.addEventListener('input', () => { if(input.value.trim() !== '' || !$('view-search').hidden) run(); });

@@ -603,3 +603,32 @@ Task: "Marcado de la vista de usuarios en index.html"
 - Fase 32 depende de todas las fases anteriores; T150 es el gate final de cierre
 - Paralelismo: T109/T110, T114/T115, T117, T120/T121, T123/T124, T127, T130, T133/T134, T136/T137 y T139/T140 pueden ejecutarse en paralelo dentro de su fase; T142-T148 pueden ejecutarse en paralelo antes de T149 y T150
 
+---
+
+## Fase 33: Corrección de visibilidad por rol en solicitudes (HU7/HU16)
+
+**Objetivo**: Evitar que un solicitante vea solicitudes ajenas y que cada rol consulte solo el subconjunto autorizado de los mismos datos.
+
+**Prueba Independiente**: Con solicitudes de tres usuarios, la sesión solicitante lista solo las propias; la de aprobador solo las de su departamento; la de encargado de compras solo las aprobadas; la de administrador todas.
+
+### Pruebas de la corrección
+
+- [X] T151 [US7] Añadir en `tests/integration/requisition.test.js` las pruebas de regresión: solicitante no ve solicitudes ajenas, aprobador ve solo las de su departamento y administrador ve todas
+- [X] T152 [US16] Añadir en `tests/integration/requisition.test.js` la comprobación de que departamento y partida se derivan del perfil y no se editan manualmente
+
+### Implementación de la corrección
+
+- [X] T153 [US7] Implementar `listRequisitionsForUser(user)` en `src/storage.js` con reglas por rol (solicitante, aprobador, encargado_compras, administrador)
+- [X] T154 [US7] Consumir el filtro en `src/app.js` y en `src/components/dashboard-activity.js` para listados, panel y tarjetas de solicitudes
+- [X] T155 [US16] Derivar departamento y centro de costo del usuario de sesión en `src/components/requisition-form.js` y `src/storage.js`, dejando ambos campos de solo lectura en `index.html`
+- [X] T156 [US7] Ajustar en `index.html`, `src/app.js`, `src/components/dashboard.js` y `src/components/dashboard-activity.js` el panel del solicitante, los módulos visibles del sidebar y la existencia de un único buscador en la barra superior, reutilizando los tokens existentes de `src/styles.css`
+- [X] T157 Corregir el género de "Nueva Orden de Compra" en `src/app.js` sin alterar las etiquetas configurables de otros módulos
+
+### Verificación
+
+- [X] T158 Ejecutar `npx vitest run tests/integration/requisition.test.js` y, tras pasar, `npm run test`, `npm run lint` y `npm run build` como gate final
+
+## Dependencias de la Fase 33
+
+- T151 y T152 pueden ejecutarse en paralelo; T153 depende de T151; T154 depende de T153; T155 depende de T152; T156 y T157 dependen de T154; T158 depende de T155, T156 y T157
+

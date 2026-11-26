@@ -136,3 +136,80 @@ describe('T137 - catálogo en solicitudes de compra', () => {
     ])).toEqual([]);
   });
 });
+
+describe('Fase 33 - visibilidad de solicitudes por rol', () => {
+  function seed(user, department, justification){
+    app.applySession(user);
+    return storage.addRequisition({
+      department,
+      justification,
+      lineasDetalle: [{ descripcion: 'Monitor', cantidad: 1, unidadMedida: 'unidades', precioEstimado: 1000 }]
+    });
+  }
+
+  it('el solicitante no ve solicitudes de otros usuarios', () => {
+    const own = seed(ROLE_FIXTURES.solicitante, 'TI', 'Solicitud propia del solicitante');
+    seed(ROLE_FIXTURES.admin, 'Compras', 'Solicitud ajena del administrador');
+
+    app.applySession(ROLE_FIXTURES.solicitante);
+    qs('nav-requisitions').click();
+    expect(qs('requisitions-list').textContent).toContain('Solicitud propia del solicitante');
+    expect(qs('requisitions-list').textContent).not.toContain('Solicitud ajena del administrador');
+    expect(storage.listRequisitionsForUser(ROLE_FIXTURES.solicitante).map(r => r.id)).toEqual([own.id]);
+  });
+
+  it('el aprobador ve solo las solicitudes de su departamento', () => {
+    seed(ROLE_FIXTURES.aprobador, 'TI', 'Solicitud TI del aprobador');
+    seed(ROLE_FIXTURES.admin, 'Compras', 'Solicitud de Compras ajena');
+
+    app.applySession(ROLE_FIXTURES.aprobador);
+    qs('nav-requisitions').click();
+    expect(qs('requisitions-list').textContent).toContain('Solicitud TI del aprobador');
+    expect(qs('requisitions-list').textContent).not.toContain('Solicitud de Compras ajena');
+    expect(storage.listRequisitionsForUser(ROLE_FIXTURES.aprobador)).toHaveLength(1);
+  });
+
+  it('el administrador ve todas las solicitudes', () => {
+    seed(ROLE_FIXTURES.solicitante, 'TI', 'Solicitud del solicitante');
+    seed(ROLE_FIXTURES.aprobador, 'TI', 'Solicitud del aprobador');
+    seed(ROLE_FIXTURES.admin, 'Compras', 'Solicitud del administrador');
+
+    app.applySession(ROLE_FIXTURES.admin);
+    qs('nav-requisitions').click();
+    expect(qs('requisitions-list').textContent).toContain('Solicitud del solicitante');
+    expect(qs('requisitions-list').textContent).toContain('Solicitud del aprobador');
+    expect(qs('requisitions-list').textContent).toContain('Solicitud del administrador');
+    expect(storage.listRequisitionsForUser(ROLE_FIXTURES.admin)).toHaveLength(3);
+  });
+
+  it('el encargado de compras ve solo las solicitudes aprobadas', () => {
+    const approved = seed(ROLE_FIXTURES.solicitante, 'TI', 'Solicitud aprobada');
+    seed(ROLE_FIXTURES.admin, 'Compras', 'Solicitud pendiente');
+    app.applySession(ROLE_FIXTURES.admin);
+    storage.approveRequisition(approved.id, { revision: approved.revision });
+
+    app.applySession(ROLE_FIXTURES.compras);
+    qs('nav-requisitions').click();
+    expect(qs('requisitions-list').textContent).toContain('Solicitud aprobada');
+    expect(qs('requisitions-list').textContent).not.toContain('Solicitud pendiente');
+  });
+
+  it('deriva departamento y partida del perfil y los deja de solo lectura', () => {
+    const user = { ...ROLE_FIXTURES.solicitante, department: 'TI' };
+    app.applySession(user);
+    qs('nav-requisitions').click();
+    expect(qs('requisition-department').value).toBe('TI');
+    expect(qs('requisition-department').readOnly).toBe(true);
+    expect(qs('requisition-budget-line').readOnly).toBe(true);
+
+    qs('requisition-justification').value = 'Equipos para el área TI';
+    setLine(0, 'descripcion', 'Laptop');
+    setLine(0, 'cantidad', '1');
+    setLine(0, 'precioEstimado', '1000');
+    submit(qs('requisition-form'));
+
+    const saved = storage.loadRequisitions()[0];
+    expect(saved.department).toBe('TI');
+    expect(saved.budgetLine).toBe(storage.costCenterForDepartment('TI'));
+  });
+});

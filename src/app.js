@@ -3,13 +3,13 @@ import {
   loadEntities, addEntity, updateEntity, deleteEntity, validateEntity, searchEntities,
   loadDocuments, addDocument, updateDocument, deleteDocument, validateDocument, searchDocuments,
   loadUsers, addUser, updateUser, setUserActive, touchUserAccess, validateUser,
-  loadRequisitions, addRequisition, validateRequisition, approveRequisition, rejectRequisition,
+  loadRequisitions, listRequisitionsForUser, addRequisition, validateRequisition, approveRequisition, rejectRequisition,
   pendingRequisitionsForApprover, budgetForDepartment, pendingQuotationRequisitions,
   createQuotation,
   ordersPendingReception, addReception, validateReception,
   approveDocument, cancelDocument, payOrder
 } from './storage.js';
-import { can, isAdmin, setSession, resetSession, getSession, PERMISSIONS, roleLabel } from './auth.js';
+import { can, currentUser, isAdmin, setSession, resetSession, getSession, PERMISSIONS, roleLabel } from './auth.js';
 import { attachRutFormatting } from './rut.js';
 import { ensureMockData, injectMockData } from './mock-data.js';
 import { clearEntityForm, startEntityEdit, collectEntityPayload, showEntityErrors } from './components/entity-form.js';
@@ -37,7 +37,7 @@ function qs(id){ return document.getElementById(id); }
 // El género se deduce de la primera palabra (p. ej., "Pedido de Venta" → masculino)
 // usando terminaciones femeninas comunes (-a, -dad, -ción, ...).
 const palabraClave = (word) => String(word).trim().split(/\s+/)[0] || '';
-const esFemenina = (word) => /(a|dad|tad|ción|sión|tud|umbre|ie)$/i.test(palabraClave(word));
+const esFemenina = (word) => /^(orden|ordenes)$/i.test(palabraClave(word)) || /(a|dad|tad|ción|sión|tud|umbre|ie)$/i.test(palabraClave(word));
 const articulo = (word) => esFemenina(word) ? 'la' : 'el';
 const demostrativo = (word) => esFemenina(word) ? 'esta' : 'este';
 const seleccionada = (word) => esFemenina(word) ? 'seleccionada' : 'seleccionado';
@@ -70,9 +70,11 @@ const MODULE_PERMISSIONS = {
   users: PERMISSIONS.USERS_MANAGE
 };
 
+const canViewRequisitions = () => can(PERMISSIONS.REQUISITIONS_CREATE) || can(PERMISSIONS.REQUISITIONS_APPROVE);
+
 function showModule(name, opts = {}){
   if(!MODULES.includes(name)) name = 'dashboard';
-  if(!can(MODULE_PERMISSIONS[name])) name = 'dashboard';
+  if(name === 'requisitions' ? !canViewRequisitions() : !can(MODULE_PERMISSIONS[name])) name = 'dashboard';
   MODULES.forEach(m => { qs(VIEWS[m]).hidden = m !== name; });
   setActiveModule(name);
   if(name === 'dashboard'){
@@ -297,7 +299,11 @@ function applyPermissions(){
   };
   Object.entries(navIds).forEach(([module, id]) => {
     const el = qs(id);
-    if(el) el.hidden = !can(MODULE_PERMISSIONS[module]);
+    if(el) el.hidden = module === 'requisitions' ? !canViewRequisitions() : !can(MODULE_PERMISSIONS[module]);
+  });
+  document.querySelectorAll('.nav-group').forEach(group => {
+    const visible = [...group.querySelectorAll('.nav-module, .nav-module-extra')].some(button => !button.hidden);
+    group.hidden = !visible;
   });
   const actions = {
     'action-new-entity': PERMISSIONS.ENTITIES_MANAGE,
@@ -313,6 +319,21 @@ function applyPermissions(){
   Object.entries(actions).forEach(([id, permission]) => {
     const el = qs(id);
     if(el) el.hidden = !can(permission);
+  });
+  const soloSolicitante = currentUser()?.role === 'solicitante';
+  if(soloSolicitante){
+    document.querySelectorAll('.stat-card').forEach(card => {
+      card.hidden = !card.querySelector('#stat-requisitions');
+    });
+    if(qs('action-find')) qs('action-find').hidden = true;
+    const activity = qs('dash-activity-heading')?.closest('section');
+    if(activity) activity.hidden = true;
+    const approvalsLink = document.querySelector('[data-proxy="nav-approvals"]');
+    if(approvalsLink) approvalsLink.hidden = true;
+  }
+  ['entity-table-search', 'search-input', 'doc-search-input'].forEach(id => {
+    const field = qs(id)?.closest('.search-field');
+    if(field) field.hidden = true;
   });
   const requisitionForm = qs('requisition-form');
   if(requisitionForm) requisitionForm.hidden = !can(PERMISSIONS.REQUISITIONS_CREATE);
@@ -428,8 +449,18 @@ function handleLoadMockData(){
   showMockDataMessage(counts);
 }
 
+function requisitionsHeading(){
+  const role = currentUser()?.role;
+  if(role === 'solicitante') return 'Mis solicitudes';
+  if(role === 'aprobador') return 'Solicitudes de mi departamento';
+  if(role === 'encargado_compras') return 'Solicitudes aprobadas';
+  return 'Todas las solicitudes';
+}
+
 function refreshRequisitions(){
-  const list = loadRequisitions().slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  const list = listRequisitionsForUser().slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  const heading = qs('requisitions-list-heading');
+  if(heading) heading.textContent = requisitionsHeading();
   renderRequisitionList(qs('requisitions-list'), qs('requisitions-empty'), list);
 }
 

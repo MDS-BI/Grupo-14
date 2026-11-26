@@ -1,5 +1,6 @@
 import { getConfig } from '../module-config.js';
-import { loadEntities, loadDocuments, loadRequisitions, loadReceptions, REQUISITION_STATUS, ISSUED_ORDER_STATUSES } from '../storage.js';
+import { currentUser } from '../auth.js';
+import { loadEntities, loadDocuments, loadRequisitions, loadReceptions, listRequisitionsForUser, REQUISITION_STATUS, ISSUED_ORDER_STATUSES } from '../storage.js';
 
 export function recordCounts(){
   const documents = loadDocuments();
@@ -30,4 +31,11 @@ export function renderDashboard(){
   if(entitiesLabel) entitiesLabel.textContent = labels.entities;
   const documentsLabel = document.getElementById('stat-documents-label');
   if(documentsLabel) documentsLabel.textContent = labels.documents;
+  const requisitionsLabel = document.getElementById('stat-requisitions-label');
+  if(currentUser()?.role === 'solicitante'){
+    set('stat-requisitions', listRequisitionsForUser().length);
+    if(requisitionsLabel) requisitionsLabel.textContent = 'Mis solicitudes';
+  } else if(requisitionsLabel){
+    requisitionsLabel.textContent = 'Solicitudes pendientes';
+  }
 }

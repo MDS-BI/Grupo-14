@@ -55,6 +55,11 @@ export const DEPARTMENT_BUDGETS = Object.freeze({
 
 export const DEPARTMENTS = Object.freeze(Object.keys(DEPARTMENT_BUDGETS));
 
+export function costCenterForDepartment(department){
+  const code = String(department || '').trim().slice(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return `CC-${code || 'GEN'}`;
+}
+
 const RECEPTION_ORDER_STATUSES = Object.freeze([DOCUMENT_STATUS.ISSUED, DOCUMENT_STATUS.PARTIALLY_RECEIVED]);
 // Estados que solo se alcanzan registrando recepciones (FR-045, SC-013).
 export const RECEPTION_DERIVED_STATUSES = Object.freeze([DOCUMENT_STATUS.PARTIALLY_RECEIVED, DOCUMENT_STATUS.RECEIVED]);
@@ -93,6 +98,23 @@ export function saveUsers(users){ writeJson(USERS_KEY, users); }
 
 export function loadRequisitions(){ return readJson(REQUISITIONS_KEY, []); }
 export function saveRequisitions(requisitions){ writeJson(REQUISITIONS_KEY, requisitions); }
+
+export function listRequisitionsForUser(user = currentUser()){
+  const all = loadRequisitions();
+  if(!user) return [];
+  if(user.role === 'administrador') return all;
+  if(user.role === 'encargado_compras'){
+    return all.filter(r => r.status === REQUISITION_STATUS.APPROVED);
+  }
+  if(user.role === 'aprobador'){
+    const department = String(user.department || '').trim();
+    return department ? all.filter(r => r.department === department) : [];
+  }
+  if(user.role === 'solicitante'){
+    return all.filter(r => r.requesterId === user.id);
+  }
+  return [];
+}
 
 export function loadReceptions(){ return readJson(RECEPTIONS_KEY, []); }
 export function saveReceptions(receptions){ writeJson(RECEPTIONS_KEY, receptions); }
@@ -1176,17 +1198,19 @@ export function requisitionTotal(requisition){
 }
 
 export function addRequisition(payload){
-  const check = validateRequisition(payload);
-  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
   const user = currentUser();
+  const department = String((user && user.department) || payload.department || 'General').trim();
+  const normalized = { ...payload, department };
+  const check = validateRequisition(normalized);
+  if(!check.valid) throw new Error(Object.values(check.errors)[0]);
   const now = new Date().toISOString();
   const requisition = {
     id: generateId(),
     folio: nextRequisitionFolio(),
     requesterId: user ? user.id : undefined,
     requesterName: (payload.requesterName || (user ? user.name : '')).trim(),
-    department: String(payload.department).trim(),
-    budgetLine: (payload.budgetLine || '').trim() || undefined,
+    department,
+    budgetLine: costCenterForDepartment(department),
     justification: String(payload.justification).trim(),
     lineasDetalle: normalizeRequisitionLines(payload.lineasDetalle),
     status: REQUISITION_STATUS.PENDING,

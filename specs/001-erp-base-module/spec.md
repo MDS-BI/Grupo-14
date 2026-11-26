@@ -159,6 +159,7 @@ Un solicitante accede al formulario, agrega los productos requeridos, redacta un
 - [ ] **2.** **Dado** un formulario con los productos/servicios seleccionados y una justificación redactada, **cuando** el usuario confirma el envío, **entonces** la solicitud se guarda exitosamente y su estado inicial se establece como "Pendiente de aprobación".
 - [ ] **3.** **Dada** una solicitud enviada previamente, **cuando** el solicitante visualiza el detalle o el historial de su registro, **entonces** el texto de la justificación se muestra completo en la interfaz.
 - [ ] **4.** **Dada** una solicitud pendiente, **cuando** el aprobador correspondiente abre el documento para su revisión, **entonces** la justificación de compra es visible inmediatamente antes de los botones de aprobar o rechazar.
+- [ ] **5.** **Dada** una solicitud registrada por otro usuario, **cuando** el solicitante abre "Mis solicitudes" con su sesión, **entonces** esa solicitud ajena no aparece y solo se listan las solicitudes cuyo solicitante es el usuario de la sesión.
 ### Historia de Usuario 8 - Buscar y encontrar entidades rápidamente (Prioridad: P2)
 Como usuario de negocio, quiero buscar mis entidades por detalles clave para encontrar rápidamente el registro que necesito.
 
@@ -353,6 +354,8 @@ Como administrador del sistema, quiero registrar los departamentos o centros de 
 4. **Dado** que una solicitud de compra pertenece a un departamento, **cuando** se envía a aprobación, **entonces** el sistema la dirige exclusivamente a la bandeja del jefe de área de ese departamento y descuenta el monto comprometido del presupuesto de ese mismo centro de costo.
 
 5. **Dado** que el administrador intenta desactivar o eliminar un departamento que tiene usuarios asignados, presupuesto comprometido o solicitudes en curso, **cuando** confirma la acción, **entonces** el sistema muestra una advertencia con los elementos asociados y bloquea la operación hasta que sean reasignados o concluidos.
+
+6. **Dado** que existen solicitudes de varios departamentos y estados, **cuando** consulta la vista de solicitudes un aprobador, un encargado de compras o un administrador, **entonces** el aprobador ve solo las de su departamento, el encargado de compras solo las aprobadas y el administrador todas.
 
 ---
 

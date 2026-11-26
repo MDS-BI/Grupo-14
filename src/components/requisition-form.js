@@ -1,4 +1,5 @@
-import { DEPARTMENTS, DEPARTMENT_BUDGETS } from '../storage.js';
+import { currentUser } from '../auth.js';
+import { DEPARTMENTS, DEPARTMENT_BUDGETS, costCenterForDepartment } from '../storage.js';
 
 function qs(id){ return document.getElementById(id); }
 
@@ -34,16 +35,13 @@ function field(label, input, errorId){
   return wrap;
 }
 
-export function populateDepartmentSelect(select, selected){
+export function populateDepartmentSelect(select){
   if(!select) return;
-  select.innerHTML = '';
-  for(const dep of DEPARTMENTS){
-    const opt = document.createElement('option');
-    opt.value = dep;
-    opt.textContent = dep;
-    select.appendChild(opt);
-  }
-  select.value = selected || DEPARTMENTS[0];
+  const user = currentUser();
+  const department = String((user && user.department) || DEPARTMENTS[0]).trim();
+  select.value = department;
+  const budgetLine = qs('requisition-budget-line');
+  if(budgetLine) budgetLine.value = costCenterForDepartment(department);
 }
 
 function createLine(line = {}, index){
@@ -93,7 +91,7 @@ export function clearRequisitionForm(){
   qs('requisition-id').value = '';
   qs('requisition-budget-line').value = '';
   qs('requisition-justification').value = '';
-  populateDepartmentSelect(qs('requisition-department'), DEPARTMENTS[0]);
+  populateDepartmentSelect(qs('requisition-department'));
   const lines = qs('requisition-lines');
   renderRequisitionLines(lines, []);
   addRequisitionLine(lines, {});
@@ -111,9 +109,10 @@ export function collectRequisitionPayload(){
       precioEstimado: get('precioEstimado')
     };
   }).filter(l => String(l.descripcion).trim() || String(l.cantidad).trim());
+  const department = qs('requisition-department').value;
   return {
-    department: qs('requisition-department').value,
-    budgetLine: qs('requisition-budget-line').value,
+    department,
+    budgetLine: costCenterForDepartment(department),
     justification: qs('requisition-justification').value,
     lineasDetalle: lineas
   };
